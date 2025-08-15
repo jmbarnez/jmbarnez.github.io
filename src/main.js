@@ -857,7 +857,7 @@ async function checkServerStatus() {
   
   // Check Database connectivity (Supabase via function)
   try {
-    const dbRes = await fetch('/api/health/db');
+    const dbRes = await fetch('/api/health/db', { cache: 'no-store' });
     if (dbRes.ok) {
       updateStatus('adv-db-status', 'online', 'Connected');
     } else {

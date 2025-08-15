@@ -265,6 +265,11 @@ export const SkillingZones = {
 
   animateCatchToInventory(zoneEl, iconId) {
     try {
+      // Skip animation if zones panel is hidden or the zone is not visible
+      const zonesPanel = document.getElementById('panel-zones');
+      if (zonesPanel && zonesPanel.style.display === 'none') return;
+      if (!zoneEl || zoneEl.getClientRects().length === 0) return;
+
       const startEl = zoneEl.querySelector('.zone-icon svg') || zoneEl.querySelector('.zone-action');
       const dockBtn = document.getElementById('toggleInventory');
       const invGrid = document.getElementById('inv-grid');
