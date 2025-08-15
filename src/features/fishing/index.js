@@ -36,7 +36,7 @@ export const Fishing = {
     gameState.isFishing = false;
     const fishBtn = document.getElementById('fishBtn');
     if (fishBtn) { fishBtn.disabled = false; fishBtn.removeAttribute('aria-busy'); }
-    Inventory.addItem(fish.name);
+    Inventory.addItem(fish.name, null, fishBtn);
     this.gainXP(fish.xp);
     const status = document.getElementById('status'); if (status) status.textContent = `Caught a ${fish.name}! (+${fish.xp} XP)`;
     gameState.stats.stamina = clamp(gameState.stats.stamina - 5, 0, gameState.stats.staminaMax);

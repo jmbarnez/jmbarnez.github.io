@@ -247,7 +247,7 @@ export const SkillingZones = {
     
     const job = new FishingJob({ remaining: 1000000000, fishTypes, playerLevel });
     job.on('catch', (fish) => {
-      try { Inventory.addItem(fish.name); } catch {}
+      try { Inventory.addItem(fish.name, null, zoneEl); } catch {}
       try { Fishing.gainXP(fish.xp || 1); } catch {}
       try { AudioManager.playPickupFor({ name: fish.name, category: 'item', subtype: 'fish' }); } catch {}
       // Visual feedback: fly icon to inventory and show XP float

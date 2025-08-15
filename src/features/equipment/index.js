@@ -9,7 +9,7 @@ let inventoryRef = null;
 export function setInventory(inv) { inventoryRef = inv; }
 // Expose minimal API for right-click equip fallback
 if (!window.__equipmentApi) window.__equipmentApi = {};
-window.__equipmentApi.equipItem = (item, fromIndex) => Equipment.equipItem(item, fromIndex);
+window.__equipmentApi.equipItem = (item, fromIndex, cursorPos) => Equipment.equipItem(item, fromIndex, cursorPos);
 
 export const Equipment = {
   slotMapping: {
@@ -43,7 +43,11 @@ export const Equipment = {
         const slotType = slotEl.dataset.slot;
         const fromIndex = inventoryRef?.dragFromIndex;
         const item = gameState.inventory[fromIndex];
-        if (item && this.canEquip(item.type, slotType)) this.equipItem(item, fromIndex);
+        if (item && this.canEquip(item.type, slotType)) {
+          const cursorX = e.clientX;
+          const cursorY = e.clientY;
+          this.equipItem(item, fromIndex, { cursorX, cursorY });
+        }
         if (inventoryRef) inventoryRef.dragFromIndex = null;
       });
     });
@@ -51,7 +55,7 @@ export const Equipment = {
 
   canEquip(itemType, slotType) { return itemType === slotType || (itemType === 'ring' && (slotType === 'ring1' || slotType === 'ring2')); },
 
-  equipItem(item, fromIndex) {
+  equipItem(item, fromIndex, cursorPos = null) {
     let targetSlot = item.type;
     if (item.type === 'ring') targetSlot = gameState.equipment.ring1 ? 'ring2' : 'ring1';
     if (gameState.equipment[targetSlot]) {
@@ -64,6 +68,11 @@ export const Equipment = {
     this.debouncedUpdateUI();
     AudioManager.playEquip();
     SaveManager.debouncedSave(); // Auto-save after equipping item
+    
+    // Show "Equipped!" notification at cursor position
+    if (cursorPos && cursorPos.cursorX !== undefined && cursorPos.cursorY !== undefined) {
+      Tooltip.showNotification(cursorPos.cursorX, cursorPos.cursorY, 'Equipped!');
+    }
   },
 
   unequipItem(slotType) {

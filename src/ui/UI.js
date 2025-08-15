@@ -1900,7 +1900,8 @@ export const UI = {
           for (let i = 0; i < quantityToBuy; i++) {
             let singleSuccess = false;
             if (window.Inventory && typeof window.Inventory.addItem === 'function') {
-              const result = window.Inventory.addItem(listing.item, listing.itemType || null);
+              const buyDialog = document.getElementById('buyDialog');
+              const result = window.Inventory.addItem(listing.item, listing.itemType || null, buyDialog);
               singleSuccess = result !== false;
             } else {
               singleSuccess = this.addToInventoryWithType(listing.item, 1, listing.itemType || null);
@@ -2117,33 +2118,14 @@ export const UI = {
     }
   },
 
-  // Ensure market listings are visible and refreshed for all players - SERVER BASED
+  // Auto-refresh market listings from server (used internally by auto-refresh timers)
   refreshMarketListings() {
-    console.log('Refreshing market listings from SERVER...');
-    
-    // Show refresh feedback to user
-    const refreshBtn = document.getElementById('marketRefreshBtn');
-    if (refreshBtn) {
-      refreshBtn.style.opacity = '0.5';
-      refreshBtn.disabled = true;
-    }
+    console.log('Auto-refreshing market listings from SERVER...');
     
     // Request fresh data from server - this is the ONLY source of truth
     this.requestMarketDataFromServer();
     
-    // Restore refresh button and show status
-    setTimeout(() => {
-      const refreshBtn = document.getElementById('marketRefreshBtn');
-      if (refreshBtn) {
-        refreshBtn.style.opacity = '1';
-        refreshBtn.disabled = false;
-      }
-      
-      const listingCount = (this.serverMarketListings || []).length;
-      this.setStatus(`Market refreshed from server - ${listingCount} listings available`);
-    }, 500);
-    
-    console.log('Market refresh requested from server');
+    console.log('Market auto-refresh requested from server');
   },
 
   // Auto-refresh the currently visible market tab without switching tabs
@@ -2456,72 +2438,16 @@ export const UI = {
     localStorage.setItem(historyKey, JSON.stringify(sellHistory));
   },
 
-  // Initialize desktop social buttons
+  // Initialize social buttons (no longer needed for desktop buttons)
   initDesktopSocialButtons() {
-    const chatBtn = document.getElementById('desktopChatBtn');
-    const marketBtn = document.getElementById('desktopMarketBtn');
-    
-    // Sync notification states between mobile and desktop buttons
-    this.syncDesktopNotifications();
-    
-    // Set up mutation observer to watch for notification changes
-    const observer = new MutationObserver(() => {
-      this.syncDesktopNotifications();
-    });
-    
-    // Watch the mobile buttons for notification changes
-    const mobileChatBtn = document.getElementById('toggleChat');
-    const mobileMarketBtn = document.getElementById('toggleMarket');
-    
-    if (mobileChatBtn) {
-      observer.observe(mobileChatBtn, { 
-        attributes: true, 
-        attributeFilter: ['class'],
-        subtree: true,
-        childList: true
-      });
-    }
-    
-    if (mobileMarketBtn) {
-      observer.observe(mobileMarketBtn, { 
-        attributes: true, 
-        attributeFilter: ['class'],
-        subtree: true,
-        childList: true
-      });
-    }
+    // Desktop social buttons removed - only mobile bottom panel buttons remain
+    // Chat and market buttons are now in the bottom panel
+    console.log('Social buttons now in bottom panel only');
   },
 
   syncDesktopNotifications() {
-    // Sync chat notifications
-    const mobileChatBtn = document.getElementById('toggleChat');
-    const desktopChatBtn = document.getElementById('desktopChatBtn');
-    
-    if (mobileChatBtn && desktopChatBtn) {
-      const mobileBadge = mobileChatBtn.querySelector('.notification-badge');
-      const desktopBadge = desktopChatBtn.querySelector('.notification-badge');
-      
-      if (mobileBadge && desktopBadge) {
-        const hasNotification = mobileBadge.style.display !== 'none' && mobileBadge.textContent;
-        desktopBadge.style.display = hasNotification ? 'block' : 'none';
-        desktopBadge.textContent = mobileBadge.textContent;
-      }
-    }
-    
-    // Sync market notifications
-    const mobileMarketBtn = document.getElementById('toggleMarket');
-    const desktopMarketBtn = document.getElementById('desktopMarketBtn');
-    
-    if (mobileMarketBtn && desktopMarketBtn) {
-      const mobileBadge = mobileMarketBtn.querySelector('.notification-badge');
-      const desktopBadge = desktopMarketBtn.querySelector('.notification-badge');
-      
-      if (mobileBadge && desktopBadge) {
-        const hasNotification = mobileBadge.style.display !== 'none' && mobileBadge.textContent;
-        desktopBadge.style.display = hasNotification ? 'block' : 'none';
-        desktopBadge.textContent = mobileBadge.textContent;
-      }
-    }
+    // Desktop buttons removed - no sync needed anymore
+    // Only bottom panel chat/market buttons exist now
   },
 
   // Method for desktop social buttons
@@ -2536,14 +2462,9 @@ export const UI = {
       'market': document.getElementById('toggleMarket')
     };
     
-    const desktopButtons = {
-      'chat': document.getElementById('desktopChatBtn'),
-      'market': document.getElementById('desktopMarketBtn')
-    };
     
     const panel = panels[panelType];
     const button = buttons[panelType];
-    const desktopButton = desktopButtons[panelType];
     
     if (!panel) return;
     
@@ -2559,9 +2480,6 @@ export const UI = {
     // Update button states
     if (button) {
       button.classList.toggle('active', !isVisible);
-    }
-    if (desktopButton) {
-      desktopButton.classList.toggle('active', !isVisible);
     }
     
     // Special handling for chat
@@ -2580,10 +2498,6 @@ export const UI = {
         this.resetChatUnreadCount();
       } else {
         if (button) button.classList.remove('has-notification');
-        if (desktopButton) {
-          const badge = desktopButton.querySelector('.notification-badge');
-          if (badge) badge.style.display = 'none';
-        }
       }
     }
     
@@ -2616,14 +2530,9 @@ export const UI = {
       'market': document.getElementById('toggleMarket')
     };
     
-    const desktopButtons = {
-      'chat': document.getElementById('desktopChatBtn'),
-      'market': document.getElementById('desktopMarketBtn')
-    };
     
     const panel = panels[panelType];
     const button = buttons[panelType];
-    const desktopButton = desktopButtons[panelType];
     
     if (!panel) return;
     
@@ -2639,9 +2548,6 @@ export const UI = {
     // Update button states
     if (button) {
       button.classList.toggle('active', !isVisible);
-    }
-    if (desktopButton) {
-      desktopButton.classList.toggle('active', !isVisible);
     }
     
     // Special handling for chat
@@ -2660,10 +2566,6 @@ export const UI = {
         this.resetChatUnreadCount();
       } else {
         if (button) button.classList.remove('has-notification');
-        if (desktopButton) {
-          const badge = desktopButton.querySelector('.notification-badge');
-          if (badge) badge.style.display = 'none';
-        }
       }
     }
     

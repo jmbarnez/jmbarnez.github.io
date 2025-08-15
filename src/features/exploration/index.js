@@ -525,12 +525,11 @@ export const Exploration = {
       // Treasure chest: drop some coins and a random item
       const coins = 5 + Math.floor(Math.random() * 20);
       for (let i = 0; i < coins; i++) {
-        Inventory.addItem('Small Coin');
+        Inventory.addItem('Small Coin', null, card);
       }
       const extras = ['Sea Shell', 'Driftwood', 'Seaweed'];
       const extra = extras[Math.floor(Math.random()*extras.length)];
-      Inventory.addItem(extra);
-      this.animateToInventory(card);
+      Inventory.addItem(extra, null, card);
       AudioManager.playGoldPickup();
       this.spawnXpFloat(card, `+${item.xp || 12} XP`);
       this.gainXP(item.xp || 12);
@@ -538,9 +537,8 @@ export const Exploration = {
       // Regular items (discovered or dropped)
       const qty = item.count || 1;
       for (let i = 0; i < qty; i++) {
-        Inventory.addItem(item.name, item.type || null);
+        Inventory.addItem(item.name, item.type || null, card);
       }
-      this.animateToInventory(card);
       AudioManager.playPickupFor({ name: item.name, category: item.category || 'ground', subtype: item.subtype });
       
       // Only give XP for discovered items, not dropped items

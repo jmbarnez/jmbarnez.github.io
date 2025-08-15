@@ -302,9 +302,11 @@ export const Inventory = {
     itemEl.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (item?.type) {
+        const cursorX = e.clientX;
+        const cursorY = e.clientY;
         const equip = window.__equipmentApi?.equipItem || null;
-        if (equip) { equip(item, index); }
-        else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index)); }
+        if (equip) { equip(item, index, { cursorX, cursorY }); }
+        else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index, { cursorX, cursorY })); }
         AudioManager.playClick();
       }
     });
@@ -414,9 +416,12 @@ export const Inventory = {
       } else {
         // Short tap - show context menu or equip
         if (item?.type) {
+          const touch = e.changedTouches[0];
+          const cursorX = touch.clientX;
+          const cursorY = touch.clientY;
           const equip = window.__equipmentApi?.equipItem || null;
-          if (equip) { equip(item, index); }
-          else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index)); }
+          if (equip) { equip(item, index, { cursorX, cursorY }); }
+          else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index, { cursorX, cursorY })); }
           AudioManager.playClick();
         }
       }
@@ -433,7 +438,7 @@ export const Inventory = {
 
   // Context menu removed in favor of right-click equip
 
-  addItem(name, type = null) {
+  addItem(name, type = null, animationSource = null) {
     // Handle coins specially - add to coin pouch
     if (name === 'Coin' || name === 'Coins' || name === 'Gold Coin' || name === 'Small Coin') {
       this.addCoins(1);
@@ -445,13 +450,21 @@ export const Inventory = {
       existing.count++; 
       this.debouncedRender(); 
       SaveManager.debouncedSave(); // Auto-save after adding item
+      
+      // Animate to existing item slot if inventory is open
+      this.animateItemToSlot(name, existing, animationSource);
       return; 
     }
+    
     for (let i = 0; i < this.slots; i++) {
       if (!gameState.inventory[i]) { 
-        gameState.inventory[i] = { name, count: 1, type: (type || null) }; 
+        const newItem = { name, count: 1, type: (type || null) };
+        gameState.inventory[i] = newItem; 
         this.debouncedRender(); 
         SaveManager.debouncedSave(); // Auto-save after adding new item
+        
+        // Animate to new item slot if inventory is open
+        this.animateItemToSlot(name, newItem, animationSource, i);
         return; 
       }
     }
@@ -462,6 +475,87 @@ export const Inventory = {
       entry.textContent = 'Inventory is full!';
       log.prepend(entry);
     }
+  },
+
+  // Animate item to specific inventory slot if inventory panel is open
+  animateItemToSlot(itemName, item, animationSource, slotIndex = null) {
+    // Check if inventory panel is open
+    const inventoryPanel = document.getElementById('panel-inventory');
+    if (!inventoryPanel || inventoryPanel.style.display === 'none') {
+      return; // No animation if inventory is closed
+    }
+    
+    // Find the target slot
+    let targetSlot = null;
+    if (slotIndex !== null) {
+      // New item - use specific slot index
+      targetSlot = document.querySelector(`[data-index="${slotIndex}"]`);
+    } else {
+      // Existing item - find the slot containing this item
+      const allSlots = document.querySelectorAll('.cell');
+      for (let i = 0; i < allSlots.length; i++) {
+        const slotItem = gameState.inventory[i];
+        if (slotItem && slotItem.name === itemName && slotItem === item) {
+          targetSlot = allSlots[i];
+          break;
+        }
+      }
+    }
+    
+    if (!targetSlot || !animationSource) return;
+    
+    // Create animated item element
+    const animatedItem = document.createElement('div');
+    animatedItem.className = 'animated-item';
+    animatedItem.style.position = 'fixed';
+    animatedItem.style.width = '24px';
+    animatedItem.style.height = '24px';
+    animatedItem.style.zIndex = '50000';
+    animatedItem.style.pointerEvents = 'none';
+    animatedItem.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    // Create item icon
+    const icon = this.createItemIcon({ name: itemName, type: item.type });
+    if (icon) {
+      animatedItem.appendChild(icon);
+    } else {
+      animatedItem.textContent = itemName.charAt(0);
+      animatedItem.style.backgroundColor = 'var(--border-primary)';
+      animatedItem.style.color = 'var(--text-primary)';
+      animatedItem.style.display = 'flex';
+      animatedItem.style.alignItems = 'center';
+      animatedItem.style.justifyContent = 'center';
+      animatedItem.style.fontSize = '12px';
+      animatedItem.style.borderRadius = '4px';
+    }
+    
+    // Get source and target positions
+    const sourceRect = animationSource.getBoundingClientRect();
+    const targetRect = targetSlot.getBoundingClientRect();
+    
+    // Position at source
+    animatedItem.style.left = `${sourceRect.left + sourceRect.width / 2 - 12}px`;
+    animatedItem.style.top = `${sourceRect.top + sourceRect.height / 2 - 12}px`;
+    
+    document.body.appendChild(animatedItem);
+    
+    // Animate to target
+    requestAnimationFrame(() => {
+      animatedItem.style.left = `${targetRect.left + targetRect.width / 2 - 12}px`;
+      animatedItem.style.top = `${targetRect.top + targetRect.height / 2 - 12}px`;
+      animatedItem.style.transform = 'scale(1.2)';
+    });
+    
+    // Remove animated element after animation
+    setTimeout(() => {
+      if (animatedItem.parentNode) {
+        animatedItem.style.opacity = '0';
+        animatedItem.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+          animatedItem.remove();
+        }, 200);
+      }
+    }, 600);
   },
 
   setupDragAndDrop() {

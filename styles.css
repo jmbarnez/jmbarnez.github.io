@@ -192,7 +192,7 @@ body:not(.login-mode) .login-controls { display: none !important; }
   display: inline-block;
   margin-top: 1px;
   font-size: 10px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
@@ -343,7 +343,7 @@ body:not(.login-mode) .login-controls { display: none !important; }
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   pointer-events: none;
   z-index: 9999;
   animation: xpFloat 900ms ease forwards;
@@ -436,6 +436,9 @@ body:not(.login-mode) .login-controls { display: none !important; }
   /* Card sizes */
   --disc-card-min: 140px;
   --save-card-min: 120px;
+  
+  /* Typography */
+  --font-ui: 'Press Start 2P', monospace;
 }
 
 /* Enhanced Dark Retro Theme - High Contrast with Modern Flair */
@@ -505,7 +508,7 @@ body[data-theme="dark"] {
 html, body { height: 100%; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   background: 
     radial-gradient(ellipse at center, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   background-attachment: fixed;
@@ -515,6 +518,11 @@ body {
   font-size: 12px;
   position: relative;
   image-rendering: pixelated;
+}
+
+/* Universal button font standardization */
+button, input[type="button"], input[type="submit"], .btn, .header-btn {
+  font-family: var(--font-ui);
 }
 
 
@@ -585,30 +593,26 @@ body {
   position: relative;
 }
 
-/* Vital bar icons */
-.vital-icon {
-  width: 14px;
-  height: 14px;
+/* Vital bar labels */
+.vital-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-primary);
+  font-weight: bold;
+  white-space: nowrap;
   flex-shrink: 0;
-  fill: currentColor;
-  image-rendering: pixelated;
+  min-width: 30px;
+  text-align: center;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Make skill icons chunkier, classic look */
 .skill-icon-large { image-rendering: pixelated; }
 .skills-grid .skill-card { filter: none; }
 
-.hp .vital-icon {
-  color: var(--hp-color);
-}
-
-.stamina .vital-icon {
-  color: var(--stamina-color);
-}
-
-.mana .vital-icon {
-  color: var(--mana-color);
-}
 
 .vital-track {
   flex: 1;
@@ -662,7 +666,7 @@ body {
 .header-right .header-loc .location-menu { right: 0; left: auto; }
 
 .clock {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   font-size: 10px;
   color: var(--text-primary);
   background: var(--bg-tertiary);
@@ -710,7 +714,7 @@ body {
 .save-slot .slot-meta { font-size:10px; color: var(--text-secondary); margin-top:4px; }
 .settings-group { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 .settings-title {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -920,29 +924,6 @@ body {
   flex: 1;
 }
 
-.market-refresh-btn {
-  background: var(--bg-button);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-sm);
-  padding: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.market-refresh-btn:hover {
-  background: var(--bg-active);
-  border-color: var(--border-highlight);
-  color: var(--text-primary);
-  transform: rotate(180deg);
-}
-
-.market-refresh-btn:active {
-  transform: rotate(180deg) scale(0.95);
-}
 
 .market-container {
   padding: var(--spacing-md);
@@ -1311,7 +1292,7 @@ body {
   margin: 0;
   color: var(--text-primary);
   font-size: 12px;
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .collect-gold-btn {
@@ -1328,7 +1309,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
   box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
 }
 
@@ -1383,7 +1364,7 @@ body {
 .pending-gold-item-name {
   font-size: 11px;
   color: var(--text-primary);
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .pending-gold-details {
@@ -1398,7 +1379,7 @@ body {
   gap: 4px;
   font-size: 11px;
   color: #d4af37;
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .collect-individual-btn {
@@ -1410,7 +1391,7 @@ body {
   font-size: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .collect-individual-btn:hover {
@@ -1445,7 +1426,7 @@ body {
 .sell-history-item-name {
   font-size: 11px;
   color: var(--text-primary);
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .sell-history-details {
@@ -1460,7 +1441,7 @@ body {
   gap: 4px;
   font-size: 11px;
   color: #d4af37;
-  font-family: "Press Start 2P", monospace;
+  font-family: var(--font-ui);
 }
 
 .notification-badge {
@@ -1546,7 +1527,7 @@ body {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   position: relative;
   image-rendering: pixelated;
   box-shadow: var(--raised-border), var(--medieval-shadow);
@@ -1586,7 +1567,7 @@ body {
   padding: 4px 8px;
   border: var(--border-width) solid var(--border-primary);
   box-shadow: var(--raised-border), var(--medieval-shadow);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   font-size: 10px;
   letter-spacing: 1px;
 }
@@ -1754,7 +1735,7 @@ body[data-theme="dark"] .location-badge.forest {
   font-weight: normal;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   text-shadow: var(--medieval-shadow);
 }
 
@@ -1782,7 +1763,7 @@ body[data-theme="dark"] .location-badge.forest {
   transition: all var(--transition-fast);
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   position: relative;
   box-shadow: var(--raised-border), var(--medieval-shadow);
 }
@@ -1852,7 +1833,7 @@ body[data-theme="dark"] .location-badge.forest {
   color: var(--text-primary);
   margin-bottom: var(--spacing-sm);
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 .fishing-stats {
@@ -1860,7 +1841,7 @@ body[data-theme="dark"] .location-badge.forest {
   gap: var(--spacing-sm);
   font-size: 0.8rem;
   color: var(--text-secondary);
-  font-family: 'VT323', monospace;
+  font-family: var(--font-ui);
 }
 
 .fishing-stats strong {
@@ -1992,7 +1973,7 @@ body[data-theme="dark"] .location-badge.forest {
   font-weight: normal;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   text-shadow: none;
 }
 
@@ -2062,7 +2043,7 @@ body[data-theme="dark"] .location-badge.forest {
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 .equipment-slot.drag-over {
@@ -2127,7 +2108,7 @@ body[data-theme="dark"] .location-badge.forest {
   font-size: 1rem;
   color: var(--text-secondary);
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 .coin-pouch {
@@ -2139,7 +2120,7 @@ body[data-theme="dark"] .location-badge.forest {
   border: var(--border-width) solid var(--border-primary);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   font-size: 10px;
   box-shadow: var(--raised-border);
 }
@@ -2345,7 +2326,7 @@ body[data-theme="dark"] .location-badge.forest {
   text-align: center;
   border: 1px solid var(--pastel-blue);
   box-shadow: var(--glow-sm) var(--pastel-blue);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 /* Simple white count for inventory items - bottom-right corner */
@@ -2358,7 +2339,7 @@ body[data-theme="dark"] .location-badge.forest {
   font-weight: bold;
   line-height: 1;
   text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   pointer-events: none;
 }
 
@@ -2384,7 +2365,7 @@ body[data-theme="dark"] .location-badge.forest {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   text-shadow: var(--medieval-shadow);
   border-bottom: 1px solid var(--border-secondary);
   padding-bottom: var(--spacing-sm);
@@ -2496,7 +2477,7 @@ body[data-theme="dark"] .location-badge.forest {
   padding: 2px 4px;
   border-radius: 3px;
   z-index: 1;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 /* Per-skill fill colors */
@@ -2537,14 +2518,14 @@ body[data-theme="dark"] .location-badge.forest {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 .skill-level {
   color: var(--text-secondary);
   font-size: 0.7rem;
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 .skill-progress-bar {
@@ -2582,7 +2563,7 @@ body[data-theme="dark"] .location-badge.forest {
   color: var(--text-secondary);
   text-align: center;
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
 }
 
 /* Context menu with retro styling */
@@ -2607,7 +2588,7 @@ body[data-theme="dark"] .location-badge.forest {
   width: 100%;
   text-align: left;
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -2627,7 +2608,7 @@ body[data-theme="dark"] .location-badge.forest {
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   font-size: 0.7rem;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   pointer-events: none;
   z-index: 1000;
   border: 1px solid var(--border-primary);
@@ -2641,6 +2622,44 @@ body[data-theme="dark"] .location-badge.forest {
 
 .tooltip.visible {
   opacity: 1;
+}
+
+/* Tooltip Notification Styles */
+.tooltip-notification {
+  position: fixed;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-family: var(--font-ui);
+  pointer-events: none;
+  z-index: 1001;
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--vintage-shadow);
+  max-width: 250px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  transform: translateX(-50%) translateY(-100%);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tooltip-notification.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-120%);
+  animation: notificationBounce 0.3s ease;
+}
+
+.tooltip-notification.fade-out {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-140%);
+}
+
+@keyframes notificationBounce {
+  0% { transform: translateX(-50%) translateY(-100%) scale(0.8); }
+  50% { transform: translateX(-50%) translateY(-130%) scale(1.05); }
+  100% { transform: translateX(-50%) translateY(-120%) scale(1); }
 }
 
 /* Context Menu Fast Response */
@@ -2675,7 +2694,7 @@ body[data-theme="dark"] .location-badge.forest {
 .chat-message {
   display: flex;
   gap: 6px;
-  font-family: 'VT323', monospace;
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.3;
 }
@@ -2704,7 +2723,7 @@ body[data-theme="dark"] .location-badge.forest {
 .chat-row {
   display: flex;
   gap: 6px;
-  font-family: 'VT323', monospace;
+  font-family: var(--font-ui);
   font-size: 16px;
 }
 .chat-name {
@@ -2750,7 +2769,7 @@ body[data-theme="dark"] .location-badge.forest {
   color: var(--text-secondary);
   font-size: 0.8rem;
   line-height: 1.4;
-  font-family: 'VT323', monospace;
+  font-family: var(--font-ui);
   margin: 0;
 }
 
@@ -3062,15 +3081,106 @@ body[data-theme="dark"] .location-badge.forest {
     border-bottom: none;
     padding: 0;
     display: flex;
+    flex-direction: row;
     justify-content: space-around;
     box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.2);
     gap: 0;
     z-index: 20000;
     backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+  }
+
+  .bottom-ui-panel.vertical-left,
+  .bottom-ui-panel.vertical-right {
+    flex-direction: column;
+    width: auto;
+    height: auto;
+    min-height: 300px;
+    max-height: 80vh;
+    border: var(--border-width) solid var(--border-primary);
+  }
+
+  .bottom-ui-panel.vertical-left {
+    left: 0;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translateY(-50%);
+    border-left: var(--border-width) solid var(--border-primary);
+  }
+
+  .bottom-ui-panel.vertical-right {
+    left: auto;
+    top: 50%;
+    right: 0;
+    bottom: auto;
+    transform: translateY(-50%);
+    border-right: var(--border-width) solid var(--border-primary);
+  }
+
+  .panel-drag-handle {
+    width: 100%;
+    height: 12px;
+    background: linear-gradient(90deg, transparent, rgba(166, 139, 91, 0.3), transparent);
+    cursor: grab;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid var(--border-primary);
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .panel-drag-handle::before {
+    content: '⋯ ⋯ ⋯';
+    color: var(--border-primary);
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+
+  .panel-drag-handle:hover {
+    background: linear-gradient(90deg, transparent, rgba(139, 94, 60, 0.5), transparent);
+  }
+
+  .panel-drag-handle:hover::before {
+    color: var(--border-highlight);
+  }
+
+  .panel-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  .bottom-ui-panel.vertical-left .panel-drag-handle,
+  .bottom-ui-panel.vertical-right .panel-drag-handle {
+    width: 12px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(166, 139, 91, 0.3), transparent);
+    writing-mode: vertical-lr;
+    border-left: 1px solid var(--border-primary);
+    border-right: 1px solid var(--border-primary);
+    border-top: none;
+    border-bottom: none;
+  }
+
+  .bottom-ui-panel.vertical-left .panel-drag-handle::before,
+  .bottom-ui-panel.vertical-right .panel-drag-handle::before {
+    content: '⋮ ⋮ ⋮';
+    transform: rotate(0deg);
+    writing-mode: vertical-lr;
+    letter-spacing: 2px;
+  }
+
+  .bottom-ui-panel.dragging {
+    transition: none;
+    opacity: 0.9;
   }
   
   .ui-panel-btn {
-    min-width: auto;
+    min-width: 0;
+    width: calc(100% / 6);
     padding: 12px 8px;
     font-size: 10px;
     background: var(--bg-primary);
@@ -3089,6 +3199,20 @@ body[data-theme="dark"] .location-badge.forest {
   
   .ui-panel-btn:last-child {
     border-right: none;
+  }
+
+  .bottom-ui-panel.vertical-left .ui-panel-btn,
+  .bottom-ui-panel.vertical-right .ui-panel-btn {
+    width: 60px;
+    height: calc(100% / 6);
+    border-right: none;
+    border-bottom: var(--border-width) solid var(--border-primary);
+    min-height: 50px;
+  }
+
+  .bottom-ui-panel.vertical-left .ui-panel-btn:last-child,
+  .bottom-ui-panel.vertical-right .ui-panel-btn:last-child {
+    border-bottom: none;
   }
   
   .ui-panel-btn svg {
@@ -3471,11 +3595,6 @@ body[data-theme="dark"] .location-badge.forest {
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
   
-  /* Hide market and chat buttons from desktop bottom panel */
-  .bottom-ui-panel #toggleMarket,
-  .bottom-ui-panel #toggleChat {
-    display: none;
-  }
 
   .ui-panel-btn {
     display: flex;
@@ -3653,6 +3772,44 @@ body[data-theme="dark"] .location-badge.forest {
     font-size: 10px;
     font-weight: bold;
     border: 2px solid var(--bg-panel);
+  }
+
+  /* Desktop drag handle styles */
+  .panel-drag-handle {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.2), transparent);
+    cursor: grab;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid rgba(88, 166, 255, 0.3);
+    border-bottom: 1px solid rgba(88, 166, 255, 0.3);
+    border-radius: 12px;
+    margin: 4px 8px;
+  }
+  
+  .panel-drag-handle::before {
+    content: '⋯ ⋯ ⋯';
+    color: rgba(88, 166, 255, 0.6);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+  
+  .panel-drag-handle:hover {
+    background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.4), transparent);
+  }
+  
+  .panel-drag-handle:hover::before {
+    color: rgba(88, 166, 255, 0.9);
+  }
+  
+  .panel-drag-handle:active {
+    cursor: grabbing;
   }
 
 }
@@ -3993,7 +4150,7 @@ body[data-theme="dark"] .location-badge.forest {
   color: var(--text-primary);
   font-size: 28px;
   font-weight: 700;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-ui);
   letter-spacing: 1px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -4204,7 +4361,7 @@ body[data-theme="dark"] .location-badge.forest {
 .create-account-btn {
   background: linear-gradient(135deg, var(--accent-success), #2d7f32) !important;
   border-color: var(--accent-success) !important;
-  font-family: 'Press Start 2P', monospace !important;
+  font-family: var(--font-ui) !important;
   font-size: 10px !important;
   letter-spacing: 0.5px !important;
   text-transform: uppercase !important;
@@ -4218,7 +4375,7 @@ body[data-theme="dark"] .location-badge.forest {
 }
 
 .back-to-login-btn {
-  font-family: 'Press Start 2P', monospace !important;
+  font-family: var(--font-ui) !important;
   font-size: 10px !important;
   letter-spacing: 0.5px !important;
   text-transform: uppercase !important;
