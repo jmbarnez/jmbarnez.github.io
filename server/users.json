@@ -1,0 +1,236 @@
+[
+  {
+    "id": "4a6a201f-eb7d-41e4-980a-788c43e84a9c",
+    "username": "admin",
+    "passHash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "save": {
+      "gameState": {
+        "stats": {
+          "hp": 100,
+          "hpMax": 100,
+          "stamina": 100,
+          "staminaMax": 100,
+          "mana": 100,
+          "manaMax": 100
+        },
+        "fishing": {
+          "level": 1,
+          "xp": 0,
+          "xpToNext": 100
+        },
+        "exploration": {
+          "level": 1,
+          "xp": 3,
+          "xpToNext": 100
+        },
+        "combat": {
+          "attack": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          },
+          "strength": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          },
+          "defense": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          }
+        },
+        "foraging": {
+          "level": 1,
+          "xp": 0,
+          "xpToNext": 100
+        },
+        "inventory": [
+          {
+            "name": "Leather Helmet",
+            "count": 1,
+            "type": "helmet"
+          },
+          {
+            "name": "Leather Chest",
+            "count": 1,
+            "type": "chest"
+          },
+          {
+            "name": "Leather Gloves",
+            "count": 1,
+            "type": "gloves"
+          },
+          {
+            "name": "Leather Pants",
+            "count": 1,
+            "type": "pants"
+          },
+          {
+            "name": "Leather Boots",
+            "count": 1,
+            "type": "shoes"
+          },
+          {
+            "name": "Fishing Pole",
+            "count": 1
+          },
+          {
+            "name": "Driftwood",
+            "count": 8,
+            "type": null
+          },
+          {
+            "name": "Sea Shell",
+            "count": 7,
+            "type": null
+          },
+          {
+            "name": "Seaweed",
+            "count": 4,
+            "type": null
+          },
+          null
+        ],
+        "equipment": {
+          "helmet": null,
+          "chest": null,
+          "gloves": null,
+          "pants": null,
+          "shoes": null,
+          "ring1": null,
+          "ring2": null,
+          "amulet": null
+        },
+        "invCapacity": 25,
+        "coins": 500,
+        "isFishing": false,
+        "isExploring": false,
+        "discoveredFishingSpot": false,
+        "activeView": "explore",
+        "discoveries": []
+      },
+      "gameTheme": "dark",
+      "fishDiscovered": [
+        "Minnow"
+      ],
+      "panelPositions": {
+        "panel-market": {
+          "x": 890,
+          "y": 27
+        },
+        "panel-inventory": {
+          "x": 302,
+          "y": 354
+        },
+        "panel-equipment": {
+          "x": 1194,
+          "y": 69
+        },
+        "panel-chat": {
+          "x": 1316,
+          "y": 54
+        },
+        "panel-skills": {
+          "x": 573,
+          "y": 48
+        },
+        "panel-zones": {
+          "x": 561,
+          "y": 90
+        }
+      },
+      "zonePositions": {},
+      "groundItems": [],
+      "idleState": {
+        "stats": {
+          "hp": 100,
+          "hpMax": 100,
+          "stamina": 100,
+          "staminaMax": 100,
+          "mana": 100,
+          "manaMax": 100
+        },
+        "fishing": {
+          "level": 1,
+          "xp": 0,
+          "xpToNext": 100
+        },
+        "exploration": {
+          "level": 1,
+          "xp": 10,
+          "xpToNext": 100
+        },
+        "combat": {
+          "attack": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          },
+          "strength": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          },
+          "defense": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100
+          }
+        },
+        "foraging": {
+          "level": 1,
+          "xp": 10,
+          "xpToNext": 100
+        },
+        "inventory": [],
+        "equipment": {
+          "helmet": {
+            "name": "Leather Helmet",
+            "count": 1,
+            "type": "helmet"
+          },
+          "chest": {
+            "name": "Leather Chest",
+            "count": 1,
+            "type": "chest"
+          },
+          "gloves": {
+            "name": "Leather Gloves",
+            "count": 1,
+            "type": "gloves"
+          },
+          "pants": {
+            "name": "Leather Pants",
+            "count": 1,
+            "type": "pants"
+          },
+          "shoes": {
+            "name": "Leather Boots",
+            "count": 1,
+            "type": "shoes"
+          },
+          "ring1": null,
+          "ring2": null,
+          "amulet": null
+        },
+        "invCapacity": 25,
+        "isFishing": false,
+        "isExploring": true,
+        "discoveredFishingSpot": false,
+        "activeView": "character",
+        "discoveries": [
+          {
+            "name": "Deer Path",
+            "type": "event",
+            "rarity": 20,
+            "xp": 10,
+            "description": "Following animal tracks leads to new areas",
+            "timestamp": "18:48"
+          }
+        ]
+      },
+      "_savedAt": "2025-08-15T03:18:04.826Z"
+    }
+  }
+]

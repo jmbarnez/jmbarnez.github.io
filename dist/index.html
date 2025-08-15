@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sandbox idle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link rel="icon" href="/assets/icons-D8CNc05T.svg" />
+  <script type="module" crossorigin src="/assets/index-B2S5ARDU.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BTgnNZ61.css">
+</head>
+<body>
+  <!-- Inline SVG symbol sprite for UI and fish icons -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <!-- UI Icons -->
+      <!-- Clean Navigation Icons -->
+      <symbol id="icon-explore" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Detailed treasure map -->
+        <rect x="2" y="2" width="20" height="18" fill="#8B4513"/>
+        <rect x="3" y="3" width="18" height="16" fill="#F4F1E8"/>
+        <!-- Map border detail -->
+        <rect x="2" y="2" width="20" height="1" fill="#654321"/>
+        <rect x="2" y="19" width="20" height="1" fill="#654321"/>
+        <rect x="2" y="2" width="1" height="18" fill="#654321"/>
+        <rect x="21" y="2" width="1" height="18" fill="#654321"/>
+        <!-- Mountain ranges -->
+        <rect x="4" y="8" width="2" height="4" fill="#696969"/>
+        <rect x="5" y="6" width="2" height="2" fill="#808080"/>
+        <rect x="6" y="4" width="2" height="2" fill="#A9A9A9"/>
+        <rect x="14" y="9" width="2" height="3" fill="#696969"/>
+        <rect x="15" y="7" width="2" height="2" fill="#808080"/>
+        <!-- Rivers -->
+        <rect x="8" y="12" width="6" height="1" fill="#4169E1"/>
+        <rect x="9" y="13" width="4" height="1" fill="#4169E1"/>
+        <rect x="10" y="14" width="2" height="1" fill="#4169E1"/>
+        <!-- Path -->
+        <rect x="5" y="15" width="8" height="1" fill="#CD853F"/>
+        <rect x="7" y="16" width="4" height="1" fill="#DEB887"/>
+        <!-- Treasure markers -->
+        <rect x="6" y="5" width="1" height="1" fill="#FF0000"/>
+        <rect x="16" y="8" width="1" height="1" fill="#FF0000"/>
+        <rect x="12" y="17" width="1" height="1" fill="#FFD700"/>
+        <!-- Compass rose -->
+        <rect x="18" y="4" width="1" height="3" fill="#000000"/>
+        <rect x="17" y="5" width="3" height="1" fill="#000000"/>
+        <rect x="18" y="5" width="1" height="1" fill="#FF0000"/>
+      </symbol>
+
+      <!-- Custom item/resource icons for discoveries -->
+      <symbol id="icon-shell" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Simple seashell -->
+        <rect x="6" y="12" width="12" height="6" fill="#F5DEB3"/>
+        <rect x="7" y="10" width="10" height="2" fill="#EED5A6"/>
+        <rect x="8" y="8" width="8" height="2" fill="#D2B48C"/>
+        <rect x="9" y="6" width="6" height="2" fill="#C2A178"/>
+        <!-- Ridges -->
+        <rect x="12" y="6" width="1" height="12" fill="#8B7D6B"/>
+        <rect x="10" y="8" width="1" height="10" fill="#8B7D6B"/>
+        <rect x="14" y="8" width="1" height="10" fill="#8B7D6B"/>
+      </symbol>
+
+      <symbol id="icon-driftwood" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Driftwood log -->
+        <rect x="4" y="12" width="16" height="4" fill="#8B4513"/>
+        <rect x="5" y="11" width="14" height="2" fill="#A0522D"/>
+        <rect x="6" y="10" width="12" height="1" fill="#D2691E"/>
+        <!-- Knots -->
+        <rect x="8" y="13" width="1" height="1" fill="#5D4037"/>
+        <rect x="14" y="13" width="1" height="1" fill="#5D4037"/>
+      </symbol>
+
+      <symbol id="icon-seaweed" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Seaweed fronds -->
+        <rect x="11" y="6" width="2" height="12" fill="#2E7D32"/>
+        <rect x="9" y="8" width="2" height="10" fill="#388E3C"/>
+        <rect x="13" y="8" width="2" height="10" fill="#388E3C"/>
+        <rect x="7" y="10" width="2" height="8" fill="#4CAF50"/>
+        <rect x="15" y="10" width="2" height="8" fill="#4CAF50"/>
+      </symbol>
+
+      <symbol id="icon-coin" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Gold coin -->
+        <rect x="6" y="8" width="12" height="8" fill="#FFD700"/>
+        <rect x="7" y="9" width="10" height="6" fill="#FFC107"/>
+        <rect x="8" y="10" width="8" height="4" fill="#FFB300"/>
+        <rect x="9" y="11" width="6" height="2" fill="#FFA000"/>
+        <!-- Shine -->
+        <rect x="12" y="9" width="1" height="1" fill="#FFF59D"/>
+      </symbol>
+
+      <symbol id="icon-treasure-chest" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Treasure chest -->
+        <rect x="5" y="10" width="14" height="8" fill="#8B4513"/>
+        <rect x="6" y="11" width="12" height="6" fill="#A0522D"/>
+        <rect x="5" y="8" width="14" height="3" fill="#6D4C41"/>
+        <!-- Lock -->
+        <rect x="11" y="12" width="2" height="3" fill="#FFD700"/>
+        <rect x="11" y="15" width="2" height="1" fill="#B8860B"/>
+      </symbol>
+
+      <symbol id="icon-location" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Map/marker -->
+        <rect x="6" y="6" width="12" height="12" fill="#90CAF9"/>
+        <rect x="7" y="7" width="10" height="10" fill="#E3F2FD"/>
+        <!-- Marker -->
+        <rect x="11" y="9" width="2" height="6" fill="#E53935"/>
+        <rect x="10" y="13" width="4" height="2" fill="#E53935"/>
+      </symbol>
+
+      <symbol id="icon-player" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Detailed player character -->
+        <rect x="9" y="5" width="6" height="7" fill="#FFDBAC"/>
+        <rect x="10" y="3" width="4" height="3" fill="#8B4513"/>
+        <!-- Detailed armor/clothing -->
+        <rect x="8" y="12" width="8" height="8" fill="#4169E1"/>
+        <rect x="9" y="13" width="6" height="6" fill="#5A7BC8"/>
+        <!-- Arms with detail -->
+        <rect x="6" y="13" width="2" height="6" fill="#FFDBAC"/>
+        <rect x="16" y="13" width="2" height="6" fill="#FFDBAC"/>
+        <rect x="5" y="15" width="1" height="2" fill="#F4C2A1"/>
+        <rect x="18" y="15" width="1" height="2" fill="#F4C2A1"/>
+        <!-- Boots with detail -->
+        <rect x="6" y="20" width="3" height="2" fill="#654321"/>
+        <rect x="15" y="20" width="3" height="2" fill="#654321"/>
+        <rect x="7" y="20" width="1" height="1" fill="#8B4513"/>
+        <rect x="16" y="20" width="1" height="1" fill="#8B4513"/>
+        <!-- Face details -->
+        <rect x="10" y="7" width="1" height="1" fill="#000"/>
+        <rect x="13" y="7" width="1" height="1" fill="#000"/>
+        <rect x="11" y="9" width="2" height="1" fill="#000"/>
+        <!-- Hair detail -->
+        <rect x="9" y="3" width="1" height="1" fill="#654321"/>
+        <rect x="14" y="3" width="1" height="1" fill="#654321"/>
+        <!-- Armor embellishments -->
+        <rect x="11" y="14" width="2" height="1" fill="#FFD700"/>
+        <rect x="10" y="16" width="4" height="1" fill="#FFD700"/>
+        <!-- Belt -->
+        <rect x="8" y="18" width="8" height="1" fill="#8B4513"/>
+        <rect x="11" y="18" width="2" height="1" fill="#FFD700"/>
+      </symbol>
+
+      <symbol id="icon-ring" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Ring with gem -->
+        <rect x="8" y="10" width="8" height="4" fill="#FFD700"/>
+        <rect x="9" y="11" width="6" height="2" fill="#FFA500"/>
+        <rect x="11" y="8" width="2" height="2" fill="#FF0000"/>
+        <rect x="10" y="9" width="4" height="1" fill="#8B0000"/>
+        <!-- Ring band details -->
+        <rect x="8" y="12" width="1" height="1" fill="#B8860B"/>
+        <rect x="15" y="12" width="1" height="1" fill="#B8860B"/>
+      </symbol>
+
+      <symbol id="icon-amulet" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Amulet pendant -->
+        <rect x="11" y="4" width="2" height="4" fill="#8B4513"/>
+        <rect x="8" y="8" width="8" height="6" fill="#FFD700"/>
+        <rect x="9" y="9" width="6" height="4" fill="#FFA500"/>
+        <rect x="10" y="14" width="4" height="2" fill="#FFD700"/>
+        <rect x="11" y="16" width="2" height="2" fill="#FFD700"/>
+        <!-- Gem in center -->
+        <rect x="11" y="10" width="2" height="2" fill="#9370DB"/>
+        <rect x="10" y="11" width="4" height="1" fill="#4B0082"/>
+      </symbol>
+      
+      <symbol id="icon-compass" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky retro compass -->
+        <rect x="3" y="3" width="18" height="18" fill="#BCAAA4"/>
+        <rect x="4" y="4" width="16" height="16" fill="#FAFAFA"/>
+        <!-- Cardinal blocks -->
+        <rect x="11" y="4" width="2" height="3" fill="#424242"/>
+        <rect x="11" y="17" width="2" height="3" fill="#424242"/>
+        <rect x="4" y="11" width="3" height="2" fill="#424242"/>
+        <rect x="17" y="11" width="3" height="2" fill="#424242"/>
+        <!-- Needle blocks -->
+        <rect x="12" y="7" width="1" height="5" fill="#E53935"/>
+        <rect x="11" y="12" width="1" height="5" fill="#1E88E5"/>
+        <!-- Center -->
+        <rect x="10" y="10" width="4" height="4" fill="#FFC107"/>
+      </symbol>
+      
+      <!-- More detailed and colorful pixel-style UI icons -->
+      <symbol id="icon-hook" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Fishing hook with line -->
+        <rect x="10" y="2" width="4" height="12" fill="#8B4513"/>
+        <rect x="8" y="14" width="2" height="4" fill="#C0C0C0"/>
+        <rect x="14" y="14" width="2" height="4" fill="#C0C0C0"/>
+        <rect x="6" y="18" width="6" height="2" fill="#C0C0C0"/>
+        <rect x="12" y="18" width="6" height="2" fill="#C0C0C0"/>
+        <rect x="8" y="20" width="8" height="2" fill="#A0A0A0"/>
+        <!-- Hook curve -->
+        <rect x="16" y="16" width="2" height="2" fill="#FFD700"/>
+        <rect x="18" y="18" width="2" height="2" fill="#FFD700"/>
+        <!-- Line -->
+        <rect x="11" y="0" width="2" height="3" fill="#4169E1"/>
+      </symbol>
+      <symbol id="icon-bag" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Detailed backpack -->
+        <rect x="6" y="8" width="12" height="14" fill="#8B4513"/>
+        <rect x="7" y="9" width="10" height="12" fill="#A0522D"/>
+        <rect x="8" y="10" width="8" height="10" fill="#D2691E"/>
+        <!-- Straps -->
+        <rect x="4" y="6" width="2" height="8" fill="#654321"/>
+        <rect x="18" y="6" width="2" height="8" fill="#654321"/>
+        <!-- Buckles -->
+        <rect x="10" y="12" width="4" height="2" fill="#FFD700"/>
+        <rect x="10" y="16" width="4" height="2" fill="#FFD700"/>
+        <!-- Flap -->
+        <rect x="8" y="6" width="8" height="3" fill="#8B4513"/>
+      </symbol>
+      <!-- Unique Skill Icons -->
+      <symbol id="icon-fishing" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky rod + fish -->
+        <rect x="4" y="5" width="2" height="14" fill="#6D4C41"/>
+        <rect x="6" y="7" width="1" height="10" fill="#8B4513"/>
+        <!-- Line -->
+        <rect x="7" y="10" width="9" height="1" fill="#B0BEC5"/>
+        <rect x="16" y="11" width="1" height="6" fill="#B0BEC5"/>
+        <!-- Tiny fish -->
+        <rect x="17" y="14" width="3" height="2" fill="#29B6F6"/>
+        <rect x="20" y="15" width="1" height="1" fill="#29B6F6"/>
+      </symbol>
+      <!-- Animated-ish fishing spot icon: ripples + fish -->
+      <symbol id="icon-fish-spot" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Water ripples -->
+        <rect x="5" y="8" width="14" height="1" fill="#90CAF9"/>
+        <rect x="6" y="11" width="12" height="1" fill="#64B5F6"/>
+        <rect x="7" y="14" width="10" height="1" fill="#42A5F5"/>
+        <!-- Small schooling fish -->
+        <rect x="8" y="9" width="2" height="1" fill="#1E88E5"/>
+        <polygon points="10,9 11,8.5 11,9.5" fill="#1E88E5"/>
+        <rect x="13" y="12" width="2" height="1" fill="#1976D2"/>
+        <polygon points="15,12 16,11.5 16,12.5" fill="#1976D2"/>
+        <rect x="10" y="15" width="2" height="1" fill="#0D47A1"/>
+        <polygon points="12,15 13,14.5 13,15.5" fill="#0D47A1"/>
+      </symbol>
+      <symbol id="icon-sword" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky sword -->
+        <rect x="11" y="3" width="2" height="13" fill="#CFD8DC"/>
+        <rect x="10" y="16" width="4" height="2" fill="#C49A06"/>
+        <rect x="11" y="18" width="2" height="4" fill="#6D4C41"/>
+      </symbol>
+      <symbol id="icon-muscle" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky bicep -->
+        <rect x="8" y="9" width="6" height="6" fill="#F0C49A"/>
+        <rect x="6" y="12" width="4" height="3" fill="#E4AE7E"/>
+        <rect x="10" y="8" width="3" height="2" fill="#F0C49A"/>
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky kite shield -->
+        <rect x="7" y="5" width="10" height="12" fill="#8CB4E9"/>
+        <rect x="8" y="6" width="8" height="10" fill="#B5D1FA"/>
+        <rect x="11" y="7" width="2" height="8" fill="#1E88E5"/>
+      </symbol>
+      
+      <!-- Foraging icon for skills -->
+      <symbol id="icon-leaf" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Chunky leaf -->
+        <rect x="11" y="5" width="2" height="12" fill="#2E7D32"/>
+        <rect x="8" y="7" width="8" height="2" fill="#66BB6A"/>
+        <rect x="7" y="9" width="10" height="2" fill="#43A047"/>
+        <rect x="8" y="11" width="8" height="2" fill="#2E7D32"/>
+      </symbol>
+      
+      <!-- Accurate Equipment Icons -->
+      <symbol id="icon-helmet" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Leather helmet -->
+        <path d="M8 6h8v2H8z" fill="#8B4513"/>
+        <path d="M7 8h10v6H7z" fill="#A0522D"/>
+        <path d="M6 10h2v4H6zM16 10h2v4h-2z" fill="#8B4513"/>
+        <rect x="8" y="9" width="8" height="4" fill="#D2691E"/>
+        <rect x="9" y="10" width="6" height="2" fill="#CD853F"/>
+        <!-- Helmet details -->
+        <rect x="7" y="8" width="1" height="1" fill="#654321"/>
+        <rect x="16" y="8" width="1" height="1" fill="#654321"/>
+        <rect x="8" y="14" width="8" height="1" fill="#654321"/>
+      </symbol>
+      
+      <symbol id="icon-chest-armor" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Leather chestplate -->
+        <rect x="8" y="6" width="8" height="12" fill="#A0522D"/>
+        <rect x="6" y="8" width="2" height="8" fill="#8B4513"/>
+        <rect x="16" y="8" width="2" height="8" fill="#8B4513"/>
+        <rect x="9" y="7" width="6" height="10" fill="#D2691E"/>
+        <!-- Chest details -->
+        <rect x="10" y="9" width="4" height="1" fill="#8B4513"/>
+        <rect x="10" y="11" width="4" height="1" fill="#8B4513"/>
+        <rect x="10" y="13" width="4" height="1" fill="#8B4513"/>
+        <!-- Straps -->
+        <rect x="11" y="6" width="2" height="2" fill="#654321"/>
+        <rect x="7" y="9" width="1" height="6" fill="#654321"/>
+        <rect x="16" y="9" width="1" height="6" fill="#654321"/>
+      </symbol>
+      
+      <symbol id="icon-gloves" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Leather gloves -->
+        <rect x="6" y="10" width="4" height="8" fill="#A0522D"/>
+        <rect x="14" y="10" width="4" height="8" fill="#A0522D"/>
+        <rect x="7" y="11" width="2" height="6" fill="#D2691E"/>
+        <rect x="15" y="11" width="2" height="6" fill="#D2691E"/>
+        <!-- Fingers -->
+        <rect x="6" y="8" width="1" height="3" fill="#8B4513"/>
+        <rect x="7" y="7" width="1" height="4" fill="#8B4513"/>
+        <rect x="8" y="8" width="1" height="3" fill="#8B4513"/>
+        <rect x="9" y="9" width="1" height="2" fill="#8B4513"/>
+        <!-- Right hand -->
+        <rect x="14" y="8" width="1" height="3" fill="#8B4513"/>
+        <rect x="15" y="7" width="1" height="4" fill="#8B4513"/>
+        <rect x="16" y="8" width="1" height="3" fill="#8B4513"/>
+        <rect x="17" y="9" width="1" height="2" fill="#8B4513"/>
+      </symbol>
+      
+      <symbol id="icon-pants" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Leather pants -->
+        <rect x="8" y="8" width="8" height="4" fill="#A0522D"/>
+        <rect x="8" y="12" width="3" height="8" fill="#8B4513"/>
+        <rect x="13" y="12" width="3" height="8" fill="#8B4513"/>
+        <rect x="9" y="9" width="6" height="2" fill="#D2691E"/>
+        <rect x="9" y="13" width="2" height="6" fill="#CD853F"/>
+        <rect x="13" y="13" width="2" height="6" fill="#CD853F"/>
+        <!-- Belt -->
+        <rect x="8" y="8" width="8" height="1" fill="#654321"/>
+        <rect x="11" y="7" width="2" height="2" fill="#8B4513"/>
+      </symbol>
+      
+      <symbol id="icon-boots" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Leather boots -->
+        <rect x="6" y="16" width="5" height="4" fill="#8B4513"/>
+        <rect x="13" y="16" width="5" height="4" fill="#8B4513"/>
+        <rect x="7" y="12" width="3" height="5" fill="#A0522D"/>
+        <rect x="14" y="12" width="3" height="5" fill="#A0522D"/>
+        <rect x="8" y="13" width="1" height="3" fill="#D2691E"/>
+        <rect x="15" y="13" width="1" height="3" fill="#D2691E"/>
+        <!-- Boot details -->
+        <rect x="6" y="15" width="5" height="1" fill="#654321"/>
+        <rect x="13" y="15" width="5" height="1" fill="#654321"/>
+        <rect x="7" y="14" width="3" height="1" fill="#654321"/>
+        <rect x="14" y="14" width="3" height="1" fill="#654321"/>
+      </symbol>
+      
+      <symbol id="icon-skills" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Detailed skill tome -->
+        <rect x="4" y="5" width="16" height="14" fill="#8B4513"/>
+        <rect x="5" y="6" width="14" height="12" fill="#F4F1E8"/>
+        <!-- Book spine -->
+        <rect x="12" y="5" width="1" height="14" fill="#654321"/>
+        <rect x="11" y="6" width="1" height="12" fill="#A0522D"/>
+        <rect x="13" y="6" width="1" height="12" fill="#A0522D"/>
+        <!-- Left page - combat skills -->
+        <rect x="7" y="8" width="2" height="4" fill="#C0C0C0"/>
+        <rect x="6" y="7" width="4" height="1" fill="#FFD700"/>
+        <rect x="7" y="9" width="2" height="1" fill="#E8E8E8"/>
+        <!-- Right page - gathering skills -->
+        <rect x="15" y="8" width="2" height="3" fill="#4169E1"/>
+        <rect x="14" y="9" width="4" height="1" fill="#FFD700"/>
+        <rect x="16" y="11" width="1" height="1" fill="#5A7BC8"/>
+        <!-- Page text lines -->
+        <rect x="6" y="13" width="4" height="1" fill="#666666"/>
+        <rect x="6" y="14" width="3" height="1" fill="#666666"/>
+        <rect x="14" y="13" width="4" height="1" fill="#666666"/>
+        <rect x="14" y="14" width="3" height="1" fill="#666666"/>
+        <!-- Book clasp -->
+        <rect x="19" y="11" width="2" height="2" fill="#FFD700"/>
+        <rect x="20" y="11" width="1" height="2" fill="#E6AC00"/>
+        <!-- Corner decorations -->
+        <rect x="5" y="6" width="1" height="1" fill="#FFD700"/>
+        <rect x="18" y="6" width="1" height="1" fill="#FFD700"/>
+        <rect x="5" y="17" width="1" height="1" fill="#FFD700"/>
+        <rect x="18" y="17" width="1" height="1" fill="#FFD700"/>
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Enhanced floppy disk with detail -->
+        <rect x="4" y="3" width="16" height="18" fill="#4A90E2"/>
+        <rect x="5" y="4" width="14" height="16" fill="#357ABD"/>
+        <rect x="6" y="5" width="12" height="14" fill="#E8F4FD"/>
+        <!-- Disk notch -->
+        <rect x="8" y="2" width="8" height="4" fill="#2C5AA0"/>
+        <rect x="9" y="3" width="6" height="2" fill="#1E3A8A"/>
+        <!-- Disk shutter with detail -->
+        <rect x="7" y="6" width="10" height="6" fill="#C0C0C0"/>
+        <rect x="8" y="7" width="8" height="4" fill="#A0A0A0"/>
+        <rect x="9" y="8" width="6" height="2" fill="#E8E8E8"/>
+        <!-- Success indicator -->
+        <rect x="7" y="15" width="10" height="4" fill="#10B981"/>
+        <rect x="8" y="16" width="8" height="2" fill="#059669"/>
+        <!-- Write-protect tab -->
+        <circle cx="17" cy="7" r="1" fill="#EF4444"/>
+        <!-- Disk center -->
+        <rect x="11" y="9" width="2" height="2" fill="#2C3E50"/>
+        <!-- Label lines -->
+        <rect x="8" y="6" width="6" height="1" fill="#6B7280"/>
+        <rect x="8" y="13" width="4" height="1" fill="#6B7280"/>
+        <!-- Corner reinforcement -->
+        <rect x="4" y="3" width="1" height="1" fill="#2980B9"/>
+        <rect x="19" y="3" width="1" height="1" fill="#2980B9"/>
+      </symbol>
+      <symbol id="icon-exit" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Enhanced door with detailed exit -->
+        <rect x="4" y="4" width="12" height="16" fill="#8B4513"/>
+        <rect x="5" y="5" width="10" height="14" fill="#D2691E"/>
+        <rect x="6" y="6" width="8" height="12" fill="#F4A460"/>
+        <!-- Door handle with detail -->
+        <circle cx="13" cy="12" r="1" fill="#FFD700"/>
+        <rect x="12" y="11" width="1" height="1" fill="#E6AC00"/>
+        <rect x="14" y="11" width="1" height="1" fill="#E6AC00"/>
+        <!-- Door frame with molding -->
+        <rect x="3" y="3" width="1" height="18" fill="#654321"/>
+        <rect x="16" y="3" width="1" height="18" fill="#654321"/>
+        <rect x="3" y="3" width="14" height="1" fill="#654321"/>
+        <rect x="3" y="20" width="14" height="1" fill="#654321"/>
+        <!-- Door panels -->
+        <rect x="7" y="7" width="6" height="4" fill="#CD853F"/>
+        <rect x="7" y="13" width="6" height="4" fill="#CD853F"/>
+        <!-- Enhanced exit arrow -->
+        <rect x="18" y="11" width="4" height="2" fill="#10B981"/>
+        <rect x="17" y="12" width="1" height="1" fill="#059669"/>
+        <polygon points="21,9 23,12 21,15" fill="#10B981"/>
+        <polygon points="22,10 22,14 23,12" fill="#059669"/>
+        <!-- Arrow shaft detail -->
+        <rect x="19" y="11" width="2" height="1" fill="#FFFFFF"/>
+        <rect x="19" y="12" width="2" height="1" fill="#059669"/>
+      </symbol>
+      
+      <!-- Audio/Volume icons -->
+      <symbol id="icon-volume" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Speaker cone -->
+        <rect x="3" y="9" width="4" height="6" fill="currentColor"/>
+        <rect x="7" y="7" width="2" height="10" fill="currentColor"/>
+        <rect x="9" y="5" width="2" height="14" fill="currentColor"/>
+        <!-- Sound waves -->
+        <rect x="12" y="8" width="2" height="8" fill="currentColor"/>
+        <rect x="15" y="6" width="2" height="12" fill="currentColor"/>
+        <rect x="18" y="4" width="2" height="16" fill="currentColor"/>
+      </symbol>
+      
+      <symbol id="icon-volume-mute" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Speaker cone -->
+        <rect x="3" y="9" width="4" height="6" fill="currentColor"/>
+        <rect x="7" y="7" width="2" height="10" fill="currentColor"/>
+        <rect x="9" y="5" width="2" height="14" fill="currentColor"/>
+        <!-- X mark for mute -->
+        <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
+        <rect x="17" y="7" width="2" height="2" fill="currentColor"/>
+        <rect x="15" y="9" width="2" height="2" fill="currentColor"/>
+        <rect x="13" y="11" width="2" height="2" fill="currentColor"/>
+        <rect x="17" y="11" width="2" height="2" fill="currentColor"/>
+        <rect x="15" y="13" width="2" height="2" fill="currentColor"/>
+        <rect x="13" y="15" width="2" height="2" fill="currentColor"/>
+        <rect x="17" y="15" width="2" height="2" fill="currentColor"/>
+      </symbol>
+      
+      <symbol id="icon-theme" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Theme toggle icon (sun/moon combined) -->
+        <rect x="11" y="1" width="2" height="3" fill="currentColor"/>
+        <rect x="11" y="20" width="2" height="3" fill="currentColor"/>
+        <rect x="1" y="11" width="3" height="2" fill="currentColor"/>
+        <rect x="20" y="11" width="3" height="2" fill="currentColor"/>
+        <rect x="4" y="4" width="2" height="2" fill="currentColor"/>
+        <rect x="18" y="4" width="2" height="2" fill="currentColor"/>
+        <rect x="4" y="18" width="2" height="2" fill="currentColor"/>
+        <rect x="18" y="18" width="2" height="2" fill="currentColor"/>
+        <!-- Center circle -->
+        <rect x="8" y="8" width="8" height="8" fill="currentColor"/>
+        <rect x="9" y="9" width="6" height="6" fill="var(--bg-primary)"/>
+        <rect x="10" y="10" width="4" height="4" fill="currentColor"/>
+      </symbol>
+
+      <!-- Settings gear icon -->
+      <symbol id="icon-settings" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <rect x="4" y="11" width="16" height="2" fill="#614D3B"/>
+        <rect x="11" y="4" width="2" height="16" fill="#614D3B"/>
+        <rect x="6" y="6" width="4" height="4" fill="#8B7355"/>
+        <rect x="14" y="6" width="4" height="4" fill="#8B7355"/>
+        <rect x="6" y="14" width="4" height="4" fill="#8B7355"/>
+        <rect x="14" y="14" width="4" height="4" fill="#8B7355"/>
+        <rect x="10" y="10" width="4" height="4" fill="#D4AF37"/>
+      </symbol>
+
+      <symbol id="icon-chat" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <rect x="3" y="4" width="18" height="12" fill="#FAFAFA"/>
+        <rect x="4" y="5" width="16" height="10" fill="#E0E0E0"/>
+        <rect x="6" y="7" width="10" height="1" fill="#757575"/>
+        <rect x="6" y="9" width="8" height="1" fill="#757575"/>
+        <polygon points="8,16 10,14 14,14" fill="#E0E0E0"/>
+        <rect x="3" y="4" width="18" height="1" fill="#BDBDBD"/>
+        <rect x="3" y="15" width="18" height="1" fill="#BDBDBD"/>
+      </symbol>
+
+      <!-- Custom collect/gather icon -->
+      <symbol id="icon-collect" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Hand/arm reaching down -->
+        <rect x="11" y="2" width="2" height="8" fill="#FFDBAC"/>
+        <rect x="10" y="9" width="4" height="3" fill="#F4C2A1"/>
+        <!-- Collection bag/pouch -->
+        <rect x="6" y="12" width="12" height="8" fill="#8B4513"/>
+        <rect x="7" y="13" width="10" height="6" fill="#A0522D"/>
+        <rect x="8" y="14" width="8" height="4" fill="#D2691E"/>
+        <!-- Bag straps -->
+        <rect x="5" y="10" width="2" height="4" fill="#654321"/>
+        <rect x="17" y="10" width="2" height="4" fill="#654321"/>
+        <!-- Items being collected (sparkles/gems) -->
+        <rect x="4" y="8" width="2" height="2" fill="#FFD700"/>
+        <rect x="18" y="6" width="2" height="2" fill="#FF6B6B"/>
+        <rect x="2" y="14" width="2" height="2" fill="#4CAF50"/>
+        <rect x="20" y="16" width="2" height="2" fill="#2196F3"/>
+        <!-- Motion lines showing collection -->
+        <rect x="3" y="11" width="4" height="1" fill="#FFD700" opacity="0.7"/>
+        <rect x="17" y="9" width="4" height="1" fill="#FF6B6B" opacity="0.7"/>
+        <rect x="1" y="17" width="4" height="1" fill="#4CAF50" opacity="0.7"/>
+        <rect x="19" y="19" width="4" height="1" fill="#2196F3" opacity="0.7"/>
+        <!-- Bag closure/buckle -->
+        <rect x="11" y="12" width="2" height="2" fill="#FFD700"/>
+        <rect x="10" y="13" width="4" height="1" fill="#E6AC00"/>
+      </symbol>
+
+      <!-- Trash icon for inventory header -->
+      <symbol id="icon-trash" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Bin body -->
+        <rect x="6" y="7" width="12" height="13" fill="#6D4C41"/>
+        <rect x="7" y="8" width="10" height="11" fill="#8B7355"/>
+        <!-- Lid -->
+        <rect x="5" y="6" width="14" height="2" fill="#6D4C41"/>
+        <rect x="9" y="4" width="6" height="2" fill="#8B7355"/>
+        <!-- Slats -->
+        <rect x="9" y="9" width="2" height="8" fill="#6D4C41"/>
+        <rect x="13" y="9" width="2" height="8" fill="#6D4C41"/>
+      </symbol>
+
+      <!-- Small UI icons for vitals and tabs -->
+              <symbol id="icon-heart" viewBox="0 0 16 16" shape-rendering="crispEdges">
+         <!-- Detailed heart with depth -->
+         <rect x="2" y="3" width="4" height="2" fill="#E74C3C"/>
+         <rect x="10" y="3" width="4" height="2" fill="#E74C3C"/>
+         <rect x="1" y="5" width="6" height="2" fill="#DC143C"/>
+         <rect x="9" y="5" width="6" height="2" fill="#DC143C"/>
+         <rect x="1" y="7" width="14" height="2" fill="#C0392B"/>
+         <rect x="2" y="9" width="12" height="2" fill="#A93226"/>
+         <rect x="3" y="11" width="10" height="2" fill="#922B21"/>
+         <rect x="4" y="13" width="8" height="1" fill="#7B241C"/>
+         <rect x="6" y="14" width="4" height="1" fill="#641E16"/>
+         <!-- Multiple highlights for 3D effect -->
+         <rect x="3" y="4" width="2" height="1" fill="#FF6B6B"/>
+         <rect x="11" y="4" width="2" height="1" fill="#FF6B6B"/>
+         <rect x="4" y="5" width="1" height="1" fill="#FFFFFF"/>
+         <rect x="11" y="5" width="1" height="1" fill="#FFFFFF"/>
+         <!-- Shadow detail -->
+         <rect x="2" y="8" width="1" height="2" fill="#8B1A1A"/>
+         <rect x="13" y="8" width="1" height="2" fill="#8B1A1A"/>
+        </symbol>
+              <symbol id="icon-bolt" viewBox="0 0 16 16" shape-rendering="crispEdges">
+         <!-- Detailed lightning bolt with energy -->
+         <rect x="6" y="1" width="4" height="2" fill="#F1C40F"/>
+         <rect x="5" y="3" width="3" height="2" fill="#F39C12"/>
+         <rect x="4" y="5" width="3" height="2" fill="#E67E22"/>
+         <rect x="3" y="7" width="8" height="2" fill="#F1C40F"/>
+         <rect x="7" y="9" width="3" height="2" fill="#F39C12"/>
+         <rect x="8" y="11" width="3" height="2" fill="#E67E22"/>
+         <rect x="9" y="13" width="3" height="2" fill="#D35400"/>
+         <!-- Energy glow effects -->
+         <rect x="7" y="2" width="2" height="1" fill="#FFFF00"/>
+         <rect x="6" y="3" width="1" height="1" fill="#FFFFFF"/>
+         <rect x="4" y="8" width="2" height="1" fill="#FFFF00"/>
+         <rect x="8" y="8" width="2" height="1" fill="#FFFF00"/>
+         <!-- Electric crackle details -->
+         <rect x="2" y="6" width="1" height="1" fill="#F1C40F"/>
+         <rect x="11" y="6" width="1" height="1" fill="#F1C40F"/>
+         <rect x="1" y="7" width="1" height="1" fill="#E67E22"/>
+         <rect x="12" y="7" width="1" height="1" fill="#E67E22"/>
+        </symbol>
+              <symbol id="icon-drop" viewBox="0 0 16 16" shape-rendering="crispEdges">
+         <!-- Detailed water drop with reflections -->
+         <rect x="7" y="2" width="2" height="2" fill="#3498DB"/>
+         <rect x="6" y="4" width="4" height="2" fill="#2980B9"/>
+         <rect x="5" y="6" width="6" height="2" fill="#2471A3"/>
+         <rect x="4" y="8" width="8" height="2" fill="#1F618D"/>
+         <rect x="5" y="10" width="6" height="2" fill="#1A5276"/>
+         <rect x="6" y="12" width="4" height="2" fill="#154360"/>
+         <rect x="7" y="14" width="2" height="1" fill="#0E2A3F"/>
+         <!-- Water reflection highlights -->
+         <rect x="7" y="3" width="2" height="1" fill="#FFFFFF"/>
+         <rect x="8" y="4" width="1" height="1" fill="#AED6F1"/>
+         <rect x="6" y="6" width="2" height="1" fill="#85C1E9"/>
+         <rect x="9" y="7" width="1" height="1" fill="#85C1E9"/>
+         <!-- Transparency effect -->
+         <rect x="7" y="8" width="1" height="2" fill="#5DADE2"/>
+         <rect x="8" y="9" width="1" height="1" fill="#AED6F1"/>
+         <!-- Surface tension detail -->
+         <rect x="6" y="13" width="1" height="1" fill="#2980B9"/>
+         <rect x="9" y="13" width="1" height="1" fill="#2980B9"/>
+      </symbol>
+
+      <!-- Fish Icons -->
+      <symbol id="fish-minnow" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="5" ry="2.2" fill="currentColor"/>
+        <polygon points="6,12 3,10 3,14" fill="currentColor"/>
+        <circle cx="13.6" cy="11.5" r="0.6" fill="#111"/>
+      </symbol>
+      <symbol id="fish-trout" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="5.2" ry="2.4" fill="currentColor"/>
+        <polygon points="6,12 3,10 3,14" fill="currentColor"/>
+        <polygon points="10,9.3 11.8,8.6 11.8,10" fill="currentColor"/>
+        <circle cx="13.6" cy="11.5" r="0.6" fill="#111"/>
+        <circle cx="10" cy="12" r="0.3" fill="#111" opacity=".6"/>
+        <circle cx="11.6" cy="12.5" r="0.3" fill="#111" opacity=".6"/>
+      </symbol>
+      <symbol id="fish-bass" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="5.6" ry="3" fill="currentColor"/>
+        <polygon points="6,12 3,10 3,14" fill="currentColor"/>
+        <polygon points="16,11 19,9.5 19,14.5 16,13" fill="currentColor"/>
+        <circle cx="14" cy="11.5" r="0.6" fill="#111"/>
+      </symbol>
+      <symbol id="fish-salmon" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="5.6" ry="2.6" fill="currentColor"/>
+        <polygon points="6,12 3,10 3,14" fill="currentColor"/>
+        <polygon points="10,9 12.5,8 12.5,10" fill="currentColor"/>
+        <rect x="10" y="12.2" width="4" height="0.6" fill="#111" opacity=".5"/>
+        <circle cx="13.8" cy="11.4" r="0.6" fill="#111"/>
+      </symbol>
+      <symbol id="fish-carp" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="4.8" ry="3.6" fill="currentColor"/>
+        <polygon points="6.2,12 3,10 3,14" fill="currentColor"/>
+        <polygon points="9.6,8.7 13,7.6 13,10" fill="currentColor"/>
+        <circle cx="14.2" cy="11.3" r="0.6" fill="#111"/>
+      </symbol>
+      <symbol id="fish-koi" viewBox="0 0 24 24">
+        <ellipse cx="11" cy="12" rx="4.8" ry="3.6" fill="currentColor"/>
+        <polygon points="6.2,12 3,10 3,14" fill="currentColor"/>
+        <polygon points="9.6,8.7 13,7.6 13,10" fill="currentColor"/>
+        <circle cx="14.2" cy="11.3" r="0.6" fill="#111"/>
+        <path d="M16 12.2l1.6 1.1M16 11.8l1.6-1.1" stroke="#111" stroke-width="0.6" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+  <main id="game">
+    <!-- Login Screen Controls -->
+    <div class="login-controls">
+      <button id="loginThemeToggle" class="header-btn theme-toggle" title="Toggle Dark/Light Theme">
+        <svg><use href="#icon-theme"/></svg>
+      </button>
+      <button id="loginMuteToggle" class="header-btn mute-toggle" title="Mute Music">
+        <svg><use href="#icon-volume"/></svg>
+      </button>
+    </div>
+    
+    <div id="login-screen" class="login-screen" hidden>
+      <div class="auth-dialog" role="dialog" aria-modal="true">
+        <h2>Welcome</h2>
+        <div class="auth-row"><input id="ls-username" type="text" placeholder="Username" autocomplete="username"/></div>
+        <div class="auth-row"><input id="ls-password" type="password" placeholder="Password" autocomplete="current-password"/></div>
+        <div class="auth-actions">
+          <button id="ls-login" class="primary-btn">Login</button>
+          <button id="ls-register" class="primary-btn">Register</button>
+        </div>
+        <div id="ls-status" class="auth-status"></div>
+      </div>
+    </div>
+    <!-- Header with game stats and actions -->
+    <header class="game-header">
+      <div class="header-left">
+        <div class="player-vitals">
+          <div class="vital-bar hp">
+            <svg class="vital-icon"><use href="#icon-heart"/></svg>
+            <div class="vital-track"><span id="hp-bar"></span></div>
+          </div>
+          <div class="vital-bar stamina">
+            <svg class="vital-icon"><use href="#icon-bolt"/></svg>
+            <div class="vital-track"><span id="stamina-bar"></span></div>
+          </div>
+          <div class="vital-bar mana">
+            <svg class="vital-icon"><use href="#icon-drop"/></svg>
+            <div class="vital-track"><span id="mana-bar"></span></div>
+          </div>
+        </div>
+        </div>
+      <div class="header-right">
+        <div class="clock" id="clock" aria-live="polite"></div>
+        <div class="header-actions">
+          <button id="audioToggleBtn" class="header-btn audio-toggle" title="Mute Audio"></button>
+          <button id="settingsBtn" class="header-btn settings-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsPanel" title="Settings">
+            <svg><use href="#icon-settings"/></svg>
+          </button>
+          <button id="ground-trash" class="header-btn" title="Clear Ground">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><use href="#icon-trash"/></svg>
+          </button>
+        </div>
+        <div class="location-picker header-loc">
+          <button id="locationBadge" class="location-badge beach active" title="Current Location" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <span class="loc-icon" id="locationIcon" aria-hidden="true">🏖️</span>
+            <span id="locationName">Serene Shores</span>
+            <span class="loc-status-dot" aria-hidden="true"></span>
+            <span class="caret" aria-hidden="true">▾</span>
+          </button>
+          <ul id="locationMenu" class="location-menu" role="listbox" aria-label="Select Location">
+            <li role="option" data-key="beach" data-name="Serene Shores" data-icon="🏖️" data-badge-class="beach" class="active">🏖️ Serene Shores</li>
+            <!-- Forest locked; discovered via exploration -->
+            <li role="option" data-key="forest" data-name="Whispering Woods" data-icon="🌲" data-badge-class="forest" style="display:none">🌲 Whispering Woods</li>
+          </ul>
+        </div>
+        <!-- Settings Panel (dropdown) -->
+        <div id="settingsPanel" class="settings-panel" role="dialog" aria-modal="false" hidden>
+          <div class="settings-group">
+            <div class="settings-title">Settings</div>
+            <div class="settings-row">
+              <label style="min-width:110px;font-size:10px;">Ambience Volume</label>
+              <div class="volume-control" style="flex:1;">
+                <input type="range" id="ambienceVolume" min="0" max="100" value="8" class="volume-slider" title="Ambience Volume">
+              </div>
+            </div>
+            <div class="settings-row">
+              <label style="min-width:110px;font-size:10px;">SFX Volume</label>
+              <div class="volume-control" style="flex:1;">
+                <input type="range" id="sfxVolume" min="0" max="100" value="15" class="volume-slider" title="SFX Volume">
+              </div>
+            </div>
+            <div class="settings-row">
+              <button id="themeToggleBtn" class="primary-btn" title="Toggle Dark/Light Theme">
+                <svg><use href="#icon-theme"/></svg>
+                <span>Toggle Theme</span>
+              </button>
+            </div>
+            
+            <div class="settings-row">
+              <button id="exitBtn" class="primary-btn" title="Exit to Login">
+                <svg><use href="#icon-exit"/></svg>
+                <span>Exit to Login</span>
+              </button>
+            </div>
+            <div class="settings-row">
+              <button id="resetAccountBtn" class="primary-btn" title="Reset Account">
+                <span>Reset Account</span>
+              </button>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        
+        
+      </div>
+    </header>
+    
+    <!-- Main navigation removed -->
+    <!-- Main content area -->
+    <main class="game-content">
+      <!-- Explore View -->
+      <section class="content-panel active" data-screen="explore">
+        <div class="panel-inner">
+          <!-- Exploration Control (centered, standalone) -->
+            <div class="explore-hero">
+            <button id="exploreBtn" class="primary-btn explore-toggle" aria-pressed="false">
+              <span class="pulse-ring" aria-hidden="true"></span>
+              <svg><use href="#icon-compass"/></svg>
+              <span id="exploreBtnLabel">Explore</span>
+            </button>
+            <button id="collectAllBtn" class="header-btn collect-all-btn" type="button" aria-label="Collect all ground items" title="Collect All">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><use href="#icon-collect"/></svg>
+            </button>
+          </div>
+
+          <!-- Discovery Cards Container -->
+          <div id="discoveries" class="discoveries"></div>
+          <!-- Skilling Zones Container (populated by JS per location) -->
+          <div id="skilling-zones" class="skilling-zones" aria-label="Skilling Zones"></div>
+        </div>
+      </section>
+
+      <!-- Desktop Panels Overlay -->
+      <div id="desktop-panels" aria-live="polite">
+        <!-- Zones Panel -->
+        <div id="panel-zones" class="inventory-panel draggable-panel" style="display:none">
+          <h2 class="drag-handle" style="text-align:center;width:100%">Zones</h2>
+          <div id="zones-list" class="zones-list"></div>
+        </div>
+        <!-- Equipment Panel -->
+        <div id="panel-equipment" class="equipment-panel draggable-panel" style="display:none">
+          <h2 class="drag-handle">Equipment</h2>
+          <div class="equipment-paperdoll">
+            <div class="equipment-slot" data-slot="helmet">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Helmet</div>
+            </div>
+            <div class="equipment-slot" data-slot="amulet">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Amulet</div>
+            </div>
+            <div class="equipment-slot" data-slot="chest">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Chest</div>
+            </div>
+            <div class="equipment-slot" data-slot="gloves">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Gloves</div>
+            </div>
+            <div class="equipment-slot" data-slot="ring1">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Ring</div>
+            </div>
+            <div class="equipment-slot" data-slot="pants">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Pants</div>
+            </div>
+            <div class="equipment-slot" data-slot="ring2">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Ring</div>
+            </div>
+            <div class="equipment-slot" data-slot="shoes">
+              <div class="slot-item empty"></div>
+              <div class="slot-name">Shoes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Panel -->
+        <div id="panel-inventory" class="inventory-panel draggable-panel" style="display:none">
+          <div class="inventory-header">
+            <h2 class="drag-handle">Inventory</h2>
+            <div class="inventory-info">
+              <div class="coin-pouch" id="coin-pouch" title="Coins">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <use href="#icon-coin"/>
+                </svg>
+                <span id="coin-count">0</span>
+              </div>
+              <button id="sort-inventory-btn" class="header-btn" title="Sort by Name">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="inventory-grid" id="inv-grid"></div>
+          <!-- Context menu -->
+          <div class="ctx-menu" id="inv-menu" role="menu" aria-hidden="true">
+            <button id="ctx-equip" type="button" style="display: none;">Equip Item</button>
+            <button id="ctx-unequip" type="button" style="display: none;">Unequip Item</button>
+            <button id="ctx-drop" type="button">Drop Item</button>
+          </div>
+        </div>
+
+        <!-- Skills Panel -->
+        <div id="panel-skills" class="skills-panel draggable-panel" style="display:none">
+          <h2 class="drag-handle">Skills</h2>
+          <div class="skills-grid all-skills">
+            <div class="skill-card" data-skill="attack" title="Attack" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="attack">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-sword"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="strength" title="Strength" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="strength">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-muscle"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="defense" title="Defense" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="defense">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-shield"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="fishing" title="Fishing" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="fishing">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-fishing"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="foraging" title="Foraging" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="foraging">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-leaf"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="exploration" title="Exploration" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="exploration">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-compass"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Panel (draggable, like other panels) -->
+        <div id="panel-chat" class="inventory-panel draggable-panel chat-panel" style="display:none">
+          <div class="chat-header">
+            <h2 class="drag-handle">Global Chat</h2>
+            <button id="togglePlayersBtn" class="players-toggle-btn" title="Toggle Online Players">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span class="players-count">0</span>
+            </button>
+          </div>
+          <div class="chat-container">
+            <div class="chat-main">
+              <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+              <div class="chat-input-row">
+                <input id="chat-input" type="text" placeholder="Type a message..." autocomplete="off" aria-label="Chat message"/>
+                <button id="chat-send" class="primary-btn">Send</button>
+              </div>
+            </div>
+            <div class="chat-sidebar" id="chatSidebar" style="display: none;">
+              <h3>Online Players</h3>
+              <div id="online-players" class="online-players-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills View -->
+      <section class="content-panel" data-screen="skills">
+        <div class="panel-inner skills-layout">
+          <h2>Skills & Progression</h2>
+          
+          <div class="skills-grid all-skills">
+            <div class="skill-card" data-skill="attack" title="Attack" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="attack">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-sword"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="strength" title="Strength" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="strength">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-muscle"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="defense" title="Defense" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="defense">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-shield"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="fishing" title="Fishing" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="fishing">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-fishing"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="foraging" title="Foraging" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="foraging">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-leaf"/></svg>
+              </div>
+            </div>
+            <div class="skill-card" data-skill="exploration" title="Exploration" style="--progress-pct: 0%">
+              <div class="skill-level-badge" data-skill-level="exploration">1</div>
+              <div class="skill-icon-large">
+                <svg><use href="#icon-compass"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </main>
+
+  <!-- Bottom UI Panel -->
+  <div class="bottom-ui-panel">
+    <button id="toggleZones" class="ui-panel-btn" title="Zones" data-label="Zones">
+      <svg><use href="#icon-location"/></svg>
+      <span>Zones</span>
+    </button>
+    <button id="toggleInventory" class="ui-panel-btn" title="Inventory" data-label="Inventory">
+      <svg><use href="#icon-bag"/></svg>
+      <span>Inventory</span>
+    </button>
+    <button id="toggleEquipment" class="ui-panel-btn" title="Equipment" data-label="Equipment">
+      <svg><use href="#icon-player"/></svg>
+      <span>Equipment</span>
+    </button>
+    <button id="toggleSkills" class="ui-panel-btn" title="Skills" data-label="Skills">
+      <svg><use href="#icon-skills"/></svg>
+      <span>Skills</span>
+    </button>
+    <button id="toggleChat" class="ui-panel-btn" title="Global Chat" data-label="Chat">
+      <svg><use href="#icon-chat"/></svg>
+      <span>Chat</span>
+      <div class="notification-badge"></div>
+    </button>
+  </div>
+
+  
+
+</body>
+</html>
+
+

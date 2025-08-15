@@ -1,0 +1,38 @@
+{
+  "name": "sandbox-idle",
+  "version": "0.15.0",
+  "description": "Sandbox Idle - Desktop Game",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "chat": "node server/chat-server.js",
+    "api": "node server/auth-server.js",
+    "dev:all": "concurrently -n vite,chat,api -c auto \"npm:dev\" \"npm:chat\" \"npm:api\"",
+    "ngrok:game": "ngrok http 8000",
+    "ngrok:chat": "ngrok http 3001",
+    "ngrok:api": "ngrok http 3002",
+    "ngrok:all": "ngrok start --config ngrok.yml --all",
+    "dev:internet": "concurrently -n vite,chat,api,ngrok -c auto \"npm:dev\" \"npm:chat\" \"npm:api\" \"npm:ngrok:all\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{js,ts}\"",
+    "format": "prettier -w .",
+    "clean": "rm -rf dist node_modules/.vite"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.4",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-import": "^2.32.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.19",
+    "ws": "^8.18.3"
+  },
+  "keywords": ["game", "idle", "browser", "typescript"],
+  "author": "",
+  "license": "ISC"
+}
