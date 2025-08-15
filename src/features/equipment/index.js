@@ -78,8 +78,32 @@ export const Equipment = {
   unequipItem(slotType) {
     const item = gameState.equipment[slotType];
     if (!item) return;
-    gameState.inventory.push(item);
+
+    // Clear equipment slot first
     gameState.equipment[slotType] = null;
+
+    // Place unequipped item into the first available inventory slot when possible
+    let placedInSlot = false;
+    if (inventoryRef) {
+      try {
+        for (let i = 0; i < (inventoryRef.slots || 0); i++) {
+          if (!gameState.inventory[i]) {
+            gameState.inventory[i] = item;
+            placedInSlot = true;
+            break;
+          }
+        }
+      } catch (e) {
+        // fallback to push if anything goes wrong
+        placedInSlot = false;
+      }
+    }
+
+    if (!placedInSlot) {
+      // If no empty slot found or inventoryRef missing, append to inventory
+      gameState.inventory.push(item);
+    }
+
     if (inventoryRef) inventoryRef.debouncedRender();
     this.debouncedUpdateUI();
     SaveManager.debouncedSave(); // Auto-save after unequipping item
