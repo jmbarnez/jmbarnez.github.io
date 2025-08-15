@@ -121,8 +121,7 @@ export const UI = {
     const setStatus = (t) => { if (status) status.textContent = t; };
     const getCreds = () => ({ username: modal.querySelector('#authUser')?.value?.trim(), password: modal.querySelector('#authPass')?.value || '' });
     const authFetch = async (path, body) => {
-      const currentHost = window.location.hostname;
-      const res = await fetch(`http://${currentHost}:3002${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       return res.json();
     };
     const onLogin = async () => {
@@ -181,7 +180,7 @@ export const UI = {
       const currentHost = window.location.hostname;
       const authUrl = currentHost.includes('ngrok') 
         ? '/api/me' 
-        : `http://${currentHost}:3002/api/me`;
+        : '/api/me';
       
       const response = await fetch(authUrl, {
         method: 'GET',
@@ -848,7 +847,7 @@ export const UI = {
           if (token) {
             // Delete the entire account from the server
             const currentHost = window.location.hostname;
-            const response = await fetch(`http://${currentHost}:3002/api/account`, { 
+            const response = await fetch('/api/account', { 
               method: 'DELETE', 
               headers: { 'Authorization': `Bearer ${token}` }
             });

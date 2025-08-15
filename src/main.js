@@ -182,10 +182,7 @@ function initGame() {
 
 async function validateTokenAndBoot(token) {
   try {
-    const currentHost = window.location.hostname;
-    const authUrl = currentHost.includes('ngrok') 
-      ? '/api/me' 
-      : `http://${currentHost}:3002/api/me`;
+    const authUrl = '/api/me';
     
     const response = await fetch(authUrl, {
       method: 'GET',
@@ -277,7 +274,7 @@ function showLoginScreen() {
     if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
       baseUrl = window.location.origin;
     } else {
-      baseUrl = `http://${currentHost}:3002`;
+      baseUrl = window.location.origin;
     }
     
     const url = `${baseUrl}${path}`;
@@ -434,10 +431,7 @@ async function checkServerStatus() {
   // Check Auth Server
   try {
     updateStatus('authServerStatus', 'checking', 'Checking...');
-    const currentHost = window.location.hostname;
-    const authUrl = currentHost.includes('ngrok') 
-      ? '/api/me' 
-      : `http://${currentHost}:3002/api/me`;
+    const authUrl = '/api/me';
     
     const response = await fetch(authUrl, {
       method: 'GET',

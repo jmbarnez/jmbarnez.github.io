@@ -6,24 +6,11 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: (() => {
-    // Check if we're running through ngrok (external hosting)
+    // For production (Netlify) and development, use same origin
     if (typeof window !== 'undefined') {
-      const currentHost = window.location.hostname;
-      
-      // If accessing via ngrok domain, use the same domain (Vite will proxy to localhost:3002)
-      if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
-        return window.location.origin; // Use same domain as the game, Vite will proxy /api requests
-      }
-      
-      // Local development - use localhost
-      if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-        return 'http://localhost:3002';
-      }
-      
-      // Network access (like 192.168.x.x)
-      return `http://${currentHost}:3002`;
+      return window.location.origin; // Use same domain, Netlify/Vite will handle routing
     }
-    return 'http://localhost:3002'; // Fallback for server-side
+    return ''; // Fallback for server-side
   })(),
   ENDPOINTS: {
     SAVE: '/api/save',
