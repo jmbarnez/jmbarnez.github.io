@@ -1,0 +1,78 @@
+[build]
+  # Build command for Vite
+  command = "npm run build"
+  # Directory to publish (Vite builds to 'dist' by default)
+  publish = "dist"
+  # Functions directory
+  functions = "netlify/functions"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+
+# Redirect API calls to Netlify Functions
+[[redirects]]
+  from = "/api/register"
+  to = "/.netlify/functions/auth-register"
+  status = 200
+
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+
+[[redirects]]
+  from = "/api/me"
+  to = "/.netlify/functions/auth-me"
+  status = 200
+
+[[redirects]]
+  from = "/api/save"
+  to = "/.netlify/functions/save-get"
+  status = 200
+  conditions = {method = ["GET"]}
+
+[[redirects]]
+  from = "/api/save"
+  to = "/.netlify/functions/save-post"
+  status = 200
+  conditions = {method = ["POST"]}
+
+# Chat endpoints
+[[redirects]]
+  from = "/api/chat/*"
+  to = "/.netlify/functions/chat/:splat"
+  status = 200
+
+# Market endpoints
+[[redirects]]
+  from = "/api/market/*"
+  to = "/.netlify/functions/market/:splat"
+  status = 200
+
+# Catch-all for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and CORS
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS, DELETE"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Environment variables (set these in Netlify dashboard)
+# SUPABASE_URL = "your-supabase-url"
+# SUPABASE_ANON_KEY = "your-supabase-anon-key"
+# SUPABASE_SERVICE_ROLE_KEY = "your-supabase-service-role-key"
+# JWT_SECRET = "your-jwt-secret"
