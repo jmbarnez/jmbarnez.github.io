@@ -4027,6 +4027,30 @@ body[data-theme="dark"] .location-badge.forest {
   transform: translateY(-1px);
 }
 
+/* Create Account button specific styling */
+.create-account-btn {
+  background: linear-gradient(135deg, var(--accent-success), #2d7f32) !important;
+  border-color: var(--accent-success) !important;
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+.create-account-btn:hover {
+  background: linear-gradient(135deg, #2d7f32, var(--accent-success)) !important;
+  border-color: #1b5e20 !important;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.back-to-login-btn {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
 .auth-form {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
@@ -4682,7 +4706,7 @@ body[data-theme="dark"] .bush::before {
 }
 
 .changelog-section {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   flex-shrink: 0;
 }
 
@@ -4706,19 +4730,19 @@ body[data-theme="dark"] .bush::before {
 .changelog-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
 .changelog-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 18px;
   background: var(--bg-primary);
   border: 1px solid var(--border-secondary);
   border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 1.6;
   word-wrap: break-word;
   overflow-wrap: break-word;
   min-height: 0;
@@ -4726,14 +4750,14 @@ body[data-theme="dark"] .bush::before {
 
 .changelog-tag {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .changelog-item.new .changelog-tag {
