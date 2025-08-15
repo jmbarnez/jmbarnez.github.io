@@ -59,7 +59,6 @@ export const UI = {
     if (exploreBtn) { exploreBtn.classList.remove('exploring', 'active'); exploreBtn.setAttribute('aria-pressed', 'false'); }
     const lbl = document.getElementById('exploreBtnLabel');
     if (lbl) lbl.textContent = 'Explore';
-    this.bindResetAccount();
     try { Exploration.attachGroundDropHandlers(); } catch {}
   },
 

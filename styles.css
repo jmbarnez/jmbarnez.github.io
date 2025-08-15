@@ -1811,14 +1811,6 @@ body[data-theme="dark"] .location-badge.forest {
   box-shadow: var(--raised-border), var(--medieval-shadow);
 }
 
-/* Make reset account button red */
-#resetAccountBtn {
-  background: #7f1d1d;
-  border-color: #991b1b;
-  color: #fff;
-}
-#resetAccountBtn:hover { background: #991b1b; border-color: #b91c1c; }
-#resetAccountBtn:active { background: #7f1d1d; }
 
 /* Explore toggle styling */
 .explore-toggle {
@@ -4581,7 +4573,9 @@ body[data-theme="dark"] .bush::before {
   transform: translate(-50%, -50%);
   width: 700px;
   max-width: 90vw;
+  height: 70vh;
   max-height: 80vh;
+  min-height: 500px;
   background: var(--bg-panel);
   border: 2px solid var(--border-primary);
   border-radius: 12px;
