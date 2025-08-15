@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -39,9 +43,18 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    console.log('Login attempt started');
+    console.log('Environment variables:', {
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'MISSING',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING',
+      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING'
+    });
+    
     const { username, password } = JSON.parse(event.body || '{}');
+    console.log('Parsed credentials:', { username: username ? 'PROVIDED' : 'MISSING', password: password ? 'PROVIDED' : 'MISSING' });
     
     if (!username || !password) {
+      console.log('Missing credentials error');
       return {
         statusCode: 400,
         headers,
@@ -49,11 +62,15 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('Importing supabase lib...');
     const { getUserByUsername } = require('./lib/supabase');
     
     // Authenticate user
+    console.log('Hashing password...');
     const passwordHash = sha256(password);
+    console.log('Getting user from database...');
     const user = await getUserByUsername(username);
+    console.log('User lookup result:', user ? 'FOUND' : 'NOT_FOUND');
     
     if (!user || user.password_hash !== passwordHash) {
       return {
@@ -75,7 +92,8 @@ exports.handler = async (event, context) => {
     };
     
   } catch (error) {
-    console.error('Login failed');
+    console.error('Login failed with error:', error.message);
+    console.error('Full error:', error);
     return {
       statusCode: 500,
       headers,

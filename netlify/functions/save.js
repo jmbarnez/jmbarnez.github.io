@@ -20,7 +20,7 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type, authorization',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
   };
@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== 'GET') {
+  if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET') {
     return { 
       statusCode: 405, 
       headers, 
@@ -58,23 +58,59 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Handle GET request (load saved data)
+    if (event.httpMethod === 'GET') {
+      const { getSaveData } = require('./lib/supabase');
+      const saveData = await getSaveData(claims.sub);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          save: saveData || null,
+          timestamp: Date.now()
+        })
+      };
+    }
+
+    // Handle POST request (save data)
+    // Validate payload
+    const rawBody = event.body || '{}';
+    // Optional size guard (512KB)
+    if (Buffer.byteLength(rawBody, 'utf8') > 512 * 1024) {
+      return {
+        statusCode: 413,
+        headers,
+        body: JSON.stringify({ error: 'Save too large' })
+      };
+    }
+
+    const parsed = JSON.parse(rawBody);
+    if (!parsed || typeof parsed.save !== 'object' || parsed.save === null) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid payload' })
+      };
+    }
+
+    const { save } = parsed;
+
+    const { setSaveData } = require('./lib/supabase');
+    
+    await setSaveData(claims.sub, save);
+    
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
-        user: { 
-          id: claims.sub, 
-          username: claims.username 
-        }
-      })
+      body: JSON.stringify({ ok: true })
     };
     
   } catch (error) {
-    console.error('Auth verification failed');
+    console.error('Save storage failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Authentication failed' })
+      body: JSON.stringify({ error: 'Failed to save data' })
     };
   }
 };

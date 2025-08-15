@@ -6,7 +6,11 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run dev:all:*)",
       "Bash(git add:*)",
-      "Bash(npm run netlify:dev:*)"
+      "Bash(npm run netlify:dev:*)",
+      "Bash(mv:*)",
+      "Bash(netlify:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": [],

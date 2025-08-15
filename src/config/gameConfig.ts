@@ -6,16 +6,26 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: (() => {
-    // For production (Netlify) and development, use same origin
+    // For production (Netlify) and development, use correct API base
     if (typeof window !== 'undefined') {
-      return window.location.origin; // Use same domain, Netlify/Vite will handle routing
+      const currentHost = window.location.hostname;
+      
+      // For local development, always use port 8000 (Netlify dev server)
+      if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+        return `${window.location.protocol}//${currentHost}:8889`;
+      } else if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
+        return window.location.origin;
+      } else {
+        return window.location.origin;
+      }
     }
     return ''; // Fallback for server-side
   })(),
   ENDPOINTS: {
     SAVE: '/api/save',
     AUTH: '/api/auth',
-    CHAT: '/api/chat'
+    CHAT: '/api/chat',
+    MARKET: '/api/market'
   },
   TIMEOUTS: {
     REQUEST: 5000,      // 5 seconds

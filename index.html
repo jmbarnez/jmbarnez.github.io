@@ -810,7 +810,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.62</div>
+      <div class="version-info-screen">v0.1.65</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -838,28 +838,24 @@
         </div>
         <div class="changelog-content">
           <div class="changelog-section">
-            <div class="changelog-version">Version 0.1.62</div>
+            <div class="changelog-version">Version 0.1.65</div>
             <div class="changelog-date">August 15, 2025</div>
             <div class="changelog-items">
-              <div class="changelog-item improved">
-                <span class="changelog-tag">IMPROVED</span>
-                Server indicators: auth treats 401 as reachable; chat check uses no-cache; UI marks chat Online when HTTP fallback active
-              </div>
-              <div class="changelog-item improved">
-                <span class="changelog-tag">IMPROVED</span>
-                Fishing zones: button state persists after panel reopen; cannot fish while exploring
-              </div>
               <div class="changelog-item new">
                 <span class="changelog-tag">NEW</span>
-                Discovered catches tooltip follows cursor and renders above UI for readability
-              </div>
-              <div class="changelog-item new">
-                <span class="changelog-tag">NEW</span>
-                Inventory: Auto-sort toggle (persists) with subtle green glow when enabled; drag-drop stacking onto existing stacks
+                Market persistence: full Supabase-backed listings, purchases, and pending sales collection
               </div>
               <div class="changelog-item improved">
                 <span class="changelog-tag">IMPROVED</span>
-                Token sourcing can bypass local storage using window.__authToken when set
+                Global chat: presence tracking without system join/leave messages; client shows local "Connected to Global Chat" notice
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Duplicate online players and duplicate chat messages removed; logout notifies chat leave
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                UI: Market list/create/remove flows fixed; item listing works and UI disables list button during requests
               </div>
             </div>
           </div>
@@ -1184,12 +1180,6 @@
               <div class="volume-control" style="flex:1;">
                 <input type="range" id="sfxVolume" min="0" max="100" value="15" class="volume-slider" title="SFX Volume">
               </div>
-            </div>
-            <div class="settings-row">
-              <button id="themeToggleBtn" class="primary-btn" title="Toggle Dark/Light Theme">
-                <svg><use href="#icon-theme"/></svg>
-                <span>Toggle Theme</span>
-              </button>
             </div>
             
             <div class="settings-row">
@@ -1619,6 +1609,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Universal Notification System -->
+  <div id="notificationContainer" class="notification-container"></div>
 
   <script type="module" src="./src/main.js"></script>
 </body>

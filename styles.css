@@ -499,63 +499,6 @@ body[data-theme="dark"] {
   --vintage-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.4), 0 1px 4px 0 rgba(0, 0, 0, 0.3);
 }
 
-/* Modern Retro Light Theme - Clean and Vibrant */
-body[data-theme="light"] {
-  /* Modern light backgrounds with retro flair */
-  --bg-primary: #f8f9fa;        /* Clean light gray */
-  --bg-secondary: #e9ecef;      /* Slightly darker light gray */
-  --bg-tertiary: #dee2e6;       /* Medium light gray */
-  --bg-panel: #ffffff;          /* Pure white panels */
-  --bg-accent: #f1f3f4;         /* Light accent */
-  --bg-parchment: #fffef7;      /* Warm white parchment */
-  --bg-hover: #e3f2fd;          /* Light blue hover */
-  --bg-active: #bbdefb;         /* Blue active state */
-  
-  /* Strong modern borders for contrast */
-  --border-primary: #495057;    /* Dark gray border */
-  --border-secondary: #6c757d;  /* Medium gray border */
-  --border-highlight: #007bff;  /* Bright blue highlight */
-  --border-metal: #495057;      /* Dark gray metal */
-  --border-color: #6c757d;      /* General gray border */
-  
-  /* High contrast text for readability */
-  --text-primary: #212529;      /* Dark text */
-  --text-secondary: #495057;    /* Medium gray text */
-  --text-accent: #0056b3;       /* Blue accent text */
-  --text-highlight: #007bff;    /* Bright blue highlight */
-  --text-parchment: #212529;    /* Dark on light */
-  --text-muted: #6c757d;        /* Muted gray text */
-  
-  /* Vibrant modern bar colors */
-  --hp-color: #dc3545;          /* Bootstrap red */
-  --stamina-color: #fd7e14;     /* Bootstrap orange */
-  --mana-color: #007bff;        /* Bootstrap blue */
-  
-  /* Clean modern shadows */
-  --medieval-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-  --inset-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-  --raised-border: 0 1px 3px 0 rgba(0, 0, 0, 0.12);
-  --sunken-border: inset 0 2px 4px 0 rgba(0, 0, 0, 0.15);
-  
-  /* Modern focus and glow */
-  --focus-glow-color: #007bff;
-  --blue-glow: 0 0 20px rgba(0, 123, 255, 0.4);
-  --warm-glow: 0 0 15px rgba(0, 123, 255, 0.3);
-  --warm-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
-  --gold-glow: 0 0 20px rgba(255, 193, 7, 0.5);
-  
-  /* Light theme color tokens */
-  --pastel-blue: #e3f2fd;
-  --pastel-purple: #f3e5f5;
-  --pastel-green: #e8f5e8;
-  --warm-beige: #fff8e1;
-  --warm-peach: #ffecc7;
-  --warm-coral: #ffebee;
-  --shadow-color: rgba(0, 0, 0, 0.15);
-  
-  /* Enhanced vintage shadow for light mode */
-  --vintage-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.15), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-}
 
 /* Reset and base styles */
 * { box-sizing: border-box; }
@@ -3671,6 +3614,29 @@ body[data-theme="dark"] .location-badge.forest {
     width: 24px;
     height: 24px;
   }
+
+  /* Chat status indicators */
+  .desktop-social-btn.online {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.6);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  }
+
+  .desktop-social-btn.offline {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+
+  .desktop-social-btn.online:hover {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.8);
+  }
+
+  .desktop-social-btn.offline:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
   
   .desktop-social-btn .notification-badge {
     position: absolute;
@@ -4312,20 +4278,6 @@ body[data-theme="dark"] .location-badge.forest {
   color: white !important;
 }
 
-/* Light theme support for server status */
-body[data-theme="light"] .server-status {
-  background: #f8f9fa !important;
-  border: 2px solid #dee2e6 !important;
-  color: #212529 !important;
-}
-
-body[data-theme="light"] .status-label {
-  color: #6c757d !important;
-}
-
-body[data-theme="light"] .status-text {
-  color: #212529 !important;
-}
 
 .status-row {
   display: flex;
@@ -5037,16 +4989,6 @@ body[data-theme="dark"] .changelog-item {
   border-color: #555;
 }
 
-/* Light theme adjustments */
-body[data-theme="light"] .changelog-panel {
-  background: #ffffff;
-  border-color: #ddd;
-}
-
-body[data-theme="light"] .changelog-item {
-  background: #f8f9fa;
-  border-color: #e0e0e0;
-}
 
 /* Bottom right buttons container */
 .bottom-right-buttons {
@@ -5364,11 +5306,6 @@ body[data-theme="dark"] .sale-notification {
   border-color: #4CAF50;
 }
 
-/* Light theme adjustments */
-body[data-theme="light"] .sale-notification {
-  background: #ffffff;
-  border-color: #4CAF50;
-}
 
 /* === Brief Sale Notification Styles === */
 .brief-sale-notification {
@@ -5415,6 +5352,101 @@ body[data-theme="light"] .sale-notification {
 .pending-sales-section,
 .completed-sales-section {
   margin-bottom: 20px;
+}
+
+/* === Universal Notification System === */
+.notification-container {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 60000;
+  pointer-events: none;
+  max-width: 350px;
+}
+
+.notification {
+  background: var(--bg-panel);
+  border: 2px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  box-shadow: var(--medieval-shadow);
+  backdrop-filter: blur(10px);
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: all 0.3s ease-out;
+  pointer-events: auto;
+  cursor: pointer;
+  min-width: 250px;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.notification.success {
+  border-color: #22c55e;
+}
+
+.notification.error {
+  border-color: #ef4444;
+}
+
+.notification.warning {
+  border-color: #f59e0b;
+}
+
+.notification.info {
+  border-color: #3b82f6;
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.notification-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.notification-icon.success {
+  color: #22c55e;
+}
+
+.notification-icon.error {
+  color: #ef4444;
+}
+
+.notification-icon.warning {
+  color: #f59e0b;
+}
+
+.notification-icon.info {
+  color: #3b82f6;
+}
+
+.notification-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.notification-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.notification-description {
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .pending-sales-section h4,

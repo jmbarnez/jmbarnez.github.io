@@ -28,9 +28,9 @@ export default defineConfig({
     extensions: ['.ts', '.js', '.json']
   },
   server: {
-    port: 8000,
+    port: 3000,
     host: '0.0.0.0', // Allow external access
-    open: true,
+    open: false, // Netlify dev will handle opening
     allowedHosts: [
       'localhost',
       '127.0.0.1',
@@ -38,20 +38,7 @@ export default defineConfig({
       '.ngrok.app',      // Allow all ngrok app domains
       '.ngrok.io'        // Allow legacy ngrok domains
     ],
-    proxy: {
-      // Proxy API requests to the auth server
-      '/api': {
-        target: 'http://localhost:3002',
-        changeOrigin: true,
-        secure: false
-      },
-      // Proxy WebSocket connections to the chat server
-      '/ws': {
-        target: 'ws://localhost:3001',
-        ws: true,
-        changeOrigin: true
-      }
-    }
+    // Proxy removed - using Netlify Functions for API
   },
 });
 

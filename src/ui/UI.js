@@ -9,6 +9,23 @@ import { SaveManager } from '../systems/SaveManager.js';
 import { Exploration } from '../features/exploration/index.js';
 import { ChatClient } from '../systems/ChatClient.js';
 
+// Helper function to get the correct API base URL
+const getApiBaseUrl = () => {
+  const currentHost = window.location.hostname;
+  
+  // For local development, always use port 8889 (Netlify dev server)
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return `${window.location.protocol}//${currentHost}:8889`;
+  } else if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
+    return window.location.origin;
+  } else {
+    return window.location.origin;
+  }
+};
+
+// Helper to get auth token for API calls
+const getAuthToken = () => (window).__authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+
 export const UI = {
   elements: {},
 
@@ -35,7 +52,6 @@ export const UI = {
       clock: $('clock'),
       saveBtn: $('saveBtn'),
       exitBtn: $('exitBtn'),
-      themeToggleBtn: $('themeToggleBtn'),
       audioToggleBtn: $('audioToggleBtn'),
       ambienceVolume: $('ambienceVolume'),
       sfxVolume: $('sfxVolume'),
@@ -60,14 +76,21 @@ export const UI = {
     const lbl = document.getElementById('exploreBtnLabel');
     if (lbl) lbl.textContent = 'Explore';
     try { Exploration.attachGroundDropHandlers(); } catch {}
+
+    // Robustly handle List Item button via delegation in case of dynamic DOM
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('#listItemBtn');
+      if (btn) {
+        e.preventDefault();
+        this.listItemForSale();
+      }
+    });
   },
 
   showLogin() {
     const existing = document.getElementById('authModal');
     if (existing) { 
       existing.hidden = false; 
-      // Refresh server status when reopening
-      this.checkServerStatus();
       return; 
     }
     const modal = document.createElement('div');
@@ -76,31 +99,6 @@ export const UI = {
     modal.innerHTML = `
       <div class="auth-dialog" role="dialog" aria-modal="true">
         <h2>Sign In</h2>
-        
-        <!-- Server Status Indicators -->
-        <div class="server-status">
-          <div class="status-row">
-            <span class="status-label">Web Server:</span>
-            <div class="status-indicator" id="webStatus">
-              <div class="status-dot"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Auth Server:</span>
-            <div class="status-indicator" id="authServerStatus">
-              <div class="status-dot"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Chat Server:</span>
-            <div class="status-indicator" id="chatServerStatus">
-              <div class="status-dot"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-        </div>
         
         <div class="auth-row"><input id="authUser" type="text" placeholder="Username" autocomplete="username"/></div>
         <div class="auth-row"><input id="authPass" type="password" placeholder="Password" autocomplete="current-password"/></div>
@@ -113,14 +111,13 @@ export const UI = {
       </div>`;
     document.body.appendChild(modal);
     
-    // Start checking server status
-    this.checkServerStatus();
     
     const status = modal.querySelector('#authStatus');
     const setStatus = (t) => { if (status) status.textContent = t; };
     const getCreds = () => ({ username: modal.querySelector('#authUser')?.value?.trim(), password: modal.querySelector('#authPass')?.value || '' });
     const authFetch = async (path, body) => {
-      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const url = `${getApiBaseUrl()}${path}`;
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       return res.json();
     };
     const onLogin = async () => {
@@ -131,6 +128,8 @@ export const UI = {
         if (out?.token) { 
           localStorage.setItem('authToken', out.token); 
           localStorage.setItem('playerName', c.username);
+          // Clear any previous chat player id when logging in as a different user
+          try { localStorage.removeItem('chatPlayerId'); } catch {}
           setStatus('Signed in'); 
           modal.hidden = true; 
         }
@@ -156,89 +155,6 @@ export const UI = {
     modal.querySelector('#authClose')?.addEventListener('click', () => { modal.hidden = true; });
   },
 
-  async checkServerStatus() {
-    const updateStatus = (elementId, status, text) => {
-      const indicator = document.getElementById(elementId);
-      if (!indicator) return;
-      
-      const dot = indicator.querySelector('.status-dot');
-      const textEl = indicator.querySelector('.status-text');
-      
-      // Remove existing status classes
-      dot.classList.remove('status-online', 'status-offline', 'status-checking');
-      dot.classList.add(`status-${status}`);
-      textEl.textContent = text;
-    };
-
-    // Check Web Server (always online if we can load the page)
-    updateStatus('webStatus', 'online', 'Connected');
-
-    // Check Auth Server
-    try {
-      updateStatus('authServerStatus', 'checking', 'Checking...');
-      const currentHost = window.location.hostname;
-      const authUrl = currentHost.includes('ngrok') 
-        ? '/api/me' 
-        : '/api/me';
-      
-      const response = await fetch(authUrl, {
-        method: 'GET',
-        headers: { 'Authorization': 'Bearer invalid-token' }
-      });
-      
-      // We expect a 401 response for invalid token, which means server is working
-      if (response.status === 401 || response.status === 200) {
-        updateStatus('authServerStatus', 'online', 'Connected');
-      } else {
-        updateStatus('authServerStatus', 'offline', 'Error');
-      }
-    } catch (error) {
-      console.error('Auth server check failed:', error);
-      updateStatus('authServerStatus', 'offline', 'Offline');
-    }
-
-    // Check Chat Server
-    try {
-      updateStatus('chatServerStatus', 'checking', 'Checking...');
-      
-      // Import ChatClient to test connection
-      const { ChatClient } = await import('../systems/ChatClient.js');
-      const testChat = new ChatClient();
-      
-      let connected = false;
-      let timeout;
-      
-      const checkPromise = new Promise((resolve) => {
-        testChat.onStatus((status) => {
-          if (status === 'online') {
-            connected = true;
-            clearTimeout(timeout);
-            testChat.ws?.close();
-            resolve(true);
-          }
-        });
-        
-        testChat.connect();
-        
-        // Timeout after 5 seconds
-        timeout = setTimeout(() => {
-          testChat.ws?.close();
-          resolve(false);
-        }, 5000);
-      });
-      
-      const result = await checkPromise;
-      
-      if (result) {
-        updateStatus('chatServerStatus', 'online', 'Connected');
-      } else {
-        updateStatus('chatServerStatus', 'offline', 'Offline');
-      }
-    } catch (error) {
-      console.error('Chat server check failed:', error);
-      updateStatus('chatServerStatus', 'offline', 'Offline');
-    }
-  },
 
   
 
@@ -297,65 +213,6 @@ export const UI = {
     });
   },
 
-  toggleTheme() {
-    const current = document.body.getAttribute('data-theme') || 'dark';
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-theme', next);
-    localStorage.setItem('gameTheme', next);
-    
-    // Update all theme toggle buttons (login screen and settings)
-    this.updateThemeToggleUI(next);
-    
-    // Auto-save when theme changes
-    try {
-      import('../systems/SaveManager.js').then(({ SaveManager }) => {
-        SaveManager.debouncedSave();
-      });
-    } catch {}
-  },
-
-  updateThemeToggleUI(theme) {
-    const buttons = [
-      this.elements.themeToggleBtn,
-      document.getElementById('loginThemeToggle')
-    ].filter(Boolean);
-    
-    buttons.forEach(btn => {
-      if (theme === 'dark') {
-        btn.title = 'Switch to Light Theme';
-        btn.setAttribute('aria-label', 'Switch to Light Theme');
-      } else {
-        btn.title = 'Switch to Dark Theme';
-        btn.setAttribute('aria-label', 'Switch to Dark Theme');
-      }
-    });
-    
-    // Debug: Log theme change
-    console.log(`Theme switched to: ${theme}`);
-    
-    // Verify critical CSS variables are defined
-    this.verifyThemeVariables();
-  },
-
-  verifyThemeVariables() {
-    const criticalVars = [
-      '--bg-primary', '--bg-secondary', '--bg-panel',
-      '--text-primary', '--text-secondary',
-      '--border-primary', '--border-highlight'
-    ];
-    
-    const styles = getComputedStyle(document.body);
-    const missing = criticalVars.filter(varName => {
-      const value = styles.getPropertyValue(varName).trim();
-      return !value || value === '';
-    });
-    
-    if (missing.length > 0) {
-      console.warn('Missing CSS variables:', missing);
-    } else {
-      console.log('All critical theme variables are defined');
-    }
-  },
 
 
 
@@ -531,12 +388,30 @@ export const UI = {
       } catch (error) {
         console.error('Failed to save before logout:', error);
       }
+      // Notify chat server that this player is leaving so they're removed from active players immediately
+      try {
+        const chatPlayerId = localStorage.getItem('chatPlayerId');
+        const playerName = localStorage.getItem('playerName');
+        if (chatPlayerId) {
+          const leaveUrl = `${getApiBaseUrl()}/api/chat/leave`;
+          console.log('Notifying chat leave at:', leaveUrl, { chatPlayerId, playerName });
+          await fetch(leaveUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId: chatPlayerId, playerName })
+          });
+          console.log('Chat leave notified');
+        }
+      } catch (e) {
+        console.warn('Failed to notify chat leave:', e);
+      }
+
       try { localStorage.removeItem('authToken'); } catch {}
       try { localStorage.removeItem('playerName'); } catch {}
+      try { localStorage.removeItem('chatPlayerId'); } catch {}
       // Hard reload to ensure clean boot into login screen
       window.location.reload();
     });
-    if (this.elements.themeToggleBtn) this.elements.themeToggleBtn.addEventListener('click', () => { AudioManager.playButtonClick(); this.toggleTheme(); });
     if (this.elements.audioToggleBtn) this.elements.audioToggleBtn.addEventListener('click', async () => {
       AudioManager.playButtonClick();
       try { await AudioManager.ensureContext()?.resume?.(); } catch {}
@@ -846,7 +721,7 @@ export const UI = {
           if (token) {
             // Delete the entire account from the server
             const currentHost = window.location.hostname;
-            const response = await fetch('/api/account', { 
+            const response = await fetch(`${getApiBaseUrl()}/api/me`, { 
               method: 'DELETE', 
               headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -992,13 +867,22 @@ export const UI = {
     }
 
     const setStatus = (status) => {
-      if (!chatBtn) return;
+      console.log('Chat status update:', status);
+      if (!chatBtn) {
+        console.warn('Chat button not found for status update');
+        return;
+      }
       chatBtn.classList.toggle('online', status === 'online');
       chatBtn.classList.toggle('offline', status !== 'online');
       chatBtn.title = status === 'online' ? 'Global Chat (Online)' : 'Global Chat (Offline)';
+      console.log('Applied chat status classes:', chatBtn.className);
     };
 
+    // Local flag to avoid repeating the connected notification
+    let chatConnectedNotified = false;
+
     const addMessage = (msg) => {
+      console.log('Chat message received:', msg);
       const messageEl = document.createElement('div');
       messageEl.className = `chat-message ${msg.type}`;
       
@@ -1007,6 +891,11 @@ export const UI = {
         minute: '2-digit' 
       });
       
+      // Prepare data attributes for deduplication
+      messageEl.dataset.name = msg.name || '';
+      messageEl.dataset.text = msg.text || '';
+      messageEl.dataset.ts = String(msg.ts || Date.now());
+
       if (msg.type === 'system') {
         messageEl.innerHTML = `<span class="chat-time">${timeStr}</span> <span class="chat-system">${msg.text}</span>`;
       } else if (msg.type === 'chat') {
@@ -1018,6 +907,11 @@ export const UI = {
         return; // Don't add this to chat messages
       }
       
+      // Deduplicate: skip if the last message is identical in name/text
+      const lastMsg = chatMessages ? chatMessages.lastElementChild : null;
+      if (lastMsg && lastMsg.dataset && lastMsg.dataset.name === (msg.name || '') && lastMsg.dataset.text === (msg.text || '')) {
+        return;
+      }
       chatMessages.appendChild(messageEl);
       
       // Auto-scroll to bottom
@@ -1055,14 +949,24 @@ export const UI = {
       const currentPlayerName = localStorage.getItem('playerName') || '';
       console.log('Current player name from localStorage:', currentPlayerName);
       
-      // Update players count in button
+      // Deduplicate by name to avoid duplicates from server
+      const seen = new Set();
+      const uniquePlayers = [];
+      for (const p of players) {
+        const nm = p?.name;
+        if (!nm || seen.has(nm)) continue;
+        seen.add(nm);
+        uniquePlayers.push(p);
+      }
+
+      // Update players count in button (use deduplicated count)
       if (playersCount) {
-        playersCount.textContent = players.length.toString();
+        playersCount.textContent = uniquePlayers.length.toString();
       }
       
       playersContainer.innerHTML = '';
       
-      if (players.length === 0) {
+      if (uniquePlayers.length === 0) {
         const noPlayersEl = document.createElement('div');
         noPlayersEl.className = 'player-item';
         noPlayersEl.textContent = 'No players online';
@@ -1071,8 +975,7 @@ export const UI = {
         playersContainer.appendChild(noPlayersEl);
         return;
       }
-      
-      players.forEach(player => {
+      uniquePlayers.forEach(player => {
         const playerEl = document.createElement('div');
         playerEl.className = 'player-item';
         const isCurrentPlayer = player.name === currentPlayerName;
@@ -1117,38 +1020,54 @@ export const UI = {
       }
     }
 
-    // Initialize chat client
+    // Initialize chat client (HTTP-only mode)
     const chat = new ChatClient({});
+    chat.mode = 'http'; // Force HTTP mode, no WebSocket
     chat.onStatus(setStatus);
     chat.onMessage(addMessage);
     chat.connect();
-    // Optimistically mark online once HTTP fallback is active or WS connects
-    setTimeout(() => {
+    // Check status more frequently to ensure proper detection
+    let statusCheckCount = 0;
+    const statusCheckInterval = setInterval(() => {
       try {
         const info = chat.getDebugInfo?.();
-        if (info && (info.mode === 'http' || info.wsStateText === 'OPEN')) {
+        console.log('Chat status check:', info);
+        if (info && info.mode === 'http' && chat._httpStarted) {
+          console.log('Chat connected in HTTP mode');
           setStatus('online');
+          // show local-only connected notice in chat once per connection
+          try {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages && !chatMessages.querySelector('.connected-notice')) {
+              const msgEl = document.createElement('div');
+              msgEl.className = 'chat-message system connected-notice';
+              msgEl.textContent = 'Connected to Global Chat';
+              chatMessages.appendChild(msgEl);
+              setTimeout(() => { try { if (msgEl.parentNode) msgEl.parentNode.removeChild(msgEl); } catch {} }, 3000);
+            }
+          } catch (e) { console.warn('Could not show connected notice', e); }
+
+          clearInterval(statusCheckInterval);
+        } else if (statusCheckCount > 10) {
+          // After 10 checks (~6 seconds), give up
+          console.log('Chat connection timeout, setting offline');
+          setStatus('offline');
+          clearInterval(statusCheckInterval);
         }
+        statusCheckCount++;
       } catch {}
-    }, 1200);
+    }, 600);
     
     // Store chat instance for debugging
     window.globalChat = chat;
     
-    // Initialize market sync after chat connection
+    // Initialize market sync after chat connection (HTTP mode)
     setTimeout(() => {
-      if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
+      if (window.globalChat && window.globalChat.mode === 'http') {
+        console.log('Initializing market sync...');
         this.initializeMarketSync();
       }
     }, 2000); // Wait 2 seconds for connection to stabilize
-    
-    // Also add backup initialization attempts
-    setTimeout(() => {
-      if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-        console.log('Backup market sync initialization...');
-        this.requestMarketDataFromServer();
-      }
-    }, 5000); // Additional request after 5 seconds
     
     // Debug function for checking market state
     window.debugMarket = () => {
@@ -1271,13 +1190,15 @@ export const UI = {
   },
 
   loadTheme() {
-    const savedTheme = localStorage.getItem('gameTheme') || 'dark'; // Default to dark mode
-    document.body.setAttribute('data-theme', savedTheme);
-    this.updateThemeToggleUI(savedTheme);
-    
+    // Always use dark mode
+    document.body.setAttribute('data-theme', 'dark');
+    localStorage.setItem('gameTheme', 'dark');
   },
 
   updateAudioToggleUI() {},
+
+  // Notification system
+  notify: window.notify,
 
   // Market functionality
   initMarketTabs() {
@@ -1693,33 +1614,41 @@ export const UI = {
 
     console.log('Found listing to remove:', listing);
 
-    // Return items to inventory
-    this.addToInventory(listing.item, listing.quantity);
-
-    // Remove from server listings array
-    if (this.serverMarketListings) {
-      this.serverMarketListings = this.serverMarketListings.filter(l => l.id !== listingId);
-      console.log('Removed from server listings array');
+    const token = getAuthToken();
+    if (!token) {
+      this.setStatus('Please login to remove listings');
+      try { this.showLogin(); } catch {}
+      return;
     }
 
-    // Send removal to server if connected
-    if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-      window.globalChat._send({ 
-        type: 'marketRemove', 
-        listingId: listingId 
-      });
-      console.log('Sent market removal to server:', listingId);
-    } else {
-      console.warn('Chat not connected, removal stored locally only');
-    }
-
-    AudioManager.playButtonClick();
-    this.setStatus(`Removed ${listing.item} from market and returned to inventory`);
-    
-    // Refresh all market displays immediately
-    this.loadMyListings();
-    this.loadMarketListings('equipment');
-    this.loadMarketListings('resources');
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/market/remove`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ listingId })
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          console.warn('Remove failed:', res.status, txt);
+          this.setStatus('Failed to remove listing');
+          return;
+        }
+        // Return items to inventory
+        this.addToInventory(listing.item, listing.quantity);
+        // Remove from local cache
+        this.serverMarketListings = (this.serverMarketListings || []).filter(l => l.id !== listingId);
+        AudioManager.playButtonClick();
+        this.setStatus(`Removed ${listing.item} from market and returned to inventory`);
+        // Refresh all market displays immediately
+        this.loadMyListings();
+        this.loadMarketListings('equipment');
+        this.loadMarketListings('resources');
+      } catch (e) {
+        console.error('Remove API error', e);
+        this.setStatus('Failed to remove listing');
+      }
+    })();
   },
 
   // Get market listings - combine local and server data, excluding current player
@@ -1779,79 +1708,75 @@ export const UI = {
       return;
     }
 
-    console.log('Listing item:', item.name, 'quantity:', quantity, 'current count:', item.count);
+    console.log('Listing item via API:', item.name, 'quantity:', quantity, 'current count:', item.count);
 
-    // Remove items from inventory first
-    item.count -= quantity;
-    if (item.count <= 0) {
-      gameState.inventory[itemIndex] = null;
+    // Require auth
+    const token = getAuthToken();
+    if (!token) {
+      this.setStatus('Please login to list items');
+      try { this.showLogin(); } catch {}
+      return;
     }
-    
-    console.log('After removing from inventory - new count:', item.count);
 
-    // Generate listing for server
-    const currentPlayer = localStorage.getItem('playerName') || 'Unknown';
-    
-    // Generate truly unique ID using timestamp + random + player name
-    const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${currentPlayer}`;
-    
-    const newListing = {
-      id: uniqueId,
-      item: item.name,
-      quantity: quantity,
-      price: price,
-      seller: currentPlayer,
-      timestamp: Date.now(),
-      listerId: currentPlayer,
-      itemType: item.type || null
-    };
-
-    // Add to server listings array
-    if (!this.serverMarketListings) {
-      this.serverMarketListings = [];
-    }
-    this.serverMarketListings.push(newListing);
-    console.log('Added to server listings array');
-
-    // Send to server if connected (but don't block on this)
-    if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-      console.log('WebSocket connected, sending listing to server...');
-      window.globalChat._send({ 
-        type: 'marketListing', 
-        listing: newListing 
-      });
-      console.log('Sent market listing to server:', newListing);
-    } else {
-      console.warn('WebSocket not connected, listing stored locally only');
-    }
-    
-    AudioManager.playButtonClick();
-    this.setStatus(`Listed ${quantity}x ${item.name} for ${price} coins each!`);
-    
-    // Reset form
-    sellItemSelect.value = '';
-    sellQuantity.value = '1';
-    sellPrice.value = '';
-    
-    // Update UI immediately
-    try {
-      if (window.Inventory && window.Inventory.render) {
-        window.Inventory.render();
-      } else if (window.Inventory && window.Inventory.debouncedRender) {
-        window.Inventory.debouncedRender();
+    // Send to server first
+    (async () => {
+      const listBtn = document.getElementById('listItemBtn');
+      if (listBtn) listBtn.disabled = true;
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/market/list`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ item: item.name, quantity, price, itemType: item.type || null })
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          console.warn('List failed:', res.status, txt);
+          this.setStatus('Failed to list item');
+          return;
+        }
+        const data = await res.json();
+        const created = data?.listing;
+        // Now remove items from inventory
+        item.count -= quantity;
+        if (item.count <= 0) {
+          gameState.inventory[itemIndex] = null;
+        }
+        // Update local server listings cache
+        if (!this.serverMarketListings) this.serverMarketListings = [];
+        if (created) {
+          this.serverMarketListings.push(created);
+        } else {
+          // Fallback: refresh from server
+          await this.requestMarketDataFromServer();
+        }
+        AudioManager.playButtonClick();
+        this.setStatus(`Listed ${quantity}x ${item.name} for ${price} coins each!`);
+        // Reset form
+        sellItemSelect.value = '';
+        sellQuantity.value = '1';
+        sellPrice.value = '';
+        // Update UI immediately
+        try {
+          if (window.Inventory && window.Inventory.render) {
+            window.Inventory.render();
+          } else if (window.Inventory && window.Inventory.debouncedRender) {
+            window.Inventory.debouncedRender();
+          }
+        } catch (e) {
+          console.log('Could not update inventory display:', e);
+        }
+        this.populateInventorySelect();
+        // Refresh UI tabs
+        this.loadMarketListings('equipment');
+        this.loadMarketListings('resources');
+        this.switchMarketTab('myListings');
+      } catch (e) {
+        console.error('List API error', e);
+        this.setStatus('Failed to list item');
+      } finally {
+        if (listBtn) listBtn.disabled = false;
       }
-    } catch (e) {
-      console.log('Could not update inventory display:', e);
-    }
-    
-    this.populateInventorySelect();
-    
-    // Refresh market listings immediately
-    this.loadMarketListings('equipment');
-    this.loadMarketListings('resources');
-    
-    // Switch to my listings tab to show the new listing
-    this.switchMarketTab('myListings');
+    })();
   },
 
   buyPlayerItem(listingId, quantityToBuy = 1) {
@@ -1887,70 +1812,74 @@ export const UI = {
       return;
     }
 
-    // Deduct coins
-    gameState.coins = (gameState.coins || 0) - totalCost;
-    
-    // Add items to inventory with proper error handling and preserved type
-    let inventorySuccess = false;
-    try {
-      // Add the quantity to inventory
-      for (let i = 0; i < quantityToBuy; i++) {
-        let singleSuccess = false;
-        // First try using the game's Inventory module with preserved type
-        if (window.Inventory && typeof window.Inventory.addItem === 'function') {
-          console.log('Using Inventory.addItem method with type:', listing.itemType);
-          const result = window.Inventory.addItem(listing.item, listing.itemType || null);
-          singleSuccess = result !== false;
-        } else {
-          console.log('Using fallback addToInventory method with type:', listing.itemType);
-          singleSuccess = this.addToInventoryWithType(listing.item, 1, listing.itemType || null);
-        }
-        
-        if (!singleSuccess) {
-          // If any item failed to add, refund coins and stop
-          gameState.coins += totalCost;
-          this.setStatus('Purchase failed: Inventory full!');
-          return;
-        }
-      }
-      inventorySuccess = true;
-    } catch (e) {
-      console.log('Inventory addition failed:', e);
-      gameState.coins += totalCost;
-      this.setStatus('Purchase failed: Error adding to inventory');
+    // Require auth
+    const token = getAuthToken();
+    if (!token) {
+      this.setStatus('Please login to buy items');
+      try { this.showLogin(); } catch {}
       return;
     }
 
-    // Reduce listing quantity in server data
-    listing.quantity -= quantityToBuy;
-    
-    if (listing.quantity <= 0) {
-      // Remove listing entirely from server listings
-      this.serverMarketListings = (this.serverMarketListings || []).filter(l => l.id !== listingId);
-    }
+    // Attempt purchase via API first
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/market/buy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ listingId, quantity: quantityToBuy })
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          console.warn('Buy failed:', res.status, txt);
+          this.setStatus('Purchase failed');
+          return;
+        }
+        const data = await res.json();
+        // Deduct coins (server is source of truth; client mirrors)
+        gameState.coins = (gameState.coins || 0) - totalCost;
 
-    // Send purchase to server if connected
-    if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-      window.globalChat._send({ 
-        type: 'marketBuy', 
-        listingId,
-        quantity: quantityToBuy,
-        buyerName: currentPlayer
-      });
-    }
+        // Add items to inventory with proper error handling and preserved type
+        try {
+          for (let i = 0; i < quantityToBuy; i++) {
+            let singleSuccess = false;
+            if (window.Inventory && typeof window.Inventory.addItem === 'function') {
+              const result = window.Inventory.addItem(listing.item, listing.itemType || null);
+              singleSuccess = result !== false;
+            } else {
+              singleSuccess = this.addToInventoryWithType(listing.item, 1, listing.itemType || null);
+            }
+            if (!singleSuccess) {
+              // If any item failed to add, restore coins and stop
+              gameState.coins += totalCost;
+              this.setStatus('Purchase failed: Inventory full!');
+              return;
+            }
+          }
+        } catch (e) {
+          console.log('Inventory addition failed:', e);
+          gameState.coins += totalCost;
+          this.setStatus('Purchase failed: Error adding to inventory');
+          return;
+        }
 
-    AudioManager.playButtonClick();
-    const itemText = quantityToBuy === 1 ? listing.item : `${quantityToBuy}x ${listing.item}`;
-    this.setStatus(`Purchased ${itemText} for ${totalCost} coins!`);
-    
-    
-    // Immediately refresh all market displays
-    this.loadMarketListings('equipment'); // Refresh equipment tab
-    this.loadMarketListings('resources'); // Refresh resources tab
-    this.loadMyListings(); // Refresh my listings tab if it's the player's listing
-    this.updateStats(); // Update coin display
-    
-    console.log('Purchase completed. Remaining coins:', gameState.coins);
+        // Update local server listings cache to reflect new quantity
+        listing.quantity -= quantityToBuy;
+        if (listing.quantity <= 0) {
+          this.serverMarketListings = (this.serverMarketListings || []).filter(l => l.id !== listingId);
+        }
+
+        AudioManager.playButtonClick();
+        const itemText = quantityToBuy === 1 ? listing.item : `${quantityToBuy}x ${listing.item}`;
+        this.setStatus(`Purchased ${itemText} for ${totalCost} coins!`);
+        this.loadMarketListings('equipment');
+        this.loadMarketListings('resources');
+        this.loadMyListings();
+        this.updateStats();
+      } catch (e) {
+        console.error('Buy API error', e);
+        this.setStatus('Purchase failed');
+      }
+    })();
   },
 
   addToInventory(itemName, quantity) {
@@ -2111,8 +2040,8 @@ export const UI = {
     // No longer adding test listings - real player listings only
     console.log('Market initialized - ready for real player listings only');
     
-    // Clean up any existing test listings
-    this.removeAllTestListings();
+    // Always fetch the latest from server on open
+    this.requestMarketDataFromServer();
   },
 
   // Remove all test listings from the market
@@ -2698,43 +2627,59 @@ export const UI = {
     }
   },
 
-  // Request market data from server via chat connection
-  requestMarketDataFromServer() {
-    if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-      console.log('Requesting market data from server...');
-      window.globalChat._send({ type: 'marketRequest' });
-    } else {
-      console.warn('Cannot request market data: chat not connected');
+  // Check if chat is connected (HTTP mode only)
+  isChatConnected() {
+    return window.globalChat && window.globalChat.mode === 'http' && window.globalChat._httpStarted;
+  },
+
+  // Request market data via direct API call
+  async requestMarketDataViaAPI() {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/market/listings`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Market data received via API:', data);
+        // Process market data if available
+        if (data.listings) {
+          this.serverMarketListings = data.listings;
+          console.log('Updated server market listings:', this.serverMarketListings.length, 'items');
+          // Refresh the current market view
+          this.refreshCurrentMarketView();
+        }
+      } else {
+        console.warn('Failed to fetch market data via API:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching market data via API:', error);
     }
   },
 
-  // Initialize market sync with chat server
+  // Request market data from server (HTTP-only mode)
+  requestMarketDataFromServer() {
+    console.log('Requesting market data from server...');
+    // Always use direct API call since we're HTTP-only
+    this.requestMarketDataViaAPI();
+  },
+
+  // Initialize market sync (HTTP-only mode)
   initializeMarketSync() {
-    if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-      console.log('Initializing market sync...');
-      // Request initial market data
-      this.requestMarketDataFromServer();
+    console.log('Initializing market sync...');
+    // Request initial market data
+    this.requestMarketDataFromServer();
+    
+    // Set up periodic refresh for market data (since we're using HTTP polling)
+    if (!this._marketSyncInitialized) {
+      this._marketSyncInitialized = true;
       
-      // Set up listener for market data responses
-      if (!this._marketSyncInitialized) {
-        window.globalChat.onMessage((msg) => {
-          if (msg.type === 'marketData' && msg.listings) {
-            console.log('Received market data from server:', msg.listings.length, 'listings');
-            this.serverMarketListings = msg.listings;
-            
-            // Auto-refresh only the currently visible market tab instead of all tabs
-            this.refreshCurrentMarketView();
-          }
-          
-          // Handle item sold notifications
-          if (msg.type === 'marketPurchase' && msg.listing) {
-            this.handleItemSold(msg);
-          }
-        });
-        this._marketSyncInitialized = true;
-      }
-    } else {
-      console.warn('Cannot initialize market sync: chat not connected');
+      // Refresh market data every 30 seconds
+      this._marketRefreshInterval = setInterval(() => {
+        console.log('Periodic market data refresh...');
+        this.requestMarketDataFromServer();
+      }, 30000);
     }
   },
 

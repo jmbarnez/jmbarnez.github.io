@@ -1,4 +1,7 @@
-const { getUserById } = require('./lib/supabase');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -22,9 +25,23 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Minimal DB check: attempt a trivial query
-    // We pick a non-existent UUID to ensure no data leak but validate connectivity
-    await getUserById('__healthcheck__');
+    // Simple connection test
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase environment variables not configured');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Test with a simple query that doesn't depend on specific data
+    const { error } = await supabase
+      .from('users')
+      .select('id')
+      .limit(1);
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
     return {
       statusCode: 200,
       headers,

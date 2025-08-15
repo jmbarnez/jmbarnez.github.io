@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.55.0",
+    "dotenv": "^17.2.1",
     "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
@@ -32,7 +33,12 @@
     "typescript": "^5.9.2",
     "vite": "^5.4.19"
   },
-  "keywords": ["game", "idle", "browser", "typescript"],
+  "keywords": [
+    "game",
+    "idle",
+    "browser",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC"
 }

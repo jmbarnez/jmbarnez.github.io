@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const crypto = require('crypto');
 const { createUser, getUserByUsername } = require('./lib/supabase');
 
@@ -40,7 +44,15 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    console.log('Register attempt started');
+    console.log('Environment variables:', {
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'MISSING',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING',
+      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING'
+    });
+    
     const { username, password } = JSON.parse(event.body || '{}');
+    console.log('Parsed credentials:', { username: username ? 'PROVIDED' : 'MISSING', password: password ? 'PROVIDED' : 'MISSING' });
     
     if (!username || !password) {
       return {
@@ -84,8 +96,8 @@ exports.handler = async (event, context) => {
     };
     
   } catch (error) {
-    // Log minimal info for debugging without exposing sensitive data
-    console.error('Registration failed');
+    console.error('Registration failed with error:', error.message);
+    console.error('Full error:', error);
     return {
       statusCode: 500,
       headers,

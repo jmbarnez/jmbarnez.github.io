@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { deleteUser } = require('./lib/supabase');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
@@ -20,7 +21,7 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type, authorization',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
   };
@@ -29,7 +30,7 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'DELETE') {
     return { 
       statusCode: 405, 
       headers, 
@@ -58,44 +59,34 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Validate payload
-    const rawBody = event.body || '{}';
-    // Optional size guard (512KB)
-    if (Buffer.byteLength(rawBody, 'utf8') > 512 * 1024) {
+    if (event.httpMethod === 'DELETE') {
+      // Delete user account
+      await deleteUser(claims.sub);
       return {
-        statusCode: 413,
+        statusCode: 200,
         headers,
-        body: JSON.stringify({ error: 'Save too large' })
+        body: JSON.stringify({ message: 'Account deleted successfully' })
       };
     }
 
-    const parsed = JSON.parse(rawBody);
-    if (!parsed || typeof parsed.save !== 'object' || parsed.save === null) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Invalid payload' })
-      };
-    }
-
-    const { save } = parsed;
-
-    const { setSaveData } = require('./lib/supabase');
-    
-    await setSaveData(claims.sub, save);
-    
+    // GET method - return user info
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ ok: true })
+      body: JSON.stringify({ 
+        user: { 
+          id: claims.sub, 
+          username: claims.username 
+        }
+      })
     };
     
   } catch (error) {
-    console.error('Save storage failed');
+    console.error('Auth verification failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to save data' })
+      body: JSON.stringify({ error: 'Authentication failed' })
     };
   }
 };

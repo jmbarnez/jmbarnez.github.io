@@ -17,11 +17,24 @@ export class ChatClient {
     this._completedUrlCycle = false;
 
     // HTTP fallback state
-    this.httpBase = `${window.location.origin}/api/chat`;
+    this.httpBase = `${this._getApiBaseUrl()}/api/chat`;
     this.httpPlayerId = null;
     this.httpPollTimers = { messages: null, players: null };
     this.httpLastTs = 0;
     this._httpStarted = false;
+  }
+
+  _getApiBaseUrl() {
+    const currentHost = window.location.hostname;
+    
+    // For local development, always use port 8889 (Netlify dev server)
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return `${window.location.protocol}//${currentHost}:8889`;
+    } else if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
+      return window.location.origin;
+    } else {
+      return window.location.origin;
+    }
   }
 
   _getWebSocketUrl() {
@@ -39,26 +52,22 @@ export class ChatClient {
       return wsUrl;
     }
     
-    // Check if we're running through Vite dev server (port 8000)
-    if (port === '8000' || (hostname === 'localhost' && port === '8000')) {
+    // Check if we're running through Netlify dev server (port 8889)
+    if (port === '8889' || (hostname === 'localhost' && port === '8889')) {
       const wsUrl = `ws://${hostname}:${port}/ws`;
       console.log('Using Vite proxy WebSocket URL:', wsUrl);
       return wsUrl;
     }
     
-    // Local development - direct connection to chat server
+    // Local development - use Netlify Functions for chat (no separate WebSocket server)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const chatPort = import.meta.env?.VITE_CHAT_PORT || 3001;
-      const wsUrl = `ws://localhost:${chatPort}`;
-      console.log('Using direct WebSocket URL:', wsUrl);
-      return wsUrl;
+      console.log('Using local development - WebSocket not available, will fallback to HTTP');
+      return null; // Force HTTP mode
     }
     
-    // Network access (like 192.168.x.x) - try direct connection first
-    const chatPort = import.meta.env?.VITE_CHAT_PORT || 3001;
-    const wsUrl = `ws://${hostname}:${chatPort}`;
-    console.log('Using network WebSocket URL:', wsUrl);
-    return wsUrl;
+    // Production - use Netlify Functions for chat
+    console.log('Using production - WebSocket not available, will fallback to HTTP');
+    return null; // Force HTTP mode
   }
 
   _getFallbackUrls() {
@@ -75,22 +84,10 @@ export class ChatClient {
     
     // For localhost/development, try multiple options
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      // Try Vite proxy first if we're on port 8000
-      if (port === '8000') {
-        fallbacks.push(`ws://localhost:8000/ws`);
-      }
-      // Try direct connection to chat server
-      fallbacks.push(`ws://localhost:3001`);
-      // Try alternative port if environment variable is set
-      if (import.meta.env?.VITE_CHAT_PORT && import.meta.env.VITE_CHAT_PORT !== '3001') {
-        fallbacks.push(`ws://localhost:${import.meta.env.VITE_CHAT_PORT}`);
-      }
+      // No WebSocket fallbacks - using Netlify Functions for chat
+      // This will force HTTP mode immediately
     } else {
-      // For network access, try direct connection
-      fallbacks.push(`ws://${hostname}:3001`);
-      if (import.meta.env?.VITE_CHAT_PORT && import.meta.env.VITE_CHAT_PORT !== '3001') {
-        fallbacks.push(`ws://${hostname}:${import.meta.env.VITE_CHAT_PORT}`);
-      }
+      // No WebSocket fallbacks for production - using Netlify Functions
     }
     
     return fallbacks;
@@ -99,6 +96,21 @@ export class ChatClient {
   connect() {
     if (this.mode === 'http') {
       this._startHttpMode();
+      return;
+    }
+
+    // One-time preflight: if HTTP chat endpoint is reachable, prefer HTTP mode
+    if (!this._preflightChecked) {
+      this._preflightChecked = true;
+      this._preflightForHttp().then((shouldUseHttp) => {
+        if (shouldUseHttp) {
+          this.mode = 'http';
+          this._startHttpMode();
+        } else {
+          // Proceed with WebSocket connection path
+          this.connect();
+        }
+      });
       return;
     }
 
@@ -161,6 +173,19 @@ export class ChatClient {
       this._emitStatus('offline');
       try { this.ws.close(); } catch {}
     });
+  }
+
+  // Quick probe to detect if HTTP-based chat endpoints are available
+  async _preflightForHttp() {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 1500);
+      const res = await fetch(`${this.httpBase}/players`, { cache: 'no-store', signal: controller.signal });
+      clearTimeout(t);
+      return !!res?.ok;
+    } catch {
+      return false;
+    }
   }
 
   onMessage(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -293,17 +318,67 @@ export class ChatClient {
 
   async _httpJoin() {
     try {
+      // Allow reuse of existing chat player id to avoid duplicate join rows
+      const storedId = localStorage.getItem('chatPlayerId') || null;
+      const body = storedId ? { name: this.name, playerId: storedId } : { name: this.name };
       const res = await fetch(`${this.httpBase}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: this.name })
+        body: JSON.stringify(body)
       });
-      if (!res.ok) throw new Error(`join failed: ${res.status}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Join failed:', res.status, errorText);
+        
+        // Try to parse error response for more details
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error('Join error details:', errorData);
+        } catch (e) {
+          console.error('Raw error response:', errorText);
+        }
+        
+        throw new Error(`join failed: ${res.status}`);
+      }
       const data = await res.json();
+      console.log('Join successful, received data:', data);
+      
+      if (!data.playerId) {
+        console.error('Join response missing playerId:', data);
+        throw new Error('Join response missing playerId');
+      }
+      
       this.httpPlayerId = data.playerId;
-      this.httpLastTs = Date.now();
+      // Persist chat player id for reuse across reloads to avoid duplicate joins
+      try { if (this.httpPlayerId) localStorage.setItem('chatPlayerId', this.httpPlayerId); } catch {}
+      // Set timestamp to just before the join message to ensure we get it in polling
+      this.httpLastTs = (data.message?.ts || Date.now()) - 1000;
+      console.log('Set player ID:', this.httpPlayerId, 'and timestamp:', this.httpLastTs);
+      
+      // Note: do NOT immediately emit the join message here to avoid duplicate display
+      // The message will be returned by the regular polling loop and rendered once.
+      
+      // Immediately request player list to see current player
+      setTimeout(() => this._requestPlayersList(), 500);
     } catch (e) {
       throw e;
+    }
+  }
+
+  async _requestPlayersList() {
+    try {
+      const res = await fetch(`${this.httpBase}/players`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.players)) {
+        const packet = { type: 'players', players: data.players, ts: data.ts || Date.now() };
+        console.log('Manual player list request:', packet);
+        try { 
+          this.listeners.forEach((fn) => fn(packet)); 
+        } catch {}
+      }
+    } catch (e) {
+      console.error('Failed to request players list:', e);
     }
   }
 
@@ -313,17 +388,26 @@ export class ChatClient {
       this.httpPollTimers.messages = setInterval(async () => {
         try {
           const url = `${this.httpBase}/messages?since=${this.httpLastTs}`;
+          console.log('Polling messages from:', url);
           const res = await fetch(url);
-          if (!res.ok) return;
+          if (!res.ok) {
+            console.error('Message polling failed:', res.status);
+            return;
+          }
           const data = await res.json();
+          console.log('Message polling response:', data);
           if (Array.isArray(data.messages)) {
+            console.log('Processing', data.messages.length, 'messages');
             data.messages.forEach((m) => {
-              try { this.listeners.forEach((fn) => fn(m)); } catch {}
+              console.log('Emitting message:', m);
+              try { this.listeners.forEach((fn) => fn(m)); } catch (e) {
+                console.error('Error calling message listener:', e);
+              }
             });
           }
           if (typeof data.ts === 'number') this.httpLastTs = data.ts;
         } catch (e) {
-          // Silent fail to avoid log spam
+          console.error('Message polling error:', e);
         }
       }, 2000);
     }
@@ -332,15 +416,25 @@ export class ChatClient {
     if (!this.httpPollTimers.players) {
       this.httpPollTimers.players = setInterval(async () => {
         try {
+          console.log('Polling players from:', `${this.httpBase}/players`);
           const res = await fetch(`${this.httpBase}/players`);
-          if (!res.ok) return;
+          if (!res.ok) {
+            console.error('Player polling failed:', res.status);
+            return;
+          }
           const data = await res.json();
+          console.log('Player polling response:', data);
           if (Array.isArray(data.players)) {
             const packet = { type: 'players', players: data.players, ts: data.ts || Date.now() };
-            try { this.listeners.forEach((fn) => fn(packet)); } catch {}
+            console.log('Emitting players packet:', packet);
+            try { 
+              this.listeners.forEach((fn) => fn(packet)); 
+            } catch (e) {
+              console.error('Error calling player listener:', e);
+            }
           }
         } catch (e) {
-          // Silent fail
+          console.error('Player polling error:', e);
         }
       }, 5000);
     }
@@ -348,14 +442,61 @@ export class ChatClient {
 
   async _httpSendMessage(text) {
     try {
-      if (!this.httpPlayerId) return;
-      await fetch(`${this.httpBase}/message`, {
+      if (!this.httpPlayerId) {
+        console.error('Cannot send message: no player ID set');
+        return;
+      }
+      console.log('Sending message with player ID:', this.httpPlayerId);
+      const response = await fetch(`${this.httpBase}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: this.httpPlayerId, text })
+        body: JSON.stringify({ 
+          playerId: this.httpPlayerId, 
+          text: text,
+          playerName: this.name 
+        })
       });
+      
+      if (!response.ok) {
+        console.error('Failed to send message:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+      } else {
+        console.log('Message sent successfully');
+        // Immediately poll for new messages to get the sent message
+        setTimeout(() => {
+          console.log('Requesting immediate message update after send...');
+          this._requestMessages();
+        }, 100);
+      }
     } catch (e) {
-      // Ignore send errors in polling mode
+      console.error('Error sending message:', e);
+    }
+  }
+
+  async _requestMessages() {
+    try {
+      const url = `${this.httpBase}/messages?since=${this.httpLastTs}`;
+      console.log('Manual message request from:', url);
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error('Manual message request failed:', res.status);
+        return;
+      }
+      const data = await res.json();
+      console.log('Manual message response:', data);
+      if (Array.isArray(data.messages)) {
+        console.log('Processing', data.messages.length, 'messages from manual request');
+        data.messages.forEach((m) => {
+          console.log('Emitting message from manual request:', m);
+          try { this.listeners.forEach((fn) => fn(m)); } catch (e) {
+            console.error('Error calling message listener from manual request:', e);
+          }
+        });
+      }
+      if (typeof data.ts === 'number') this.httpLastTs = data.ts;
+    } catch (e) {
+      console.error('Manual message request error:', e);
     }
   }
 }

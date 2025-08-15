@@ -159,6 +159,9 @@ function initializeServerStatusPanel() {
 }
 import { UI } from './ui/UI.js';
 import { gameState, loadSavedState } from './state/gameState.js';
+
+// Make UI globally available for inline onclick handlers
+window.UI = UI;
 import { Inventory } from './features/inventory/index.js';
 import { Equipment, setInventory } from './features/equipment/index.js';
 import { Exploration } from './features/exploration/index.js';
@@ -171,6 +174,7 @@ import { SaveManager } from './systems/SaveManager.js';
 import { validateConfig } from './config/gameConfig.js';
 import { logger } from './utils/logger.js';
 import { ErrorHandler } from './utils/errorHandler.js';
+import { NotificationManager } from './systems/NotificationManager.js';
 
 function bootGame() {
   // Initialize error handling first
@@ -188,6 +192,26 @@ function bootGame() {
   loadSavedState().then(() => {
     logger.debug('Initializing UI systems...');
     UI.init();
+    
+    // Make notification manager globally available
+    window.notify = NotificationManager;
+    
+    // Test notification system (remove this in production)
+    setTimeout(() => {
+      NotificationManager.success('Welcome!', 'Dark mode is now the standard theme');
+      setTimeout(() => {
+        NotificationManager.info('Notification System', 'Universal notifications are now active in the bottom left');
+      }, 2000);
+    }, 1000);
+    
+    // Add demo functions to window for testing (remove in production)
+    window.testNotifications = () => {
+      NotificationManager.success('Success', 'This is a success notification!');
+      setTimeout(() => NotificationManager.error('Error', 'This is an error notification!'), 500);
+      setTimeout(() => NotificationManager.warning('Warning', 'This is a warning notification!'), 1000);
+      setTimeout(() => NotificationManager.info('Info', 'This is an info notification!'), 1500);
+    };
+    
     try { UI.initChat?.(); } catch {}
     
     logger.debug('Initializing inventory system...');
@@ -285,6 +309,26 @@ function bootGame() {
     ErrorHandler.handleError(error, { component: 'main', operation: 'loadSavedState' });
     // Continue with default state if loading fails
     UI.init();
+    
+    // Make notification manager globally available
+    window.notify = NotificationManager;
+    
+    // Test notification system (remove this in production)
+    setTimeout(() => {
+      NotificationManager.success('Welcome!', 'Dark mode is now the standard theme');
+      setTimeout(() => {
+        NotificationManager.info('Notification System', 'Universal notifications are now active in the bottom left');
+      }, 2000);
+    }, 1000);
+    
+    // Add demo functions to window for testing (remove in production)
+    window.testNotifications = () => {
+      NotificationManager.success('Success', 'This is a success notification!');
+      setTimeout(() => NotificationManager.error('Error', 'This is an error notification!'), 500);
+      setTimeout(() => NotificationManager.warning('Warning', 'This is a warning notification!'), 1000);
+      setTimeout(() => NotificationManager.info('Info', 'This is an info notification!'), 1500);
+    };
+    
     try { UI.initChat?.(); } catch {}
     Inventory.init();
     setInventory(Inventory);
@@ -543,17 +587,22 @@ function showLoginScreen() {
     confirmPassword: document.getElementById('register-confirm')?.value || ''
   });
   
-  const authFetch = async (path, body) => {
+  // Helper function to get the correct API base URL
+  const getApiBaseUrl = () => {
     const currentHost = window.location.hostname;
-    let baseUrl;
     
-    // If accessing via ngrok, use the same domain (Vite will proxy /api requests)
-    if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
-      baseUrl = window.location.origin;
+    // For local development, always use port 8889 (Netlify dev server)
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return `${window.location.protocol}//${currentHost}:8889`;
+    } else if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
+      return window.location.origin;
     } else {
-      baseUrl = window.location.origin;
+      return window.location.origin;
     }
-    
+  };
+
+  const authFetch = async (path, body) => {
+    const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${path}`;
     console.log('Making auth request to:', url);
     console.log('Request body:', body);
@@ -565,9 +614,24 @@ function showLoginScreen() {
     });
     
     console.log('Response status:', res.status);
-    const responseData = await res.json();
-    console.log('Response data:', responseData);
-    return responseData;
+    console.log('Response headers:', res.headers.get('content-type'));
+    
+    const responseText = await res.text();
+    console.log('Raw response:', responseText);
+    
+    if (!responseText) {
+      throw new Error('Empty response from server');
+    }
+    
+    try {
+      const responseData = JSON.parse(responseText);
+      console.log('Response data:', responseData);
+      return responseData;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Response was:', responseText);
+      throw new Error('Invalid JSON response from server');
+    }
   };
   
   const onLogin = async () => {
@@ -750,20 +814,7 @@ function showLoginScreen() {
     if (e.key === 'Enter') onRegister(); 
   });
   
-  // Login screen controls
-  document.getElementById('loginThemeToggle')?.addEventListener('click', () => {
-    const current = document.body.getAttribute('data-theme') || 'dark';
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-theme', next);
-    localStorage.setItem('gameTheme', next);
-    
-    // Update button title
-    const btn = document.getElementById('loginThemeToggle');
-    if (btn) {
-      btn.title = next === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme';
-      btn.setAttribute('aria-label', next === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme');
-    }
-  });
+  // Light mode switch on login screen removed per request
   
   document.getElementById('loginMuteToggle')?.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
@@ -783,10 +834,39 @@ function showLoginScreen() {
   });
 }
 
+
 document.addEventListener('DOMContentLoaded', initGame);
+
+// Simple shared helper to resolve API base URL across dev/prod
+function getApiBaseUrl() {
+  const currentHost = window.location.hostname;
+  // Local dev: Netlify dev server on port 8889
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return `${window.location.protocol}//${currentHost}:8889`;
+  } else if (currentHost.includes('ngrok-free.app') || currentHost.includes('ngrok.app')) {
+    return window.location.origin;
+  } else {
+    return window.location.origin;
+  }
+}
 
 // Server status checking function
 async function checkServerStatus() {
+  console.log('=== Server Status Check Starting ===');
+  // Local safe resolution for API base URL to avoid undefined errors
+  const resolveApiBase = () => {
+    if (typeof getApiBaseUrl === 'function') {
+      return getApiBaseUrl();
+    }
+    const currentHost = window.location.hostname;
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return `${window.location.protocol}//${currentHost}:8889`;
+    }
+    return window.location.origin;
+  };
+  const apiBase = resolveApiBase();
+  console.log('API Base URL:', apiBase);
+  
   const updateStatus = (elementId, status, text) => {
     const indicator = document.getElementById(elementId);
     if (!indicator) return;
@@ -801,16 +881,14 @@ async function checkServerStatus() {
     indicator.classList.remove('online', 'offline', 'checking');
     indicator.classList.add(status);
     textEl.textContent = text;
+    console.log(`Status update: ${elementId} -> ${status} (${text})`);
   };
 
   // Check Web Server (always online if we can load the page)
-  updateStatus('webStatus', 'online', 'Connected');
-  // Panel advanced mirror
   updateStatus('adv-web-status', 'online', 'Connected');
 
   // Check Auth Server
   try {
-    updateStatus('authServerStatus', 'checking', 'Checking...');
     const authUrl = '/api/me';
     
     const savedToken = (window).__authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
@@ -827,43 +905,30 @@ async function checkServerStatus() {
       // Unauthorized still means the endpoint is reachable
       authStatus = 'online'; authText = 'Reachable';
     }
-    updateStatus('authServerStatus', authStatus, authText);
     // Panel mirrors
     updateStatus('simple-auth-status', authStatus, authText);
     updateStatus('adv-auth-status', authStatus, authText);
   } catch (error) {
     console.error('Auth server check failed:', error);
-    updateStatus('authServerStatus', 'offline', 'Offline');
     updateStatus('simple-auth-status', 'offline', 'Offline');
     updateStatus('adv-auth-status', 'offline', 'Offline');
   }
 
-  // Check Chat Server (Netlify only, no WebSocket)
-  try {
-    updateStatus('chatServerStatus', 'checking', 'Checking...');
-    // Rely on HTTP fallback to ensure Netlify deploy shows connected
-    const chatPlayers = await fetch('/api/chat/players', { cache: 'no-store' });
-    if (chatPlayers.ok) {
-      updateStatus('chatServerStatus', 'online', 'Connected');
-      updateStatus('adv-chat-status', 'online', 'Connected');
-    } else {
-      updateStatus('chatServerStatus', 'offline', 'Offline');
-      updateStatus('adv-chat-status', 'offline', 'Offline');
-    }
-  } catch (error) {
-    updateStatus('chatServerStatus', 'offline', 'Offline');
-    updateStatus('adv-chat-status', 'offline', 'Offline');
-  }
+
   
   // Check Database connectivity (Supabase via function)
   try {
-    const dbRes = await fetch('/api/health/db', { cache: 'no-store' });
+    const dbUrl = `${getApiBaseUrl()}/api/health/db`;
+    console.log('Checking DB health at:', dbUrl);
+    const dbRes = await fetch(dbUrl, { cache: 'no-store' });
+    console.log('DB health response:', dbRes.status, dbRes.statusText);
     if (dbRes.ok) {
       updateStatus('adv-db-status', 'online', 'Connected');
     } else {
       updateStatus('adv-db-status', 'offline', 'Offline');
     }
-  } catch {
+  } catch (error) {
+    console.error('DB health check error:', error);
     updateStatus('adv-db-status', 'offline', 'Offline');
   }
 
@@ -871,22 +936,53 @@ async function checkServerStatus() {
   try {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const saveRes = await fetch('/api/save', { headers });
+    const saveUrl = `${getApiBaseUrl()}/api/save`;
+    console.log('Checking save at:', saveUrl, 'with token:', !!token);
+    const saveRes = await fetch(saveUrl, { headers });
+    console.log('Save response:', saveRes.status, saveRes.statusText);
     if (saveRes.ok || saveRes.status === 401) {
       updateStatus('adv-save-status', 'online', 'Connected');
     } else {
       updateStatus('adv-save-status', 'offline', 'Offline');
     }
-  } catch {
+  } catch (error) {
+    console.error('Save check error:', error);
     updateStatus('adv-save-status', 'offline', 'Offline');
   }
 
-  // Market: ping list endpoint (if implemented); otherwise consider same as save
+  // Market: ping list endpoint
   try {
-    updateStatus('adv-market-status', 'online', 'Connected');
-  } catch {
+    const listUrl = `${getApiBaseUrl()}/api/market/listings`;
+    console.log('Checking market at:', listUrl);
+    const listRes = await fetch(listUrl, { cache: 'no-store' });
+    console.log('Market response:', listRes.status, listRes.statusText);
+    if (listRes.ok) {
+      updateStatus('adv-market-status', 'online', 'Connected');
+    } else {
+      updateStatus('adv-market-status', 'offline', 'Offline');
+    }
+  } catch (error) {
+    console.error('Market check error:', error);
     updateStatus('adv-market-status', 'offline', 'Offline');
   }
+
+  // Check Chat Server (Netlify only, no WebSocket)
+  try {
+    const chatUrl = `${getApiBaseUrl()}/api/chat/players`;
+    console.log('Checking chat at:', chatUrl);
+    const chatPlayers = await fetch(chatUrl, { cache: 'no-store' });
+    console.log('Chat response:', chatPlayers.status, chatPlayers.statusText);
+    if (chatPlayers.ok) {
+      updateStatus('adv-chat-status', 'online', 'Connected');
+    } else {
+      updateStatus('adv-chat-status', 'offline', 'Offline');
+    }
+  } catch (error) {
+    console.error('Chat check error:', error);
+    updateStatus('adv-chat-status', 'offline', 'Offline');
+  }
+
+  console.log('=== Server Status Check Complete ===');
 }
 
 function initializeChangelog() {

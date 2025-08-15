@@ -1,13 +1,11 @@
-// Simple HTTP-based chat for Netlify Functions
-// Since Netlify doesn't support persistent WebSocket connections,
-// we'll use HTTP endpoints with polling for real-time-ish chat
-
-// In a production setup, you'd want to use:
-// - Supabase Realtime for WebSocket-like functionality
-// - Or a dedicated WebSocket service like Pusher/Socket.io
-
-let messages = []; // In-memory storage (will reset on function restart)
-let players = new Map(); // Player list
+// Database-only chat for Netlify Functions
+const { 
+  addChatMessage, 
+  getChatMessages, 
+  addPlayer, 
+  getActivePlayers, 
+  updatePlayerActivity 
+} = require('./lib/supabase');
 
 function sanitize(text) {
   if (typeof text !== 'string') return '';
@@ -21,6 +19,13 @@ function generateId() {
 }
 
 exports.handler = async (event, context) => {
+  console.log('=== Chat Function Call ===');
+  console.log('Path:', event.path);
+  console.log('Method:', event.httpMethod);
+  console.log('Environment check:');
+  console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'MISSING');
+  console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
+  
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type, authorization',
@@ -39,77 +44,125 @@ exports.handler = async (event, context) => {
 
   try {
     if (httpMethod === 'GET' && action === 'messages') {
-      // Get recent messages
+      // Get recent messages from database
       const since = parseInt(event.queryStringParameters?.since || '0');
-      const recentMessages = messages.filter(msg => msg.ts > since);
+      console.log('Messages request - since:', since);
       
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          messages: recentMessages,
-          ts: Date.now()
-        })
-      };
+      try {
+        const dbMessages = await getChatMessages(since);
+        console.log('Found', dbMessages.length, 'messages from database');
+        
+        // Convert database format to client format
+        const messages = dbMessages.map(msg => ({
+          type: msg.type,
+          text: msg.text,
+          name: msg.player_name,
+          id: msg.player_id,
+          ts: new Date(msg.created_at).getTime()
+        }));
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            messages: messages,
+            ts: Date.now()
+          })
+        };
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: 'Failed to fetch messages' })
+        };
+      }
     }
 
     if (httpMethod === 'GET' && action === 'players') {
-      // Get current players
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          players: Array.from(players.values()),
-          ts: Date.now()
-        })
-      };
+      // Get active players from database
+      try {
+        const activePlayers = await getActivePlayers();
+        console.log('Found', activePlayers.length, 'active players from database');
+        
+        // Convert database format to client format
+        const players = activePlayers.map(player => ({
+          id: player.player_id,
+          name: player.player_name
+        }));
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            players: players,
+            ts: Date.now()
+          })
+        };
+      } catch (error) {
+        console.error('Error fetching players:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: 'Failed to fetch players' })
+        };
+      }
     }
 
     if (httpMethod === 'POST' && action === 'join') {
-      // Player joining chat
-      const { name } = JSON.parse(body || '{}');
-      const playerId = generateId();
-      const playerName = sanitize(name) || `Adventurer-${playerId}`;
-      
-      players.set(playerId, { id: playerId, name: playerName });
-      
-      // Add system message
-      const joinMessage = {
-        type: 'system',
-        text: `${playerName} joined the chat`,
-        ts: Date.now()
-      };
-      messages.push(joinMessage);
-      
-      // Keep only last 100 messages
-      if (messages.length > 100) {
-        messages = messages.slice(-100);
+      // Player joining chat - accepts optional playerId to allow client reuse
+      const { name, playerId: suppliedId } = JSON.parse(body || '{}');
+      const willUseId = suppliedId || generateId();
+      const playerName = sanitize(name) || `Adventurer-${willUseId}`;
+
+      console.log('Player joining:', playerName, 'with ID:', willUseId, '(suppliedId:', !!suppliedId, ')');
+
+      try {
+        // Check if this player already exists (by id)
+        let existing = null;
+        try {
+          const active = await getActivePlayers();
+          existing = active.find(p => p.player_id === willUseId || p.player_name === playerName);
+        } catch (e) {
+          console.warn('Could not check existing players before join:', e?.message || e);
+        }
+
+        // Upsert player row
+        const player = await addPlayer(willUseId, playerName);
+        console.log('Player upsert result:', player);
+
+        // Do not create or return any system join message. Presence is tracked in chat_players only.
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            playerId: willUseId,
+            playerName,
+            message: null
+          })
+        };
+      } catch (error) {
+        console.error('Error during join - Full error:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: 'Failed to join chat', details: error.message })
+        };
       }
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          playerId,
-          playerName,
-          message: joinMessage
-        })
-      };
     }
 
     if (httpMethod === 'POST' && action === 'message') {
       // Send a chat message
-      const { playerId, text } = JSON.parse(body || '{}');
+      const { playerId, text, playerName } = JSON.parse(body || '{}');
       
-      if (!playerId || !players.has(playerId)) {
+      if (!playerId) {
         return {
-          statusCode: 401,
+          statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid player' })
+          body: JSON.stringify({ error: 'Missing player ID' })
         };
       }
       
-      const player = players.get(playerId);
       const sanitizedText = sanitize(text);
       
       if (!sanitizedText) {
@@ -120,58 +173,86 @@ exports.handler = async (event, context) => {
         };
       }
       
-      const message = {
-        type: 'chat',
-        id: player.id,
-        name: player.name,
-        text: sanitizedText,
-        ts: Date.now()
-      };
+      console.log('Message request - Player ID:', playerId, 'Text:', sanitizedText);
       
-      messages.push(message);
-      
-      // Keep only last 100 messages
-      if (messages.length > 100) {
-        messages = messages.slice(-100);
+      try {
+        // Update player activity
+        await updatePlayerActivity(playerId);
+        
+        // Add message to database
+        const message = await addChatMessage('chat', sanitizedText, playerName, playerId);
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            ok: true,
+            message: {
+              type: message.type,
+              text: message.text,
+              name: message.player_name,
+              id: message.player_id,
+              ts: new Date(message.created_at).getTime()
+            }
+          })
+        };
+      } catch (error) {
+        console.error('Error sending message:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: 'Failed to send message' })
+        };
       }
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          ok: true,
-          message
-        })
-      };
     }
 
     if (httpMethod === 'POST' && action === 'leave') {
-      // Player leaving chat
-      const { playerId } = JSON.parse(body || '{}');
-      
-      if (playerId && players.has(playerId)) {
-        const player = players.get(playerId);
-        players.delete(playerId);
-        
-        // Add system message
-        const leaveMessage = {
-          type: 'system',
-          text: `${player.name} left the chat`,
-          ts: Date.now()
-        };
-        messages.push(leaveMessage);
-        
-        // Keep only last 100 messages
-        if (messages.length > 100) {
-          messages = messages.slice(-100);
-        }
+      // Player leaving chat - remove from active players and post leave message
+      const { playerId, playerName } = JSON.parse(body || '{}');
+      if (!playerId) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing playerId' }) };
       }
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true })
-      };
+      try {
+        // Remove player row
+        const { error: delErr } = await require('./lib/supabase').deletePlayer?.(playerId) || {};
+        // If deletePlayer is not implemented, fallback to deleting via supabase client
+        if (delErr) console.warn('deletePlayer returned error:', delErr);
+
+        // Do not create leave system messages; simply remove presence
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+      } catch (error) {
+        console.error('Error handling leave:', error);
+        return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to leave' }) };
+      }
+    }
+
+    if (httpMethod === 'GET' && action === 'test') {
+      // Test database connection
+      try {
+        console.log('Testing database connection...');
+        const testPlayers = await getActivePlayers();
+        console.log('Database test successful, found players:', testPlayers.length);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            status: 'Database connection OK',
+            players: testPlayers.length,
+            timestamp: Date.now()
+          })
+        };
+      } catch (error) {
+        console.error('Database test failed:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Database connection failed',
+            details: error.message,
+            code: error.code
+          })
+        };
+      }
     }
 
     return {

@@ -11,38 +11,39 @@
   NODE_VERSION = "18"
 
 [dev]
-  command = "npm run dev"
-  targetPort = 8000
-  port = 8888
+  command = "vite --host 0.0.0.0 --port 3000"
+  targetPort = 3000
+  port = 8889
   functions = "netlify/functions"
+  autoLaunch = false
 
-# Redirect API calls to Netlify Functions
+# API endpoints are automatically mapped to function files by Netlify
+# /api/login -> netlify/functions/login.js
+# /api/register -> netlify/functions/register.js  
+# /api/me -> netlify/functions/me.js
+# /api/save -> netlify/functions/save.js
+# /api/health/db -> netlify/functions/health-db.js
+
+# Auth endpoints
 [[redirects]]
-  from = "/api/register"
-  to = "/.netlify/functions/auth-register"
+  from = "/api/login"
+  to = "/.netlify/functions/login"
   status = 200
 
 [[redirects]]
-  from = "/api/login"
-  to = "/.netlify/functions/auth-login"
+  from = "/api/register"
+  to = "/.netlify/functions/register"
   status = 200
 
 [[redirects]]
   from = "/api/me"
-  to = "/.netlify/functions/auth-me"
+  to = "/.netlify/functions/me"
   status = 200
 
 [[redirects]]
   from = "/api/save"
-  to = "/.netlify/functions/save-get"
+  to = "/.netlify/functions/save"
   status = 200
-  conditions = {method = ["GET"]}
-
-[[redirects]]
-  from = "/api/save"
-  to = "/.netlify/functions/save-post"
-  status = 200
-  conditions = {method = ["POST"]}
 
 [[redirects]]
   from = "/api/health/db"
@@ -50,8 +51,8 @@
   status = 200
 
 [[redirects]]
-  from = "/api/save/inspect"
-  to = "/.netlify/functions/save-inspect"
+  from = "/api/db-test"
+  to = "/.netlify/functions/db-test"
   status = 200
 
 # Chat endpoints
@@ -66,11 +67,13 @@
   to = "/.netlify/functions/market/:splat"
   status = 200
 
-# Catch-all for SPA routing
+# Only redirect paths that don't have file extensions (SPA routing)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
+  conditions = {extensions = ["!css", "!js", "!png", "!jpg", "!jpeg", "!gif", "!svg", "!ico", "!woff", "!woff2", "!ttf", "!eot"]}
 
 # Headers for security and CORS
 [[headers]]
