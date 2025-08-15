@@ -22,15 +22,16 @@ export const SaveManager = {
     if (isAutoSaveActive) return;
     
     isAutoSaveActive = true;
-    logger.info('Auto-save enabled - saves complete game data every 30 seconds');
+    const intervalMs = CONFIG.SAVE.AUTO_SAVE_INTERVAL || 30000;
+    logger.info(`Auto-save enabled - saves complete game data every ${Math.round(intervalMs/1000)} seconds`);
     
     this._autoId = setInterval(async () => {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       if (token) {
-        logger.saveOperation('Auto-save triggered (30s interval)');
+        logger.saveOperation('Auto-save triggered');
         await saveGameState();
       }
-    }, 30000); // 30 seconds
+    }, intervalMs);
   },
 
   // Stop automatic saves
@@ -48,7 +49,7 @@ export const SaveManager = {
 
   // Manual save (for important moments like before closing)
   async saveNow() {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {
       return await saveGameState();
     }

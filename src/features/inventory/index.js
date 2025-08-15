@@ -106,9 +106,18 @@ export const Inventory = {
       if (this.dragFromIndex !== null) {
         const fromIndex = this.dragFromIndex;
         if (fromIndex === targetIndex) return;
-        const temp = gameState.inventory[targetIndex] || null;
-        gameState.inventory[targetIndex] = gameState.inventory[fromIndex];
-        gameState.inventory[fromIndex] = temp;
+        const sourceItem = gameState.inventory[fromIndex];
+        const targetItem = gameState.inventory[targetIndex] || null;
+        // If same name and type, stack
+        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null)) {
+          const add = Math.max(1, sourceItem.count || 1);
+          targetItem.count = Math.max(1, (targetItem.count || 0) + add);
+          gameState.inventory[fromIndex] = null;
+        } else {
+          const temp = targetItem;
+          gameState.inventory[targetIndex] = sourceItem;
+          gameState.inventory[fromIndex] = temp;
+        }
         this.dragFromIndex = null;
         this.debouncedRender();
         AudioManager.playDrop();
@@ -481,7 +490,35 @@ export const Inventory = {
   setupSortButton() {
     const sortBtn = document.getElementById('sort-inventory-btn');
     if (!sortBtn) return;
-    sortBtn.addEventListener('click', () => { this.sortByCategory(); AudioManager.playClick(); });
+    // Toggle auto-sort mode
+    const AUTO_KEY = 'inventory_auto_sort';
+    const applyState = (enabled) => {
+      sortBtn.classList.toggle('active', !!enabled);
+      sortBtn.title = enabled ? 'Auto-sort: ON (click to disable)' : 'Auto-sort: OFF (click to enable)';
+      // Persist setting
+      try { localStorage.setItem(AUTO_KEY, enabled ? '1' : '0'); } catch {}
+    };
+    // Initialize from storage
+    let autoSort = false;
+    try { autoSort = localStorage.getItem(AUTO_KEY) === '1'; } catch {}
+    applyState(autoSort);
+
+    sortBtn.addEventListener('click', () => {
+      autoSort = !autoSort;
+      applyState(autoSort);
+      AudioManager.playClick();
+      if (autoSort) this.sortByCategory();
+    });
+
+    // Hook into render to apply auto-sort when enabled
+    const originalRender = this.render.bind(this);
+    this.render = () => {
+      if (autoSort) {
+        // Avoid infinite loop: only sort the in-memory array then render once
+        this.sortInMemoryByCategory();
+      }
+      return originalRender();
+    };
   },
 
   // Setup mobile-only trash can
@@ -690,6 +727,42 @@ export const Inventory = {
     }, { component: 'inventory', operation: 'sortByCategory' })();
   },
 
+  // Non-saving, in-memory sort used by auto-sort before render
+  sortInMemoryByCategory() {
+    try {
+      const items = gameState.inventory.filter(item => item !== null);
+      const categoryPriority = {
+        'helmet': 1, 'chest': 2, 'gloves': 3, 'pants': 4, 'shoes': 5,
+        'ring': 6, 'amulet': 7,
+        'tool': 10,
+        'fish': 20,
+        'resource': 30,
+        'item': 40,
+        'unknown': 50
+      };
+      const getCategoryPriority = (item) => {
+        if (item.type && categoryPriority[item.type] !== undefined) return categoryPriority[item.type];
+        const fishNames = ['Minnow', 'Trout', 'Bass', 'Salmon', 'Golden Carp'];
+        if (fishNames.includes(item.name)) {
+          const fishIndex = fishNames.indexOf(item.name);
+          return categoryPriority.fish + (fishNames.length - fishIndex);
+        }
+        if (item.name.toLowerCase().includes('pole') || item.name.toLowerCase().includes('rod') || item.name.toLowerCase().includes('axe') || item.name.toLowerCase().includes('pickaxe')) return categoryPriority.tool;
+        const resourceNames = ['Wood', 'Stone', 'Iron Ore', 'Gold Ore', 'Coal', 'Driftwood', 'Sea Shell', 'Seaweed', 'Branch', 'Stick'];
+        if (resourceNames.some(resource => item.name.includes(resource))) return categoryPriority.resource;
+        return categoryPriority.unknown;
+      };
+      items.sort((a, b) => {
+        const aP = getCategoryPriority(a);
+        const bP = getCategoryPriority(b);
+        if (aP !== bP) return aP - bP;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      gameState.inventory.fill(null);
+      items.forEach((item, index) => { gameState.inventory[index] = item; });
+    } catch {}
+  },
+
   // Touch drag and drop helper methods
   updateTouchDropTargets(elementBelow) {
     // Clear previous highlights
@@ -739,9 +812,17 @@ export const Inventory = {
     if (cell) {
       const targetIndex = parseInt(cell.dataset.index);
       if (targetIndex !== dragData.index) {
-        const temp = gameState.inventory[targetIndex] || null;
-        gameState.inventory[targetIndex] = gameState.inventory[dragData.index];
-        gameState.inventory[dragData.index] = temp;
+        const sourceItem = gameState.inventory[dragData.index];
+        const targetItem = gameState.inventory[targetIndex] || null;
+        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null)) {
+          const add = Math.max(1, sourceItem.count || 1);
+          targetItem.count = Math.max(1, (targetItem.count || 0) + add);
+          gameState.inventory[dragData.index] = null;
+        } else {
+          const temp = targetItem;
+          gameState.inventory[targetIndex] = sourceItem;
+          gameState.inventory[dragData.index] = temp;
+        }
         this.debouncedRender();
         AudioManager.playDrop();
         SaveManager.debouncedSave();

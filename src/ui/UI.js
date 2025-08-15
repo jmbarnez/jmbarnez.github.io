@@ -1122,7 +1122,15 @@ export const UI = {
     chat.onStatus(setStatus);
     chat.onMessage(addMessage);
     chat.connect();
-    setStatus('offline');
+    // Optimistically mark online once HTTP fallback is active or WS connects
+    setTimeout(() => {
+      try {
+        const info = chat.getDebugInfo?.();
+        if (info && (info.mode === 'http' || info.wsStateText === 'OPEN')) {
+          setStatus('online');
+        }
+      } catch {}
+    }, 1200);
     
     // Store chat instance for debugging
     window.globalChat = chat;

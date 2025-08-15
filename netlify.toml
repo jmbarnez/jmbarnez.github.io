@@ -10,6 +10,12 @@
   # Node.js version
   NODE_VERSION = "18"
 
+[dev]
+  command = "npm run dev"
+  targetPort = 8000
+  port = 8888
+  functions = "netlify/functions"
+
 # Redirect API calls to Netlify Functions
 [[redirects]]
   from = "/api/register"
@@ -37,6 +43,16 @@
   to = "/.netlify/functions/save-post"
   status = 200
   conditions = {method = ["POST"]}
+
+[[redirects]]
+  from = "/api/health/db"
+  to = "/.netlify/functions/health-db"
+  status = 200
+
+[[redirects]]
+  from = "/api/save/inspect"
+  to = "/.netlify/functions/save-inspect"
+  status = 200
 
 # Chat endpoints
 [[redirects]]

@@ -197,7 +197,7 @@ function restoreCompleteGameData(saveData: any) {
  */
 export async function loadSavedState(): Promise<boolean> {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = (typeof window !== 'undefined' && (window as any).__authToken) || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (!token) {
       logger.info('No auth token, using default state');
       return false;
@@ -232,7 +232,7 @@ export async function loadSavedState(): Promise<boolean> {
  */
 export async function saveGameState(): Promise<boolean> {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = (typeof window !== 'undefined' && (window as any).__authToken) || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (!token) {
       logger.warn('No auth token, cannot save to server');
       return false;

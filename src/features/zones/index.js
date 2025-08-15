@@ -67,18 +67,38 @@ export const SkillingZones = {
       const has = this.hasItem(def.toolRequired.name);
       if (ti) { ti.textContent = has ? '✓' : '✗'; ti.classList.toggle('missing', !has); ti.classList.toggle('ok', !!has); }
     }
-    if (def.system === 'fishing') this.attachFishingPopover(zone);
+    if (def.system === 'fishing') {
+      // Ensure UI reflects current active state when panel is reopened
+      this.updateZoneState(zone, this.isFishingActive());
+      this.attachFishingPopover(zone);
+    }
     return zone;
   },
 
   attachFishingPopover(zone) {
     const action = zone.querySelector('.zone-action');
     const pop = zone.querySelector('.zone-popover');
-    const buildPopover = () => {
-      if (!pop) return;
+
+    // Portal container for rendering above all UI (avoids clipping/overflow issues)
+    const ensurePortal = () => {
+      let portal = document.getElementById('zone-popover-portal');
+      if (!portal) {
+        portal = document.createElement('div');
+        portal.id = 'zone-popover-portal';
+        portal.style.position = 'fixed';
+        portal.style.zIndex = '10000';
+        portal.style.pointerEvents = 'none';
+        portal.style.minWidth = '180px';
+        document.body.appendChild(portal);
+      }
+      portal.className = 'zone-popover';
+      portal.setAttribute('role', 'dialog');
+      return portal;
+    };
+
+    const buildContentHtml = () => {
       const allFish = (Fishing.fishTypes || []).slice();
       const discovered = JSON.parse(localStorage.getItem('fish_discovered') || '[]');
-      // Only show fish that have been discovered
       const fish = allFish.filter(f => discovered.includes(f.name));
       const rows = fish.map((f) => {
         const iconId = this.getFishIconId(f.name);
@@ -92,20 +112,44 @@ export const SkillingZones = {
           </div>
         `;
       }).join('');
-      const content = fish.length > 0 
+      return fish.length > 0 
         ? `<div class="pop-title">Discovered Fish</div>${rows}`
         : `<div class="pop-title">Discovered Fish</div><div class="catch-row"><div class="catch-name">No fish discovered yet</div></div>`;
-      pop.innerHTML = content;
     };
-    const togglePopover = (open) => {
-      if (!pop) return;
-      zone.classList.toggle('open', !!open);
-      pop.setAttribute('aria-hidden', open ? 'false' : 'true');
-      if (open) buildPopover();
+
+    const showPortalAt = (clientX, clientY) => {
+      const portal = ensurePortal();
+      portal.innerHTML = buildContentHtml();
+      const margin = 10;
+      const maxWidth = 260;
+      const left = Math.min(Math.max(8, clientX + margin), window.innerWidth - maxWidth - 8);
+      const top = Math.min(clientY + margin, window.innerHeight - 8);
+      portal.style.left = `${left}px`;
+      portal.style.top = `${top}px`;
+      portal.style.display = 'block';
+      portal.setAttribute('aria-hidden', 'false');
     };
+    const hidePortal = () => {
+      const portal = document.getElementById('zone-popover-portal');
+      if (portal) { portal.style.display = 'none'; portal.setAttribute('aria-hidden', 'true'); }
+      if (pop) pop.setAttribute('aria-hidden', 'true');
+    };
+
     if (action) {
-      action.addEventListener('mouseenter', () => togglePopover(true));
-      action.addEventListener('mouseleave', () => togglePopover(false));
+      action.addEventListener('mouseenter', (e) => {
+        const ev = e.touches ? e.touches[0] : e;
+        showPortalAt(ev.clientX, ev.clientY);
+      });
+      action.addEventListener('mousemove', (e) => {
+        const ev = e.touches ? e.touches[0] : e;
+        showPortalAt(ev.clientX, ev.clientY);
+      });
+      action.addEventListener('mouseleave', hidePortal);
+      action.addEventListener('touchstart', (e) => {
+        const ev = e.touches ? e.touches[0] : e;
+        showPortalAt(ev.clientX, ev.clientY);
+      }, { passive: true });
+      action.addEventListener('touchend', hidePortal, { passive: true });
     }
   },
 
@@ -164,6 +208,16 @@ export const SkillingZones = {
   },
 
   toggleFishing(zoneEl) {
+    // Disallow fishing while exploring is active
+    try {
+      if (gameState.isExploring) {
+        const status = document.getElementById('status');
+        if (status) status.textContent = 'Finish exploring before starting to fish.';
+        AudioManager.playCancel?.();
+        return;
+      }
+    } catch {}
+
     const active = this.isFishingActive();
     if (active) {
       IdleManager.cancelAllOfKind('fishing');

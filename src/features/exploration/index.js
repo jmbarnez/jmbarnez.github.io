@@ -138,11 +138,17 @@ export const Exploration = {
   },
 
   start() {
-    // Block starting exploration while any idle job is active (e.g., fishing)
+    // Block starting exploration while any idle job is active (e.g., fishing); also cancel fishing explicitly if needed
     try {
       if (IdleManager.hasAnyActive()) {
         const status = document.getElementById('status');
         if (status) status.textContent = 'Finish your current activity before exploring.';
+        return;
+      }
+      // Also prevent if fishing flag somehow active
+      if (typeof IdleManager.hasActiveOfKind === 'function' && IdleManager.hasActiveOfKind('fishing')) {
+        const status = document.getElementById('status');
+        if (status) status.textContent = 'Stop fishing before exploring.';
         return;
       }
     } catch {}

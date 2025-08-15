@@ -16,11 +16,10 @@ function verifyJwt(token) {
 }
 
 exports.handler = async (event, context) => {
-  // Handle CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type, authorization',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
   };
@@ -29,7 +28,7 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== 'GET') {
     return { 
       statusCode: 405, 
       headers, 
@@ -58,44 +57,43 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Validate payload
-    const rawBody = event.body || '{}';
-    // Optional size guard (512KB)
-    if (Buffer.byteLength(rawBody, 'utf8') > 512 * 1024) {
-      return {
-        statusCode: 413,
-        headers,
-        body: JSON.stringify({ error: 'Save too large' })
-      };
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // List ALL rows for this user_id (to detect duplicates/old rows)
+    const { data, error } = await supabase
+      .from('user_saves')
+      .select('*')
+      .eq('user_id', claims.sub);
+
+    if (error) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to query saves' }) };
     }
 
-    const parsed = JSON.parse(rawBody);
-    if (!parsed || typeof parsed.save !== 'object' || parsed.save === null) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Invalid payload' })
-      };
-    }
-
-    const { save } = parsed;
-
-    const { setSaveData } = require('./lib/supabase');
-    
-    await setSaveData(claims.sub, save);
-    
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ ok: true })
+    const result = {
+      count: Array.isArray(data) ? data.length : 0,
+      saves: (data || []).map((row) => ({
+        user_id: row.user_id,
+        // include timestamps if present
+        created_at: row.created_at || null,
+        updated_at: row.updated_at || null,
+        // do not inline full save_data by default to keep payload small
+        has_save_data: !!row.save_data,
+      }))
     };
+
+    return { statusCode: 200, headers, body: JSON.stringify(result) };
     
   } catch (error) {
-    console.error('Save storage failed');
+    console.error('Save inspect failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to save data' })
+      body: JSON.stringify({ error: 'Failed to inspect saves' })
     };
   }
 };
+
+

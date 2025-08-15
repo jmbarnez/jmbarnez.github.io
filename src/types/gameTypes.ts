@@ -83,8 +83,19 @@ export interface LocationsData {
 }
 
 // API Response types
+export interface CompleteSaveData {
+  gameState: GameState;
+  gameTheme?: string;
+  fishDiscovered?: string[];
+  panelPositions?: Record<string, any>;
+  zonePositions?: Record<string, any>;
+  groundItems?: any[];
+  idleState?: any;
+  _savedAt?: string;
+}
+
 export interface SaveResponse {
-  save?: GameState;
+  save?: CompleteSaveData;
   message?: string;
 }
 

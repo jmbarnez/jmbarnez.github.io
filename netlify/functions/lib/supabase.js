@@ -52,12 +52,14 @@ async function getUserById(id) {
 async function getSaveData(userId) {
   const { data, error } = await supabase
     .from('user_saves')
-    .select('save_data')
+    .select('save_data, updated_at')
     .eq('user_id', userId)
-    .single();
+    .order('updated_at', { ascending: false })
+    .limit(1);
   
-  if (error && error.code !== 'PGRST116') throw error;
-  return data?.save_data || null;
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : null;
+  return row?.save_data || null;
 }
 
 async function setSaveData(userId, saveData) {
@@ -68,7 +70,7 @@ async function setSaveData(userId, saveData) {
         user_id: userId,
         save_data: saveData
       }
-    ]);
+    ], { onConflict: 'user_id' });
   
   if (error) throw error;
   return data;

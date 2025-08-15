@@ -5529,3 +5529,50 @@ body[data-theme="light"] .sale-notification {
   color: #4CAF50;
   font-weight: 600;
 }
+
+/* Inventory auto-sort active glow */
+#sort-inventory-btn.active {
+	box-shadow: 0 0 10px rgba(16, 185, 129, 0.45);
+	filter: saturate(1.08);
+}
+
+/* Discovered fish tooltip overlay */
+#zone-popover-portal.zone-popover,
+.zone-popover#zone-popover-portal {
+  background: rgba(20, 24, 32, 0.92);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+#zone-popover-portal .pop-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+  opacity: 0.95;
+}
+
+#zone-popover-portal .catch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+#zone-popover-portal .catch-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+#zone-popover-portal .catch-name {
+  font-size: 12px;
+}
+
+#zone-popover-portal .catch-req {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.8;
+}

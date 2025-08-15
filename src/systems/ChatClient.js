@@ -1,5 +1,8 @@
 export class ChatClient {
   constructor({ url, name = null } = {}) {
+    // Transport mode: 'ws' (default) or 'http' (Netlify-friendly fallback)
+    this.mode = 'ws';
+
     // Determine the correct WebSocket URL
     this.url = url || this._getWebSocketUrl();
     this.fallbackUrls = this._getFallbackUrls();
@@ -11,6 +14,14 @@ export class ChatClient {
     this._reconnectTimer = null;
     this._reconnectAttempts = 0;
     this._maxReconnectAttempts = 5;
+    this._completedUrlCycle = false;
+
+    // HTTP fallback state
+    this.httpBase = `${window.location.origin}/api/chat`;
+    this.httpPlayerId = null;
+    this.httpPollTimers = { messages: null, players: null };
+    this.httpLastTs = 0;
+    this._httpStarted = false;
   }
 
   _getWebSocketUrl() {
@@ -86,6 +97,11 @@ export class ChatClient {
   }
 
   connect() {
+    if (this.mode === 'http') {
+      this._startHttpMode();
+      return;
+    }
+
     try { this.ws?.close?.(); } catch {}
     
     // Use current URL from fallback list
@@ -107,6 +123,7 @@ export class ChatClient {
       console.log('Chat WebSocket connected successfully');
       this._reconnectAttempts = 0;
       this.currentUrlIndex = 0; // Reset to first URL on successful connection
+      this._completedUrlCycle = false;
       
       // Refresh name in case it changed during login
       try { this.name = localStorage.getItem('playerName') || this.name; } catch {}
@@ -153,7 +170,11 @@ export class ChatClient {
   sendChat(text) {
     if (!text || typeof text !== 'string') return;
     console.log('Sending chat message:', text);
-    this._send({ type: 'chat', text });
+    if (this.mode === 'http') {
+      this._httpSendMessage(text);
+    } else {
+      this._send({ type: 'chat', text });
+    }
   }
 
   _send(obj) {
@@ -179,7 +200,19 @@ export class ChatClient {
     
     if (this._reconnectAttempts >= this._maxReconnectAttempts) {
       // Try next fallback URL
-      this.currentUrlIndex = (this.currentUrlIndex + 1) % this.fallbackUrls.length;
+      const nextIndex = (this.currentUrlIndex + 1) % this.fallbackUrls.length;
+      if (nextIndex === 0) {
+        // Completed one full cycle through URLs
+        if (!this._completedUrlCycle) {
+          this._completedUrlCycle = true;
+        } else {
+          console.warn('All WebSocket URLs failed after full cycle, switching to HTTP polling mode');
+          this.mode = 'http';
+          this._startHttpMode();
+          return;
+        }
+      }
+      this.currentUrlIndex = nextIndex;
       this._reconnectAttempts = 0;
       
       if (this.currentUrlIndex === 0) {
@@ -210,7 +243,8 @@ export class ChatClient {
   // Debug method to check connection status
   getDebugInfo() {
     return {
-      url: this.fallbackUrls[this.currentUrlIndex] || this.url,
+      mode: this.mode,
+      url: this.mode === 'ws' ? (this.fallbackUrls[this.currentUrlIndex] || this.url) : this.httpBase,
       allUrls: this.fallbackUrls,
       currentUrlIndex: this.currentUrlIndex,
       name: this.name,
@@ -230,6 +264,99 @@ export class ChatClient {
       this._reconnectTimer = null;
     }
     this.connect();
+  }
+
+  // ---------------------- HTTP fallback implementation ----------------------
+  _startHttpMode() {
+    if (this._httpStarted) return;
+    this._httpStarted = true;
+    console.log('Starting HTTP polling chat mode against', this.httpBase);
+
+    // Join chat
+    this._httpJoin()
+      .then(() => {
+        this._emitStatus('online');
+        // Start polling loops
+        this._startHttpPolling();
+        // Ensure leave on unload
+        try {
+          window.addEventListener('beforeunload', () => {
+            try { navigator.sendBeacon?.(`${this.httpBase}/leave`, JSON.stringify({ playerId: this.httpPlayerId })); } catch {}
+          });
+        } catch {}
+      })
+      .catch((e) => {
+        console.error('HTTP chat join failed', e);
+        this._emitStatus('offline');
+      });
+  }
+
+  async _httpJoin() {
+    try {
+      const res = await fetch(`${this.httpBase}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: this.name })
+      });
+      if (!res.ok) throw new Error(`join failed: ${res.status}`);
+      const data = await res.json();
+      this.httpPlayerId = data.playerId;
+      this.httpLastTs = Date.now();
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  _startHttpPolling() {
+    // Messages polling
+    if (!this.httpPollTimers.messages) {
+      this.httpPollTimers.messages = setInterval(async () => {
+        try {
+          const url = `${this.httpBase}/messages?since=${this.httpLastTs}`;
+          const res = await fetch(url);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data.messages)) {
+            data.messages.forEach((m) => {
+              try { this.listeners.forEach((fn) => fn(m)); } catch {}
+            });
+          }
+          if (typeof data.ts === 'number') this.httpLastTs = data.ts;
+        } catch (e) {
+          // Silent fail to avoid log spam
+        }
+      }, 2000);
+    }
+
+    // Players polling
+    if (!this.httpPollTimers.players) {
+      this.httpPollTimers.players = setInterval(async () => {
+        try {
+          const res = await fetch(`${this.httpBase}/players`);
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data.players)) {
+            const packet = { type: 'players', players: data.players, ts: data.ts || Date.now() };
+            try { this.listeners.forEach((fn) => fn(packet)); } catch {}
+          }
+        } catch (e) {
+          // Silent fail
+        }
+      }, 5000);
+    }
+  }
+
+  async _httpSendMessage(text) {
+    try {
+      if (!this.httpPlayerId) return;
+      await fetch(`${this.httpBase}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: this.httpPlayerId, text })
+      });
+    } catch (e) {
+      // Ignore send errors in polling mode
+    }
   }
 }
 

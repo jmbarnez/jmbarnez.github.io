@@ -810,7 +810,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.6</div>
+      <div class="version-info-screen">v0.1.62</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -837,6 +837,58 @@
           <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
         </div>
         <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.62</div>
+            <div class="changelog-date">August 15, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Server indicators: auth treats 401 as reachable; chat check uses no-cache; UI marks chat Online when HTTP fallback active
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Fishing zones: button state persists after panel reopen; cannot fish while exploring
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Discovered catches tooltip follows cursor and renders above UI for readability
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Inventory: Auto-sort toggle (persists) with subtle green glow when enabled; drag-drop stacking onto existing stacks
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Token sourcing can bypass local storage using window.__authToken when set
+              </div>
+            </div>
+          </div>
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.61</div>
+            <div class="changelog-date">August 15, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Save persistence: enforce single save per user (`upsert` on `user_id`) and accept session/local tokens
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Auto-save interval now respects configuration; debounced and manual saves work with session tokens
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Server status checks for Chat (HTTP players endpoint) and Database (`/api/health/db`) for accurate indicators
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Chat client falls back to HTTP polling on Netlify; online players list updates reliably
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Save inspector endpoint (`/api/save/inspect`) to list existing server saves for your account
+              </div>
+            </div>
+          </div>
           <div class="changelog-section">
             <div class="changelog-version">Version 0.1.6</div>
             <div class="changelog-date">August 15, 2025</div>
