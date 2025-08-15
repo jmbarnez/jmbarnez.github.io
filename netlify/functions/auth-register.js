@@ -84,11 +84,12 @@ exports.handler = async (event, context) => {
     };
     
   } catch (error) {
-    console.error('Registration error:', error);
+    // Log minimal info for debugging without exposing sensitive data
+    console.error('Registration failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Registration failed' })
     };
   }
 };

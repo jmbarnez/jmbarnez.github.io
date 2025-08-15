@@ -58,23 +58,22 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // TODO: Replace with Supabase save data retrieval
-    // For now, return empty save
+    const { getSaveData } = require('./lib/supabase');
+    
+    const saveData = await getSaveData(claims.sub);
+    
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
-        save: null,
-        message: 'Save retrieval - Supabase integration pending'
-      })
+      body: JSON.stringify({ save: saveData })
     };
     
   } catch (error) {
-    console.error('Save retrieval error:', error);
+    console.error('Save retrieval failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Failed to retrieve save data' })
     };
   }
 };

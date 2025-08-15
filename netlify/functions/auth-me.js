@@ -70,11 +70,11 @@ exports.handler = async (event, context) => {
     };
     
   } catch (error) {
-    console.error('Auth verification error:', error);
+    console.error('Auth verification failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Authentication failed' })
     };
   }
 };

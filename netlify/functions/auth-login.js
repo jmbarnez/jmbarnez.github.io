@@ -49,27 +49,37 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // TODO: Replace with Supabase integration
-    // For now, return a basic response
-    const id = crypto.randomUUID();
-    const token = signJwt({ sub: id, username });
+    const { getUserByUsername } = require('./lib/supabase');
+    
+    // Authenticate user
+    const passwordHash = sha256(password);
+    const user = await getUserByUsername(username);
+    
+    if (!user || user.password_hash !== passwordHash) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid credentials' })
+      };
+    }
+
+    const token = signJwt({ sub: user.id, username: user.username });
     
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ 
         token, 
-        user: { id, username },
-        message: 'Login successful - Supabase integration pending'
+        user: { id: user.id, username: user.username }
       })
     };
     
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Login failed' })
     };
   }
 };

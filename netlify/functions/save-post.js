@@ -60,23 +60,22 @@ exports.handler = async (event, context) => {
 
     const { save } = JSON.parse(event.body || '{}');
 
-    // TODO: Replace with Supabase save data storage
-    // For now, return success
+    const { setSaveData } = require('./lib/supabase');
+    
+    await setSaveData(claims.sub, save);
+    
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
-        ok: true,
-        message: 'Save stored - Supabase integration pending'
-      })
+      body: JSON.stringify({ ok: true })
     };
     
   } catch (error) {
-    console.error('Save storage error:', error);
+    console.error('Save storage failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Failed to save data' })
     };
   }
 };
