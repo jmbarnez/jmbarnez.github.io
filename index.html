@@ -743,50 +743,65 @@
     
     <div id="login-screen" class="login-screen" hidden>
       <div class="auth-dialog" role="dialog" aria-modal="true">
-        <!-- Server Status Indicators -->
-        <div class="server-status">
-          <div class="status-row">
-            <span class="status-label">Web Server:</span>
-            <div class="status-indicator" id="webStatus">
-              <div class="status-dot status-checking"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Auth Server:</span>
-            <div class="status-indicator" id="authServerStatus">
-              <div class="status-dot status-checking"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-          <div class="status-row">
-            <span class="status-label">Chat Server:</span>
-            <div class="status-indicator" id="chatServerStatus">
-              <div class="status-dot status-checking"></div>
-              <span class="status-text">Checking...</span>
-            </div>
-          </div>
-        </div>
+        
 
         <!-- Login Form -->
         <div id="login-form" class="auth-form">
-          <h2 class="form-title">Login</h2>
-          <div class="auth-row"><input id="login-username" type="text" placeholder="Username" autocomplete="username"/></div>
-          <div class="auth-row"><input id="login-password" type="password" placeholder="Password" autocomplete="current-password"/></div>
+          <div class="auth-row">
+            <input id="login-username" type="text" placeholder="Username" autocomplete="username"/>
+            <div class="input-error" id="login-username-error"></div>
+          </div>
+          <div class="auth-row">
+            <input id="login-password" type="password" placeholder="Password" autocomplete="current-password"/>
+            <div class="input-error" id="login-password-error"></div>
+          </div>
+          <div class="auth-options">
+            <label class="remember-me">
+              <input type="checkbox" id="remember-me"/>
+              <span>Remember me</span>
+            </label>
+            <button type="button" id="forgot-password" class="forgot-password-btn">Forgot Password?</button>
+          </div>
           <div class="auth-actions">
-            <button id="login-submit" class="primary-btn">Login</button>
+            <button id="login-submit" class="primary-btn">
+              <span class="btn-text">Login</span>
+              <span class="btn-loading" style="display: none;">
+                <div class="spinner"></div>
+                Signing in...
+              </span>
+            </button>
             <button id="show-register" class="secondary-btn create-account-btn">Create New Account</button>
           </div>
         </div>
 
         <!-- Register Form -->
         <div id="register-form" class="auth-form" style="display: none;">
-          <h2 class="form-title">Create Account</h2>
-          <div class="auth-row"><input id="register-username" type="text" placeholder="Choose Username" autocomplete="username"/></div>
-          <div class="auth-row"><input id="register-password" type="password" placeholder="Choose Password" autocomplete="new-password"/></div>
-          <div class="auth-row"><input id="register-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/></div>
+          <div class="auth-row">
+            <input id="register-username" type="text" placeholder="Choose Username" autocomplete="username"/>
+            <div class="input-error" id="register-username-error"></div>
+          </div>
+          <div class="auth-row">
+            <input id="register-password" type="password" placeholder="Choose Password" autocomplete="new-password"/>
+            <div class="input-error" id="register-password-error"></div>
+            <div class="password-strength" id="password-strength">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strength-fill"></div>
+              </div>
+              <span class="strength-text" id="strength-text">Enter a password</span>
+            </div>
+          </div>
+          <div class="auth-row">
+            <input id="register-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/>
+            <div class="input-error" id="register-confirm-error"></div>
+          </div>
           <div class="auth-actions">
-            <button id="register-submit" class="primary-btn">Create Account</button>
+            <button id="register-submit" class="primary-btn">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-loading" style="display: none;">
+                <div class="spinner"></div>
+                Creating...
+              </span>
+            </button>
             <button id="show-login" class="secondary-btn back-to-login-btn">Back to Login</button>
           </div>
         </div>
@@ -795,7 +810,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.3</div>
+      <div class="version-info-screen">v0.1.6</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -822,6 +837,48 @@
           <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
         </div>
         <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.6</div>
+            <div class="changelog-date">August 15, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Server Status panel: Advanced/Simple modes with persistent toggle
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Server Status panel is now draggable; position persists across sessions
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Refresh button on Server Status panel
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Login “Remember me” now controls persistent vs. session token storage
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Bottom-right server status and updates buttons styled as small circular icons
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Updates/Changelog panel height increased with smooth, always-visible scrollbar
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Server status indicators mirrored in panel (Web, Auth, Chat; Market/Save assumed online)
+              </div>
+              <div class="changelog-item removed">
+                <span class="changelog-tag">REMOVED</span>
+                Inline server status widgets and “Welcome Back” header from login screen
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Oversized chat/market buttons on login; hidden correctly while keeping status/updates
+              </div>
+            </div>
+          </div>
           <div class="changelog-section">
             <div class="changelog-version">Version 0.15.0</div>
             <div class="changelog-date">August 14, 2025</div>
@@ -949,6 +1006,7 @@
         <div class="server-status-header">
           <h3>🖥️ Server Status</h3>
           <div class="server-status-controls">
+            <button id="server-status-refresh" class="mode-toggle-btn" title="Refresh Status">Refresh</button>
             <button id="server-status-mode-toggle" class="mode-toggle-btn" title="Toggle Advanced Mode">Simple</button>
             <button id="server-status-close" class="server-status-close-btn" title="Close">×</button>
           </div>

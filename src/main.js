@@ -1,6 +1,161 @@
 // Prevent ReferenceError for initializeServerStatusPanel
 function initializeServerStatusPanel() {
-  // This function can be expanded to initialize the server status panel if needed
+  const serverStatusToggle = document.getElementById('server-status-toggle');
+  const serverStatusPanel = document.getElementById('server-status-panel');
+
+  // draggable state
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let panelStartX = 0;
+  let panelStartY = 0;
+
+  // Load saved position if present
+  if (serverStatusPanel) {
+    const savedPos = localStorage.getItem('server-status-position');
+    if (savedPos) {
+      try {
+        const { x, y } = JSON.parse(savedPos);
+        serverStatusPanel.style.left = `${x}px`;
+        serverStatusPanel.style.top = `${y}px`;
+        serverStatusPanel.style.transform = 'none';
+      } catch (err) {
+        // ignore parse errors
+      }
+    }
+  }
+
+  if (serverStatusToggle && serverStatusPanel) {
+    serverStatusToggle.addEventListener('click', () => {
+      if (serverStatusPanel.style.display === 'block') {
+        serverStatusPanel.style.display = 'none';
+      } else {
+        serverStatusPanel.style.display = 'block';
+        // Refresh server status when opening panel
+        checkServerStatus();
+      }
+    });
+  }
+
+  // Refresh button inside the server status panel
+  const refreshBtn = document.getElementById('server-status-refresh');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      checkServerStatus();
+    });
+  }
+
+  // Drag handlers
+  const header = serverStatusPanel?.querySelector('.server-status-header');
+  const onStartDrag = (e) => {
+    // ignore clicks on close button to prevent dragging when closing
+    if (e.target.closest('.server-status-close-btn')) return;
+    isDragging = true;
+    serverStatusPanel.style.cursor = 'grabbing';
+    serverStatusPanel.classList.add('dragging');
+
+    const pt = e.touches ? e.touches[0] : e;
+    const rect = serverStatusPanel.getBoundingClientRect();
+    dragStartX = pt.clientX;
+    dragStartY = pt.clientY;
+    panelStartX = rect.left;
+    panelStartY = rect.top;
+    e.preventDefault();
+  };
+  const onDrag = (e) => {
+    if (!isDragging) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const deltaX = pt.clientX - dragStartX;
+    const deltaY = pt.clientY - dragStartY;
+    let newX = panelStartX + deltaX;
+    let newY = panelStartY + deltaY;
+
+    // bounds
+    const panelRect = serverStatusPanel.getBoundingClientRect();
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    newX = Math.max(0, Math.min(newX, viewportW - panelRect.width));
+    newY = Math.max(0, Math.min(newY, viewportH - panelRect.height));
+
+    serverStatusPanel.style.left = `${newX}px`;
+    serverStatusPanel.style.top = `${newY}px`;
+    serverStatusPanel.style.transform = 'none';
+    e.preventDefault();
+  };
+  const onStopDrag = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    if (serverStatusPanel) {
+      serverStatusPanel.style.cursor = 'default';
+      serverStatusPanel.classList.remove('dragging');
+      // persist
+      const rect = serverStatusPanel.getBoundingClientRect();
+      localStorage.setItem('server-status-position', JSON.stringify({ x: rect.left, y: rect.top }));
+    }
+  };
+
+  if (header) {
+    header.addEventListener('mousedown', onStartDrag);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', onStopDrag);
+    // touch support
+    header.addEventListener('touchstart', onStartDrag, { passive: false });
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', onStopDrag);
+  }
+
+  // Mode toggle (Simple / Advanced)
+  const modeToggleBtn = document.getElementById('server-status-mode-toggle');
+  const simpleMode = document.getElementById('simple-mode');
+  const advancedMode = document.getElementById('advanced-mode');
+
+  // Restore saved mode
+  let currentMode = localStorage.getItem('server-status-mode') || 'simple';
+  const applyMode = (mode) => {
+    currentMode = mode;
+    if (mode === 'advanced') {
+      simpleMode.style.display = 'none';
+      advancedMode.style.display = 'block';
+      modeToggleBtn.textContent = 'Advanced';
+      modeToggleBtn.classList.add('active');
+    } else {
+      simpleMode.style.display = 'block';
+      advancedMode.style.display = 'none';
+      modeToggleBtn.textContent = 'Simple';
+      modeToggleBtn.classList.remove('active');
+    }
+    localStorage.setItem('server-status-mode', mode);
+  };
+
+  if (modeToggleBtn) {
+    modeToggleBtn.addEventListener('click', () => {
+      const next = currentMode === 'simple' ? 'advanced' : 'simple';
+      applyMode(next);
+    });
+  }
+
+  // Apply stored mode on init
+  try { applyMode(currentMode); } catch (e) {}
+
+  // Keyboard close (esc) and click-outside close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && serverStatusPanel?.style.display === 'block') {
+      serverStatusPanel.style.display = 'none';
+    }
+  });
+  if (serverStatusPanel) {
+    serverStatusPanel.addEventListener('click', (e) => {
+      if (e.target === serverStatusPanel) serverStatusPanel.style.display = 'none';
+    });
+  }
+
+  // Close button inside server status panel
+  const closeBtn = document.getElementById('server-status-close');
+  if (closeBtn && serverStatusPanel) {
+    closeBtn.addEventListener('click', () => {
+      serverStatusPanel.style.display = 'none';
+    });
+  }
 }
 import { UI } from './ui/UI.js';
 import { gameState, loadSavedState } from './state/gameState.js';
@@ -169,8 +324,8 @@ function initGame() {
     loginThemeBtn.setAttribute('aria-label', savedTheme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme');
   }
   
-  // Check for existing valid token
-  const existingToken = localStorage.getItem('authToken');
+  // Check for existing valid token (remember me -> localStorage, otherwise sessionStorage)
+  const existingToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   console.log('Existing authToken:', existingToken ? 'present' : 'not found');
   
   if (existingToken) {
@@ -204,6 +359,7 @@ async function validateTokenAndBoot(token) {
       // Token invalid, clear it and show login
       console.log('Token validation failed, clearing token and showing login...');
       localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       localStorage.removeItem('playerName');
       showLoginScreen();
     }
@@ -211,6 +367,7 @@ async function validateTokenAndBoot(token) {
     console.error('Token validation error:', error);
     // Network error, clear token and show login
     localStorage.removeItem('authToken');
+    sessionStorage.removeItem('authToken');
     localStorage.removeItem('playerName');
     showLoginScreen();
   }
@@ -238,27 +395,127 @@ function showLoginScreen() {
   // Initialize server status panel functionality
   initializeServerStatusPanel();
   
+  // Initialize remember me checkbox
+  const rememberMeCheckbox = document.getElementById('remember-me');
+  if (rememberMeCheckbox) {
+    const savedRememberMe = localStorage.getItem('rememberMe');
+    rememberMeCheckbox.checked = savedRememberMe === 'true';
+  }
+  
   const status = document.getElementById('ls-status');
   const setStatus = (t) => { if (status) status.textContent = t; };
   
   // Form elements
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
-  const authTitle = document.getElementById('auth-title');
   
   // Form switching
   const showLoginForm = () => {
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
-    authTitle.textContent = 'Welcome Back';
     setStatus('');
+    clearAllErrors();
   };
   
   const showRegisterForm = () => {
     loginForm.style.display = 'none';
     registerForm.style.display = 'block';
-    authTitle.textContent = 'Create Account';
     setStatus('');
+    clearAllErrors();
+  };
+
+  // Clear all error messages
+  const clearAllErrors = () => {
+    const errorElements = document.querySelectorAll('.input-error');
+    const inputs = document.querySelectorAll('.auth-row input');
+    
+    errorElements.forEach(el => {
+      el.textContent = '';
+      el.classList.remove('show');
+    });
+    
+    inputs.forEach(input => {
+      input.classList.remove('error');
+    });
+  };
+
+  // Show error for specific input
+  const showError = (inputId, message) => {
+    const input = document.getElementById(inputId);
+    const errorEl = document.getElementById(`${inputId}-error`);
+    
+    if (input && errorEl) {
+      input.classList.add('error');
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+    }
+  };
+
+  // Clear error for specific input
+  const clearError = (inputId) => {
+    const input = document.getElementById(inputId);
+    const errorEl = document.getElementById(`${inputId}-error`);
+    
+    if (input && errorEl) {
+      input.classList.remove('error');
+      errorEl.textContent = '';
+      errorEl.classList.remove('show');
+    }
+  };
+
+  // Password strength checker
+  const checkPasswordStrength = (password) => {
+    const strengthFill = document.getElementById('strength-fill');
+    const strengthText = document.getElementById('strength-text');
+    
+    if (!strengthFill || !strengthText) return;
+    
+    let score = 0;
+    let feedback = '';
+    
+    if (password.length >= 8) score++;
+    if (password.match(/[a-z]/)) score++;
+    if (password.match(/[A-Z]/)) score++;
+    if (password.match(/[0-9]/)) score++;
+    if (password.match(/[^a-zA-Z0-9]/)) score++;
+    
+    // Remove existing classes
+    strengthFill.classList.remove('weak', 'fair', 'good', 'strong');
+    
+    if (score <= 1) {
+      strengthFill.classList.add('weak');
+      feedback = 'Very weak';
+    } else if (score === 2) {
+      strengthFill.classList.add('fair');
+      feedback = 'Fair';
+    } else if (score === 3) {
+      strengthFill.classList.add('good');
+      feedback = 'Good';
+    } else {
+      strengthFill.classList.add('strong');
+      feedback = 'Strong';
+    }
+    
+    strengthText.textContent = feedback;
+  };
+
+  // Set loading state for buttons
+  const setButtonLoading = (buttonId, isLoading) => {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    
+    const btnText = button.querySelector('.btn-text');
+    const btnLoading = button.querySelector('.btn-loading');
+    
+    if (isLoading) {
+      button.disabled = true;
+      if (btnText) btnText.style.display = 'none';
+      if (btnLoading) btnLoading.style.display = 'flex';
+    } else {
+      button.disabled = false;
+      if (btnText) btnText.style.display = 'flex';
+      if (btnLoading) btnLoading.style.display = 'none';
+    }
   };
   
   // Get credentials functions
@@ -301,16 +558,43 @@ function showLoginScreen() {
   };
   
   const onLogin = async () => {
+    clearAllErrors();
+    
     const c = getLoginCreds(); 
-    if (!c.username || !c.password) return setStatus('Enter username and password');
+    let hasErrors = false;
+    
+    if (!c.username) {
+      showError('login-username', 'Username is required');
+      hasErrors = true;
+    }
+    
+    if (!c.password) {
+      showError('login-password', 'Password is required');
+      hasErrors = true;
+    }
+    
+    if (hasErrors) return;
+    
     setStatus('Signing in...');
+    setButtonLoading('login-submit', true);
+    
     console.log('Attempting login with:', { username: c.username, password: '***' });
     try {
       const out = await authFetch('/api/login', c);
       console.log('Login response:', out);
       if (out?.token) {
-        localStorage.setItem('authToken', out.token);
+        const rememberMe = document.getElementById('remember-me')?.checked;
+        if (rememberMe) {
+          localStorage.setItem('authToken', out.token);
+          sessionStorage.removeItem('authToken');
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          sessionStorage.setItem('authToken', out.token);
+          localStorage.removeItem('authToken');
+          localStorage.setItem('rememberMe', 'false');
+        }
         localStorage.setItem('playerName', c.username);
+        
         setStatus('Welcome back! Loading your game...');
         
         // Hide login screen and boot game directly instead of reloading
@@ -323,32 +607,64 @@ function showLoginScreen() {
       } else {
         console.error('Login failed:', out?.error || 'No token in response');
         setStatus(out?.error || 'Login failed');
+        if (out?.error === 'Invalid credentials') {
+          showError('login-username', 'Invalid username or password');
+          showError('login-password', 'Invalid username or password');
+        }
       }
     } catch (error) { 
       console.error('Login error:', error);
       setStatus('Connection failed - check if servers are running'); 
+    } finally {
+      setButtonLoading('login-submit', false);
     }
   };
   
   const onRegister = async () => {
+    clearAllErrors();
+    
     const c = getRegisterCreds(); 
-    if (!c.username || !c.password || !c.confirmPassword) {
-      return setStatus('Please fill in all fields');
+    let hasErrors = false;
+    
+    if (!c.username) {
+      showError('register-username', 'Username is required');
+      hasErrors = true;
+    } else if (c.username.length < 3) {
+      showError('register-username', 'Username must be at least 3 characters');
+      hasErrors = true;
+    } else if (!/^[a-zA-Z0-9_]+$/.test(c.username)) {
+      showError('register-username', 'Username can only contain letters, numbers, and underscores');
+      hasErrors = true;
     }
-    if (c.username.length < 3) {
-      return setStatus('Username must be at least 3 characters');
+    
+    if (!c.password) {
+      showError('register-password', 'Password is required');
+      hasErrors = true;
+    } else if (c.password.length < 4) {
+      showError('register-password', 'Password must be at least 4 characters');
+      hasErrors = true;
     }
-    if (c.password.length < 4) {
-      return setStatus('Password must be at least 4 characters');
+    
+    if (!c.confirmPassword) {
+      showError('register-confirm', 'Please confirm your password');
+      hasErrors = true;
+    } else if (c.password !== c.confirmPassword) {
+      showError('register-confirm', 'Passwords do not match');
+      hasErrors = true;
     }
-    if (c.password !== c.confirmPassword) {
-      return setStatus('Passwords do not match');
-    }
+    
+    if (hasErrors) return;
+    
     setStatus('Creating account...');
+    setButtonLoading('register-submit', true);
+    
     try {
       const out = await authFetch('/api/register', { username: c.username, password: c.password });
       if (out?.token) {
+        // Default to remember = true on register
         localStorage.setItem('authToken', out.token);
+        sessionStorage.removeItem('authToken');
+        localStorage.setItem('rememberMe', 'true');
         localStorage.setItem('playerName', c.username);
         setStatus('Account created! Starting your adventure...');
         
@@ -359,8 +675,19 @@ function showLoginScreen() {
           if (loginScreen) loginScreen.hidden = true;
           bootGame();
         }, 500);
-      } else setStatus(out?.error || 'Registration failed');
-    } catch { setStatus('Connection failed - check if servers are running'); }
+      } else {
+        if (out?.error === 'Username already registered') {
+          showError('register-username', 'Username already exists');
+        } else {
+          setStatus(out?.error || 'Registration failed');
+        }
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setStatus('Connection failed - check if servers are running'); 
+    } finally {
+      setButtonLoading('register-submit', false);
+    }
   };
   
   // Event listeners - remove existing ones first to prevent duplicates
@@ -373,6 +700,34 @@ function showLoginScreen() {
   document.getElementById('show-login')?.addEventListener('click', showLoginForm);
   document.getElementById('login-submit')?.addEventListener('click', onLogin);
   document.getElementById('register-submit')?.addEventListener('click', onRegister);
+  
+  // Password strength checking
+  document.getElementById('register-password')?.addEventListener('input', (e) => {
+    checkPasswordStrength(e.target.value);
+    clearError('register-password');
+  });
+  
+  // Input validation and error clearing
+  document.getElementById('login-username')?.addEventListener('input', () => {
+    clearError('login-username');
+  });
+  
+  document.getElementById('login-password')?.addEventListener('input', () => {
+    clearError('login-password');
+  });
+  
+  document.getElementById('register-username')?.addEventListener('input', () => {
+    clearError('register-username');
+  });
+  
+  document.getElementById('register-confirm')?.addEventListener('input', () => {
+    clearError('register-confirm');
+  });
+  
+  // Forgot password functionality
+  document.getElementById('forgot-password')?.addEventListener('click', () => {
+    setStatus('Password reset functionality coming soon!');
+  });
   
   // Enter key handling
   document.getElementById('login-password')?.addEventListener('keydown', (e) => { 
@@ -429,11 +784,16 @@ async function checkServerStatus() {
     // Remove existing status classes
     dot.classList.remove('status-online', 'status-offline', 'status-checking');
     dot.classList.add(`status-${status}`);
+    // Also toggle container classes for panel styling
+    indicator.classList.remove('online', 'offline', 'checking');
+    indicator.classList.add(status);
     textEl.textContent = text;
   };
 
   // Check Web Server (always online if we can load the page)
   updateStatus('webStatus', 'online', 'Connected');
+  // Panel advanced mirror
+  updateStatus('adv-web-status', 'online', 'Connected');
 
   // Check Auth Server
   try {
@@ -445,27 +805,37 @@ async function checkServerStatus() {
       headers: { 'Authorization': 'Bearer invalid-token' }
     });
     
-    // If 401, show Unauthorized; if 200, show Connected; else Offline
+    let authStatus = 'offline';
+    let authText = 'Offline';
     if (response.status === 200) {
-      updateStatus('authServerStatus', 'online', 'Connected');
+      authStatus = 'online'; authText = 'Connected';
     } else if (response.status === 401) {
-      updateStatus('authServerStatus', 'offline', 'Unauthorized');
-    } else {
-      updateStatus('authServerStatus', 'offline', 'Offline');
+      authStatus = 'offline'; authText = 'Unauthorized';
     }
+    updateStatus('authServerStatus', authStatus, authText);
+    // Panel mirrors
+    updateStatus('simple-auth-status', authStatus, authText);
+    updateStatus('adv-auth-status', authStatus, authText);
   } catch (error) {
     console.error('Auth server check failed:', error);
     updateStatus('authServerStatus', 'offline', 'Offline');
+    updateStatus('simple-auth-status', 'offline', 'Offline');
+    updateStatus('adv-auth-status', 'offline', 'Offline');
   }
 
   // Check Chat Server (Netlify only, no WebSocket)
   try {
     updateStatus('chatServerStatus', 'checking', 'Checking...');
-    // Simulate chat server status as online if page loads
     updateStatus('chatServerStatus', 'online', 'Connected');
+    updateStatus('adv-chat-status', 'online', 'Connected');
   } catch (error) {
     updateStatus('chatServerStatus', 'offline', 'Offline');
+    updateStatus('adv-chat-status', 'offline', 'Offline');
   }
+  
+  // For market/save, assume online when page loads
+  updateStatus('adv-market-status', 'online', 'Connected');
+  updateStatus('adv-save-status', 'online', 'Connected');
 }
 
 function initializeChangelog() {
