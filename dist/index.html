@@ -6,9 +6,9 @@
   <title>sandbox idle</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-  <link rel="icon" href="/assets/icons-D8CNc05T.svg" />
-  <script type="module" crossorigin src="/assets/index-B2S5ARDU.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BTgnNZ61.css">
+  <link rel="icon" href="/assets/icons-3ZCArfWB.svg" />
+  <script type="module" crossorigin src="/assets/index-DMXhwVQm.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DAUie_a6.css">
 </head>
 <body>
   <!-- Inline SVG symbol sprite for UI and fish icons -->
@@ -451,7 +451,8 @@
       </symbol>
       
       <symbol id="icon-theme" viewBox="0 0 24 24" shape-rendering="crispEdges">
-        <!-- Theme toggle icon (sun/moon combined) -->
+        <!-- Dynamic theme toggle icon (sun/moon combined) -->
+        <!-- Sun rays for light mode -->
         <rect x="11" y="1" width="2" height="3" fill="currentColor"/>
         <rect x="11" y="20" width="2" height="3" fill="currentColor"/>
         <rect x="1" y="11" width="3" height="2" fill="currentColor"/>
@@ -460,10 +461,55 @@
         <rect x="18" y="4" width="2" height="2" fill="currentColor"/>
         <rect x="4" y="18" width="2" height="2" fill="currentColor"/>
         <rect x="18" y="18" width="2" height="2" fill="currentColor"/>
-        <!-- Center circle -->
+        <!-- Center circle (sun/moon) -->
         <rect x="8" y="8" width="8" height="8" fill="currentColor"/>
         <rect x="9" y="9" width="6" height="6" fill="var(--bg-primary)"/>
+        <!-- Moon crescent overlay for dark mode -->
         <rect x="10" y="10" width="4" height="4" fill="currentColor"/>
+      </symbol>
+
+      <!-- Changelog/News icon -->
+      <symbol id="icon-changelog" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Document with lines -->
+        <rect x="5" y="3" width="14" height="18" fill="#F4F1E8"/>
+        <rect x="4" y="2" width="16" height="20" fill="#8B4513"/>
+        <rect x="5" y="3" width="14" height="18" fill="#F4F1E8"/>
+        <!-- Document header -->
+        <rect x="7" y="5" width="10" height="2" fill="#2C5AA0"/>
+        <rect x="7" y="8" width="8" height="1" fill="#666666"/>
+        <rect x="7" y="10" width="6" height="1" fill="#666666"/>
+        <rect x="7" y="12" width="10" height="1" fill="#666666"/>
+        <rect x="7" y="14" width="7" height="1" fill="#666666"/>
+        <rect x="7" y="16" width="9" height="1" fill="#666666"/>
+        <!-- Bullet points -->
+        <rect x="7" y="8" width="1" height="1" fill="#E53935"/>
+        <rect x="7" y="10" width="1" height="1" fill="#E53935"/>
+        <rect x="7" y="12" width="1" height="1" fill="#E53935"/>
+        <rect x="7" y="14" width="1" height="1" fill="#E53935"/>
+        <rect x="7" y="16" width="1" height="1" fill="#E53935"/>
+        <!-- Corner fold -->
+        <rect x="16" y="3" width="3" height="3" fill="#D2B48C"/>
+        <polygon points="16,3 19,6 16,6" fill="#A0522D"/>
+      </symbol>
+
+      <!-- Market/Shop icon -->
+      <symbol id="icon-market" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Market stall base -->
+        <rect x="4" y="16" width="16" height="6" fill="#8B4513"/>
+        <rect x="5" y="17" width="14" height="4" fill="#A0522D"/>
+        <!-- Awning/canopy -->
+        <rect x="3" y="8" width="18" height="4" fill="#DC143C"/>
+        <rect x="4" y="9" width="16" height="2" fill="#B91C1C"/>
+        <!-- Support poles -->
+        <rect x="5" y="12" width="2" height="4" fill="#654321"/>
+        <rect x="17" y="12" width="2" height="4" fill="#654321"/>
+        <!-- Items on display -->
+        <rect x="7" y="14" width="2" height="2" fill="#FFD700"/>
+        <rect x="10" y="14" width="2" height="2" fill="#32CD32"/>
+        <rect x="13" y="14" width="2" height="2" fill="#FF6347"/>
+        <!-- Awning details -->
+        <rect x="3" y="8" width="18" height="1" fill="#8B0000"/>
+        <rect x="3" y="11" width="18" height="1" fill="#8B0000"/>
       </symbol>
 
       <!-- Settings gear icon -->
@@ -489,29 +535,55 @@
 
       <!-- Custom collect/gather icon -->
       <symbol id="icon-collect" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Magic collection sparkles around -->
+        <rect x="3" y="3" width="1" height="1" fill="#FFD700"/>
+        <rect x="20" y="4" width="1" height="1" fill="#FF6B6B"/>
+        <rect x="2" y="8" width="1" height="1" fill="#4CAF50"/>
+        <rect x="21" y="12" width="1" height="1" fill="#2196F3"/>
+        <rect x="1" y="16" width="1" height="1" fill="#9C27B0"/>
+        <rect x="22" y="19" width="1" height="1" fill="#FF9800"/>
+        
         <!-- Hand/arm reaching down -->
         <rect x="11" y="2" width="2" height="8" fill="#FFDBAC"/>
         <rect x="10" y="9" width="4" height="3" fill="#F4C2A1"/>
-        <!-- Collection bag/pouch -->
+        <!-- Hand details -->
+        <rect x="9" y="10" width="1" height="1" fill="#E6A373"/>
+        <rect x="14" y="10" width="1" height="1" fill="#E6A373"/>
+        
+        <!-- Enhanced collection bag/pouch -->
         <rect x="6" y="12" width="12" height="8" fill="#8B4513"/>
         <rect x="7" y="13" width="10" height="6" fill="#A0522D"/>
         <rect x="8" y="14" width="8" height="4" fill="#D2691E"/>
+        <!-- Bag shine/highlight -->
+        <rect x="8" y="13" width="2" height="1" fill="#F4A460"/>
+        
         <!-- Bag straps -->
         <rect x="5" y="10" width="2" height="4" fill="#654321"/>
         <rect x="17" y="10" width="2" height="4" fill="#654321"/>
-        <!-- Items being collected (sparkles/gems) -->
-        <rect x="4" y="8" width="2" height="2" fill="#FFD700"/>
-        <rect x="18" y="6" width="2" height="2" fill="#FF6B6B"/>
-        <rect x="2" y="14" width="2" height="2" fill="#4CAF50"/>
-        <rect x="20" y="16" width="2" height="2" fill="#2196F3"/>
-        <!-- Motion lines showing collection -->
-        <rect x="3" y="11" width="4" height="1" fill="#FFD700" opacity="0.7"/>
-        <rect x="17" y="9" width="4" height="1" fill="#FF6B6B" opacity="0.7"/>
-        <rect x="1" y="17" width="4" height="1" fill="#4CAF50" opacity="0.7"/>
-        <rect x="19" y="19" width="4" height="1" fill="#2196F3" opacity="0.7"/>
-        <!-- Bag closure/buckle -->
+        
+        <!-- Items being collected (larger and more visible) -->
+        <rect x="4" y="7" width="2" height="2" fill="#FFD700"/>
+        <rect x="5" y="6" width="1" height="1" fill="#FFF59D"/> <!-- shine -->
+        
+        <rect x="18" y="5" width="2" height="2" fill="#FF6B6B"/>
+        <rect x="19" y="6" width="1" height="1" fill="#FFB3BA"/> <!-- shine -->
+        
+        <rect x="2" y="13" width="2" height="2" fill="#4CAF50"/>
+        <rect x="3" y="14" width="1" height="1" fill="#A5D6A7"/> <!-- shine -->
+        
+        <rect x="20" y="15" width="2" height="2" fill="#2196F3"/>
+        <rect x="21" y="16" width="1" height="1" fill="#90CAF9"/> <!-- shine -->
+        
+        <!-- Motion lines showing collection (more prominent) -->
+        <rect x="3" y="10" width="4" height="1" fill="#FFD700" opacity="0.8"/>
+        <rect x="17" y="8" width="4" height="1" fill="#FF6B6B" opacity="0.8"/>
+        <rect x="1" y="16" width="4" height="1" fill="#4CAF50" opacity="0.8"/>
+        <rect x="19" y="18" width="4" height="1" fill="#2196F3" opacity="0.8"/>
+        
+        <!-- Enhanced bag closure/buckle -->
         <rect x="11" y="12" width="2" height="2" fill="#FFD700"/>
         <rect x="10" y="13" width="4" height="1" fill="#E6AC00"/>
+        <rect x="12" y="12" width="1" height="1" fill="#FFF59D"/> <!-- buckle shine -->
       </symbol>
 
       <!-- Trash icon for inventory header -->
@@ -630,6 +702,7 @@
         <circle cx="14.2" cy="11.3" r="0.6" fill="#111"/>
         <path d="M16 12.2l1.6 1.1M16 11.8l1.6-1.1" stroke="#111" stroke-width="0.6" stroke-linecap="round"/>
       </symbol>
+
     </defs>
   </svg>
   <main id="game">
@@ -645,14 +718,192 @@
     
     <div id="login-screen" class="login-screen" hidden>
       <div class="auth-dialog" role="dialog" aria-modal="true">
-        <h2>Welcome</h2>
-        <div class="auth-row"><input id="ls-username" type="text" placeholder="Username" autocomplete="username"/></div>
-        <div class="auth-row"><input id="ls-password" type="password" placeholder="Password" autocomplete="current-password"/></div>
-        <div class="auth-actions">
-          <button id="ls-login" class="primary-btn">Login</button>
-          <button id="ls-register" class="primary-btn">Register</button>
+        <!-- Server Status Indicators -->
+        <div class="server-status">
+          <div class="status-row">
+            <span class="status-label">Web Server:</span>
+            <div class="status-indicator" id="webStatus">
+              <div class="status-dot status-checking"></div>
+              <span class="status-text">Checking...</span>
+            </div>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Auth Server:</span>
+            <div class="status-indicator" id="authServerStatus">
+              <div class="status-dot status-checking"></div>
+              <span class="status-text">Checking...</span>
+            </div>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Chat Server:</span>
+            <div class="status-indicator" id="chatServerStatus">
+              <div class="status-dot status-checking"></div>
+              <span class="status-text">Checking...</span>
+            </div>
+          </div>
         </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="auth-form">
+          <h2 class="form-title">Login</h2>
+          <div class="auth-row"><input id="login-username" type="text" placeholder="Username" autocomplete="username"/></div>
+          <div class="auth-row"><input id="login-password" type="password" placeholder="Password" autocomplete="current-password"/></div>
+          <div class="auth-actions">
+            <button id="login-submit" class="primary-btn">Login</button>
+            <button id="show-register" class="secondary-btn create-account-btn">Create New Account</button>
+          </div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="auth-form" style="display: none;">
+          <h2 class="form-title">Create Account</h2>
+          <div class="auth-row"><input id="register-username" type="text" placeholder="Choose Username" autocomplete="username"/></div>
+          <div class="auth-row"><input id="register-password" type="password" placeholder="Choose Password" autocomplete="new-password"/></div>
+          <div class="auth-row"><input id="register-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/></div>
+          <div class="auth-actions">
+            <button id="register-submit" class="primary-btn">Create Account</button>
+            <button id="show-login" class="secondary-btn back-to-login-btn">Back to Login</button>
+          </div>
+        </div>
+        
         <div id="ls-status" class="auth-status"></div>
+      </div>
+      
+      <!-- Version number - bottom left of screen -->
+      <div class="version-info-screen">v0.1.3</div>
+      
+      <!-- Changelog button - bottom right of screen -->
+      <button id="changelog-toggle" class="changelog-toggle-screen" title="View Changelog & Updates">
+        <svg><use href="#icon-changelog"/></svg>
+      </button>
+      
+      <!-- Changelog Panel -->
+      <div id="changelog-panel" class="changelog-panel" style="display: none;">
+        <div class="changelog-header">
+          <h3>📋 Game Updates & Changelog</h3>
+          <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
+        </div>
+        <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.15.0</div>
+            <div class="changelog-date">August 14, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Removed tooltips from chat and market buttons for cleaner interface
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Changelog panel width expanded for better readability
+              </div>
+              <div class="changelog-item removed">
+                <span class="changelog-tag">REMOVED</span>
+                Collect All button completely removed from exploration interface
+              </div>
+            </div>
+          </div>
+
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.3</div>
+            <div class="changelog-date">August 14, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Interactive pending sales collection system in Sell History
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Auto-refreshing marketplace - no more tab switching needed
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Real-time market updates every 10 seconds while browsing
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Enhanced sale notifications with click-to-collect coins
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Seller gold crediting now works properly with immediate coin updates
+              </div>
+            </div>
+          </div>
+          
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.1</div>
+            <div class="changelog-date">August 14, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Persistent account storage - accounts now survive server restarts
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Auto-save system protects against data loss during shutdowns
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                File-based storage system with automatic backups every 30 seconds
+              </div>
+            </div>
+          </div>
+          
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1</div>
+            <div class="changelog-date">August 14, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Real-time multiplayer market system with live trading
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Global chat with player list and customizable colors
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Server-based progression saves (no more local storage conflicts)
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                JavaScript syntax errors and missing market sync methods
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Market listings now sync across all players in real-time
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Chat header now displays current username
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Account-based authentication with secure token system
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Fishing, exploration, and progressive skills system
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Multiple discoverable locations and zones
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Equipment system with various gear types and upgrades
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Ambient audio system with location-based soundscapes
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Particle effects and visual feedback systems
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <!-- Header with game stats and actions -->
@@ -679,9 +930,6 @@
           <button id="audioToggleBtn" class="header-btn audio-toggle" title="Mute Audio"></button>
           <button id="settingsBtn" class="header-btn settings-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsPanel" title="Settings">
             <svg><use href="#icon-settings"/></svg>
-          </button>
-          <button id="ground-trash" class="header-btn" title="Clear Ground">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><use href="#icon-trash"/></svg>
           </button>
         </div>
         <div class="location-picker header-loc">
@@ -753,9 +1001,6 @@
               <svg><use href="#icon-compass"/></svg>
               <span id="exploreBtnLabel">Explore</span>
             </button>
-            <button id="collectAllBtn" class="header-btn collect-all-btn" type="button" aria-label="Collect all ground items" title="Collect All">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><use href="#icon-collect"/></svg>
-            </button>
           </div>
 
           <!-- Discovery Cards Container -->
@@ -769,12 +1014,20 @@
       <div id="desktop-panels" aria-live="polite">
         <!-- Zones Panel -->
         <div id="panel-zones" class="inventory-panel draggable-panel" style="display:none">
-          <h2 class="drag-handle" style="text-align:center;width:100%">Zones</h2>
-          <div id="zones-list" class="zones-list"></div>
+          <div class="panel-header">
+            <h2 class="drag-handle" style="text-align:center;width:100%">Zones</h2>
+            <button class="panel-close-btn" title="Close">×</button>
+          </div>
+          <div class="panel-content">
+            <div id="zones-list" class="zones-list"></div>
+          </div>
         </div>
         <!-- Equipment Panel -->
         <div id="panel-equipment" class="equipment-panel draggable-panel" style="display:none">
-          <h2 class="drag-handle">Equipment</h2>
+          <div class="panel-header">
+            <h2 class="drag-handle">Equipment</h2>
+            <button class="panel-close-btn" title="Close">×</button>
+          </div>
           <div class="equipment-paperdoll">
             <div class="equipment-slot" data-slot="helmet">
               <div class="slot-item empty"></div>
@@ -815,6 +1068,7 @@
         <div id="panel-inventory" class="inventory-panel draggable-panel" style="display:none">
           <div class="inventory-header">
             <h2 class="drag-handle">Inventory</h2>
+            <button class="panel-close-btn" title="Close">×</button>
             <div class="inventory-info">
               <div class="coin-pouch" id="coin-pouch" title="Coins">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -822,14 +1076,16 @@
                 </svg>
                 <span id="coin-count">0</span>
               </div>
-              <button id="sort-inventory-btn" class="header-btn" title="Sort by Name">
+              <button id="sort-inventory-btn" class="header-btn" title="Sort by Category&#10;Equipment → Tools → Fish → Resources">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>
                 </svg>
               </button>
             </div>
           </div>
-          <div class="inventory-grid" id="inv-grid"></div>
+          <div class="panel-content">
+            <div class="inventory-grid" id="inv-grid"></div>
+          </div>
           <!-- Context menu -->
           <div class="ctx-menu" id="inv-menu" role="menu" aria-hidden="true">
             <button id="ctx-equip" type="button" style="display: none;">Equip Item</button>
@@ -840,8 +1096,12 @@
 
         <!-- Skills Panel -->
         <div id="panel-skills" class="skills-panel draggable-panel" style="display:none">
-          <h2 class="drag-handle">Skills</h2>
-          <div class="skills-grid all-skills">
+          <div class="panel-header">
+            <h2 class="drag-handle">Skills</h2>
+            <button class="panel-close-btn" title="Close">×</button>
+          </div>
+          <div class="panel-content">
+            <div class="skills-grid all-skills">
             <div class="skill-card" data-skill="attack" title="Attack" style="--progress-pct: 0%">
               <div class="skill-level-badge" data-skill-level="attack">1</div>
               <div class="skill-icon-large">
@@ -879,18 +1139,25 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- Chat Panel (draggable, like other panels) -->
         <div id="panel-chat" class="inventory-panel draggable-panel chat-panel" style="display:none">
           <div class="chat-header">
             <h2 class="drag-handle">Global Chat</h2>
-            <button id="togglePlayersBtn" class="players-toggle-btn" title="Toggle Online Players">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span class="players-count">0</span>
-            </button>
+            <button class="panel-close-btn" title="Close">×</button>
+            <div class="chat-header-controls">
+              <div class="chat-color-control">
+                <input type="color" id="chatColorPickerPanel" value="#4ecdc4" class="color-picker-small" title="Choose your chat name color">
+              </div>
+              <button id="togglePlayersBtn" class="players-toggle-btn" title="Toggle Online Players">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+                <span class="players-count">0</span>
+              </button>
+            </div>
           </div>
           <div class="chat-container">
             <div class="chat-main">
@@ -900,9 +1167,114 @@
                 <button id="chat-send" class="primary-btn">Send</button>
               </div>
             </div>
-            <div class="chat-sidebar" id="chatSidebar" style="display: none;">
+            <div class="chat-sidebar hidden" id="chatSidebar">
               <h3>Online Players</h3>
               <div id="online-players" class="online-players-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Panel -->
+        <div id="panel-market" class="inventory-panel draggable-panel market-panel" style="display:none">
+          <div class="market-header">
+            <h2 class="drag-handle">Player Market</h2>
+            <button class="panel-close-btn" title="Close">×</button>
+            <button id="marketRefreshBtn" class="market-refresh-btn" title="Refresh Market Listings" onclick="UI.refreshMarketListings()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="market-container">
+            <div class="market-tabs">
+              <button id="buyTab" class="market-tab active">Buy</button>
+              <button id="sellTab" class="market-tab">Sell Item</button>
+              <button id="myListingsTab" class="market-tab">My Listings</button>
+              <button id="sellHistoryTab" class="market-tab">
+                Sell History
+                <span id="pendingGoldNotification" class="notification-badge" style="display: none;">!</span>
+              </button>
+            </div>
+            <div class="market-content">
+              <!-- Buy Tab -->
+              <div id="buyTabContent" class="market-tab-content active">
+                <div class="market-sub-tabs">
+                  <button id="equipmentSubTab" class="market-sub-tab active">
+                    Equipment
+                  </button>
+                  <button id="resourcesSubTab" class="market-sub-tab">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <use href="#icon-stone"/>
+                    </svg>
+                    Resources
+                  </button>
+                </div>
+                <div class="market-sub-content">
+                  <!-- Equipment Sub-tab -->
+                  <div id="equipmentSubTabContent" class="market-sub-tab-content active">
+                    <div class="market-filters">
+                      <input type="text" id="equipmentSearch" placeholder="Search equipment..." class="market-search">
+                    </div>
+                    <div id="equipmentListings" class="market-listings">
+                      <div class="market-empty">No equipment listed by other players</div>
+                    </div>
+                  </div>
+                  <!-- Resources Sub-tab -->
+                  <div id="resourcesSubTabContent" class="market-sub-tab-content">
+                    <div class="market-filters">
+                      <input type="text" id="resourcesSearch" placeholder="Search resources..." class="market-search">
+                    </div>
+                    <div id="resourcesListings" class="market-listings">
+                      <div class="market-empty">No resources listed by other players</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Sell Tab -->
+              <div id="sellTabContent" class="market-tab-content">
+                <div class="sell-form-minimal">
+                  <div class="sell-grid">
+                    <select id="sellItemSelect" class="sell-select" placeholder="Choose item">
+                      <option value="">Choose item...</option>
+                    </select>
+                    
+                    <div class="sell-quantity-price">
+                      <input type="number" id="sellQuantity" min="1" value="1" class="sell-input" placeholder="Qty">
+                      <input type="number" id="sellPrice" min="1" placeholder="Price" class="sell-input">
+                      <svg class="sell-currency-icon" width="16" height="16" viewBox="0 0 24 24">
+                        <use href="#icon-coin"></use>
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <button id="listItemBtn" class="sell-btn">List Item</button>
+                </div>
+              </div>
+              <!-- My Listings Tab -->
+              <div id="myListingsTabContent" class="market-tab-content">
+                <div id="myListings" class="market-listings">
+                  <div class="market-empty">You have no active listings</div>
+                </div>
+              </div>
+              <!-- Sell History Tab -->
+              <div id="sellHistoryTabContent" class="market-tab-content">
+                <div class="sell-history-header">
+                  <h3>Pending Gold Collection</h3>
+                  <button id="collectAllGoldBtn" class="collect-gold-btn" onclick="UI.collectAllGold()" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24">
+                      <use href="#icon-collect-gold"></use>
+                    </svg>
+                    Collect All Gold
+                  </button>
+                </div>
+                <div id="pendingGoldContainer" class="pending-gold-container">
+                  <div class="market-empty">No pending gold to collect</div>
+                </div>
+                <h3>Sell History</h3>
+                <div id="sellHistory" class="sell-history">
+                  <div class="market-empty">No recent sales</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -974,14 +1346,60 @@
       <svg><use href="#icon-skills"/></svg>
       <span>Skills</span>
     </button>
-    <button id="toggleChat" class="ui-panel-btn" title="Global Chat" data-label="Chat">
+    <button id="toggleChat" class="ui-panel-btn" data-label="Chat">
       <svg><use href="#icon-chat"/></svg>
       <span>Chat</span>
       <div class="notification-badge"></div>
     </button>
+    <button id="toggleMarket" class="ui-panel-btn" data-label="Market">
+      <svg><use href="#icon-market"/></svg>
+      <span>Market</span>
+    </button>
   </div>
 
-  
+  <!-- Desktop Social Buttons -->
+  <div class="desktop-social-buttons">
+    <button id="desktopChatBtn" class="desktop-social-btn" onclick="UI.showPanel('chat')">
+      <svg><use href="#icon-chat"/></svg>
+      <div class="notification-badge" style="display: none;"></div>
+    </button>
+    <button id="desktopMarketBtn" class="desktop-social-btn" onclick="UI.showPanel('market')">
+      <svg><use href="#icon-market"/></svg>
+      <div class="notification-badge" style="display: none;"></div>
+    </button>
+  </div>
+
+
+  <!-- Buy Dialog -->
+  <div id="buyDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>Purchase Item</h3>
+        <button class="dialog-close" onclick="UI.closeBuyDialog()">×</button>
+      </div>
+      <div class="dialog-body">
+        <div class="buy-item-info">
+          <div id="buyItemIcon" class="buy-item-icon"></div>
+          <div class="buy-item-details">
+            <div id="buyItemName" class="buy-item-name"></div>
+            <div id="buyItemAvailable" class="buy-item-available"></div>
+          </div>
+        </div>
+        <div class="buy-form">
+          <label for="buyAmount">Quantity:</label>
+          <input type="number" id="buyAmount" min="1" value="1" />
+          <div class="buy-total">
+            <span>Total Cost: </span>
+            <span id="buyTotalCost">0<svg class="coin-icon-small"><use href="#icon-coin"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="dialog-btn dialog-btn-cancel" onclick="UI.closeBuyDialog()">Cancel</button>
+        <button class="dialog-btn dialog-btn-confirm" onclick="UI.confirmBuy()">Buy</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
