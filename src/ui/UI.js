@@ -109,6 +109,25 @@ export const UI = {
         this.listItemForSale();
       }
     });
+
+    // Global UI SFX handlers: play click and hover sounds for interactive controls
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, [role="button"]');
+      if (!btn) return;
+      if (btn.disabled) return;
+      if (btn.dataset && btn.dataset.noSfx === 'true') return; // opt-out
+      if (btn.classList && btn.classList.contains('no-sfx')) return;
+      try { AudioManager.playButtonClick(); } catch {}
+    });
+
+    document.addEventListener('pointerover', (e) => {
+      const btn = e.target.closest('button, [role="button"]');
+      if (!btn) return;
+      if (btn.disabled) return;
+      if (btn.dataset && btn.dataset.noSfx === 'true') return; // opt-out
+      if (btn.classList && btn.classList.contains('no-sfx')) return;
+      try { AudioManager.playButtonHover(); } catch {}
+    }, { capture: true });
   },
 
   showLogin() {

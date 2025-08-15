@@ -235,6 +235,18 @@ function bootGame() {
     
     logger.debug('Loading audio assets...');
     try { AudioManager.loadGoldPickupSound(); } catch {}
+    // Preload UI click/hover samples from assets and prefer them over synthesized SFX when available
+    try {
+      Promise.all([
+        AudioManager.loadUIClickSound(),
+        AudioManager.loadUIHoverSound()
+      ]).then(([clickLoaded, hoverLoaded]) => {
+        if (clickLoaded || hoverLoaded) {
+          AudioManager.useSampleSfx = true;
+          console.debug('UI sample SFX loaded, using sample sounds for button interactions');
+        }
+      }).catch(() => {});
+    } catch (e) {}
     
     logger.debug('Rendering initial UI...');
     Inventory.render();
