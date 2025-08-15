@@ -1,6 +1,6 @@
 {
   "name": "sandbox-idle",
-  "version": "0.1.66",
+  "version": "0.1.67",
   "description": "Sandbox Idle - Desktop Game",
   "main": "src/main.js",
   "private": true,

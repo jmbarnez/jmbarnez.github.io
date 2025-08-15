@@ -227,6 +227,9 @@ function bootGame() {
     logger.debug('Initializing panel management...');
     PanelManager.init();
     
+    // Clear any old panel positioning data to ensure clean state
+    localStorage.removeItem('bottom-panel-position');
+    
     logger.debug('Initializing skills system...');
     Skills.init();
     
@@ -1107,15 +1110,7 @@ function initializeChangelog() {
       changelogPanel.style.display = 'none';
     }
   });
-  
-  // Close changelog panel when clicking outside
-  if (changelogPanel) {
-    changelogPanel.addEventListener('click', (e) => {
-      if (e.target === changelogPanel) {
-        changelogPanel.style.display = 'none';
-      }
-    });
-  }
 }
+
 
 
