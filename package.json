@@ -17,6 +17,10 @@
     "netlify:deploy": "netlify deploy",
     "netlify:deploy:prod": "netlify deploy --prod"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
+    "jsonwebtoken": "^9.0.0"
+  },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.4",
     "concurrently": "^8.2.2",
