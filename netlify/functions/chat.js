@@ -181,11 +181,11 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('Chat failed');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Chat failed' })
     };
   }
 };

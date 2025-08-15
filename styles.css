@@ -203,6 +203,35 @@ body:not(.login-mode) .login-controls { display: none !important; }
 .zone-card.fishing-zone { width: 100%; max-width: none; }
 .zone-card.dragging { cursor: default; }
 
+/* Beach themed background gradient for Serene Shores */
+.beach-vector {
+  background: linear-gradient(135deg, 
+    #87CEEB 0%,     /* Sky blue */
+    #B0E0E6 25%,    /* Powder blue */
+    #F0E68C 50%,    /* Khaki sand */
+    #DEB887 75%,    /* Burlywood */
+    #F4A460 100%    /* Sandy brown */
+  );
+  background-attachment: fixed;
+  background-size: 200% 200%;
+  animation: beachWaves 12s ease-in-out infinite;
+}
+
+[data-theme="dark"] .beach-vector {
+  background: linear-gradient(135deg, 
+    #2C5F2D 0%,     /* Dark teal */
+    #1B4B5A 25%,    /* Dark blue-green */
+    #8B7355 50%,    /* Dark sand */
+    #5D4E37 75%,    /* Dark brown */
+    #3E2723 100%    /* Dark brown */
+  );
+}
+
+@keyframes beachWaves {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 /* Themed frames for zones */
 .zone-card.theme-beach { border-color: #5aa9d6; box-shadow: var(--medieval-shadow), var(--raised-border), 0 0 12px rgba(90,169,214,0.15); }
 .zone-card.theme-forest { border-color: #406b40; box-shadow: var(--medieval-shadow), var(--raised-border), 0 0 12px rgba(64,107,64,0.18); }
