@@ -463,7 +463,15 @@ export class ChatClient {
         console.error('Error response:', errorText);
       } else {
         console.log('Message sent successfully');
-        // Immediately poll for new messages to get the sent message
+        const result = await response.json();
+        
+        // Immediately display the sent message locally
+        if (result.message) {
+          console.log('Displaying sent message immediately:', result.message);
+          this.listeners.forEach((fn) => fn(result.message));
+        }
+        
+        // Also poll for new messages to ensure sync
         setTimeout(() => {
           console.log('Requesting immediate message update after send...');
           this._requestMessages();

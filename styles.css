@@ -3947,7 +3947,6 @@ body[data-theme="dark"] .location-badge.forest {
   max-width: 90vw;
   border-radius: 12px;
   backdrop-filter: blur(10px);
-  animation: slideInUp 0.3s ease-out;
 }
 
 /* Mobile responsiveness */
@@ -3979,16 +3978,6 @@ body[data-theme="dark"] .location-badge.forest {
   }
 }
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .auth-dialog h2 {
   margin: 0 0 24px 0;
@@ -4244,21 +4233,8 @@ body[data-theme="dark"] .location-badge.forest {
   transform: translateY(-10px);
 }
 
-/* Form switching animation */
-.auth-form {
-  animation: fadeIn 0.3s ease-out;
-}
+/* Form switching animation removed */
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .auth-status { 
   margin-top: 8px; 

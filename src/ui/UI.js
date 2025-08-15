@@ -26,6 +26,28 @@ const getApiBaseUrl = () => {
 // Helper to get auth token for API calls
 const getAuthToken = () => (window).__authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
 
+// Utility to prevent duplicate button presses
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+// Utility to prevent rapid button clicks
+const preventDuplicateClicks = (button, delay = 300) => {
+  if (!button) return;
+  button.disabled = true;
+  setTimeout(() => {
+    button.disabled = false;
+  }, delay);
+};
+
 export const UI = {
   elements: {},
 
@@ -82,6 +104,8 @@ export const UI = {
       const btn = e.target.closest('#listItemBtn');
       if (btn) {
         e.preventDefault();
+        if (btn.disabled) return; // Prevent multiple clicks
+        preventDuplicateClicks(btn, 500);
         this.listItemForSale();
       }
     });
@@ -369,15 +393,20 @@ export const UI = {
   },
 
   setupButtons() {
-    if (this.elements.fishBtn) this.elements.fishBtn.addEventListener('click', () => { AudioManager.playButtonClick(); Fishing.start(); });
-    if (this.elements.exploreBtn) this.elements.exploreBtn.addEventListener('click', (e) => {
+    if (this.elements.fishBtn) this.elements.fishBtn.addEventListener('click', debounce(() => { 
+      AudioManager.playButtonClick(); 
+      preventDuplicateClicks(this.elements.fishBtn, 500);
+      Fishing.start(); 
+    }, 100));
+    if (this.elements.exploreBtn) this.elements.exploreBtn.addEventListener('click', debounce((e) => {
       // Ensure first interaction unlocks and starts ambient; avoid double-toggle
       try { AudioManager.startAmbientSounds(); } catch {}
       e.currentTarget?.blur?.();
+      preventDuplicateClicks(this.elements.exploreBtn, 500);
       // Toggle reliably
       if (gameState.isExploring) { AudioManager.playButtonClick(); Exploration.stop(); }
       else { AudioManager.playButtonClick(); Exploration.start(); }
-    });
+    }, 100));
     if (this.elements.exitBtn) this.elements.exitBtn.addEventListener('click', async () => {
       AudioManager.playButtonClick();
       try { 
@@ -907,11 +936,19 @@ export const UI = {
         return; // Don't add this to chat messages
       }
       
-      // Deduplicate: skip if the last message is identical in name/text
-      const lastMsg = chatMessages ? chatMessages.lastElementChild : null;
-      if (lastMsg && lastMsg.dataset && lastMsg.dataset.name === (msg.name || '') && lastMsg.dataset.text === (msg.text || '')) {
+      // Enhanced deduplication: check last few messages to prevent duplicates
+      const existingMessages = Array.from(chatMessages.children).slice(-5); // Check last 5 messages
+      const isDuplicate = existingMessages.some(existing => 
+        existing.dataset && existing.dataset.name === (msg.name || '') && 
+        existing.dataset.text === (msg.text || '') &&
+        Math.abs(parseInt(existing.dataset.ts || '0') - (msg.ts || Date.now())) < 5000 // Within 5 seconds
+      );
+      
+      if (isDuplicate) {
+        console.log('Skipping duplicate message:', msg);
         return;
       }
+      
       chatMessages.appendChild(messageEl);
       
       // Auto-scroll to bottom
@@ -989,13 +1026,14 @@ export const UI = {
       });
     };
 
-    const sendMessage = () => {
+    const sendMessage = debounce(() => {
       const text = chatInput.value.trim();
       if (!text) return;
       
+      preventDuplicateClicks(chatSend, 300);
       chat.sendChat(text);
       chatInput.value = '';
-    };
+    }, 100);
 
     // Set up event listeners
     chatSend.addEventListener('click', sendMessage);

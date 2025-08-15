@@ -733,9 +733,6 @@
   <main id="game">
     <!-- Login Screen Controls -->
     <div class="login-controls">
-      <button id="loginThemeToggle" class="header-btn theme-toggle" title="Toggle Dark/Light Theme">
-        <svg><use href="#icon-theme"/></svg>
-      </button>
       <button id="loginMuteToggle" class="header-btn mute-toggle" title="Mute Music">
         <svg><use href="#icon-volume"/></svg>
       </button>
@@ -810,7 +807,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.65</div>
+      <div class="version-info-screen">v0.1.66</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -837,6 +834,32 @@
           <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
         </div>
         <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.66</div>
+            <div class="changelog-date">August 15, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Chat messages now display immediately when you send them
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Prevented duplicate button presses with debouncing and smart disabling
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Enhanced chat message deduplication to prevent spam
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Optimized Supabase database schema with indexes and constraints
+              </div>
+              <div class="changelog-item removed">
+                <span class="changelog-tag">REMOVED</span>
+                Removed node_modules from git tracking for cleaner repository
+              </div>
+            </div>
+          </div>
           <div class="changelog-section">
             <div class="changelog-version">Version 0.1.65</div>
             <div class="changelog-date">August 15, 2025</div>

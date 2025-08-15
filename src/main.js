@@ -361,12 +361,6 @@ function initGame() {
   const savedTheme = localStorage.getItem('gameTheme') || 'dark';
   document.body.setAttribute('data-theme', savedTheme);
   
-  // Initialize login theme toggle button
-  const loginThemeBtn = document.getElementById('loginThemeToggle');
-  if (loginThemeBtn) {
-    loginThemeBtn.title = savedTheme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme';
-    loginThemeBtn.setAttribute('aria-label', savedTheme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme');
-  }
   
   // Check for existing valid token (remember me -> localStorage, otherwise sessionStorage)
   const localToken = localStorage.getItem('authToken');
