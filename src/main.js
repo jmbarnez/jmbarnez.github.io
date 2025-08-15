@@ -231,6 +231,9 @@ function showLoginScreen() {
   // Initialize changelog functionality
   initializeChangelog();
   
+  // Initialize server status panel functionality
+  initializeServerStatusPanel();
+  
   const status = document.getElementById('ls-status');
   const setStatus = (t) => { if (status) status.textContent = t; };
   

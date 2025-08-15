@@ -467,6 +467,32 @@
         <rect x="10" y="10" width="4" height="4" fill="currentColor"/>
       </symbol>
 
+      <!-- Server status icon -->
+      <symbol id="icon-server" viewBox="0 0 24 24" shape-rendering="crispEdges">
+        <!-- Server rack -->
+        <rect x="4" y="4" width="16" height="16" fill="#2A2A2A"/>
+        <rect x="3" y="3" width="18" height="18" fill="#3A3A3A"/>
+        <rect x="4" y="4" width="16" height="16" fill="#4A4A4A"/>
+        <!-- Server units -->
+        <rect x="5" y="6" width="14" height="3" fill="#5A5A5A"/>
+        <rect x="5" y="10" width="14" height="3" fill="#5A5A5A"/>
+        <rect x="5" y="14" width="14" height="3" fill="#5A5A5A"/>
+        <!-- Status lights -->
+        <circle cx="17" cy="7.5" r="1" fill="#4CAF50"/>
+        <circle cx="17" cy="11.5" r="1" fill="#FF9800"/>
+        <circle cx="17" cy="15.5" r="1" fill="#F44336"/>
+        <!-- Ventilation grills -->
+        <rect x="6" y="7" width="1" height="1" fill="#333"/>
+        <rect x="8" y="7" width="1" height="1" fill="#333"/>
+        <rect x="10" y="7" width="1" height="1" fill="#333"/>
+        <rect x="6" y="11" width="1" height="1" fill="#333"/>
+        <rect x="8" y="11" width="1" height="1" fill="#333"/>
+        <rect x="10" y="11" width="1" height="1" fill="#333"/>
+        <rect x="6" y="15" width="1" height="1" fill="#333"/>
+        <rect x="8" y="15" width="1" height="1" fill="#333"/>
+        <rect x="10" y="15" width="1" height="1" fill="#333"/>
+      </symbol>
+
       <!-- Changelog/News icon -->
       <symbol id="icon-changelog" viewBox="0 0 24 24" shape-rendering="crispEdges">
         <!-- Document with lines -->
@@ -771,10 +797,23 @@
       <!-- Version number - bottom left of screen -->
       <div class="version-info-screen">v0.1.3</div>
       
-      <!-- Changelog button - bottom right of screen -->
-      <button id="changelog-toggle" class="changelog-toggle-screen" title="View Changelog & Updates">
-        <svg><use href="#icon-changelog"/></svg>
-      </button>
+      <!-- Right side vertical buttons -->
+      <div class="right-side-buttons">
+        <button id="desktopChatBtn" class="right-side-btn" onclick="UI.showPanel('chat')" title="Chat">
+          <svg><use href="#icon-chat"/></svg>
+          <div class="notification-badge" style="display: none;"></div>
+        </button>
+        <button id="desktopMarketBtn" class="right-side-btn" onclick="UI.showPanel('market')" title="Market">
+          <svg><use href="#icon-market"/></svg>
+          <div class="notification-badge" style="display: none;"></div>
+        </button>
+        <button id="server-status-toggle" class="right-side-btn" title="Server Status">
+          <svg><use href="#icon-server"/></svg>
+        </button>
+        <button id="changelog-toggle" class="right-side-btn" title="Changelog">
+          <svg><use href="#icon-changelog"/></svg>
+        </button>
+      </div>
       
       <!-- Changelog Panel -->
       <div id="changelog-panel" class="changelog-panel" style="display: none;">
@@ -899,6 +938,82 @@
               <div class="changelog-item new">
                 <span class="changelog-tag">NEW</span>
                 Particle effects and visual feedback systems
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Server Status Panel -->
+      <div id="server-status-panel" class="server-status-panel" style="display: none;">
+        <div class="server-status-header">
+          <h3>🖥️ Server Status</h3>
+          <div class="server-status-controls">
+            <button id="server-status-mode-toggle" class="mode-toggle-btn" title="Toggle Advanced Mode">Simple</button>
+            <button id="server-status-close" class="server-status-close-btn" title="Close">×</button>
+          </div>
+        </div>
+        <div class="server-status-content">
+          <!-- Simple mode content -->
+          <div id="simple-mode" class="status-mode">
+            <div class="status-item">
+              <div class="status-label">Authentication Server</div>
+              <div class="status-indicator" id="simple-auth-status">
+                <div class="status-dot"></div>
+                <span class="status-text">Checking...</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Advanced mode content -->
+          <div id="advanced-mode" class="status-mode" style="display: none;">
+            <div class="status-section">
+              <h4>Core Services</h4>
+              <div class="status-item">
+                <div class="status-label">Web Server</div>
+                <div class="status-indicator" id="adv-web-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Authentication API</div>
+                <div class="status-indicator" id="adv-auth-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Database Connection</div>
+                <div class="status-indicator" id="adv-db-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="status-section">
+              <h4>Game Services</h4>
+              <div class="status-item">
+                <div class="status-label">Chat Server</div>
+                <div class="status-indicator" id="adv-chat-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Market API</div>
+                <div class="status-indicator" id="adv-market-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">Save System</div>
+                <div class="status-indicator" id="adv-save-status">
+                  <div class="status-dot"></div>
+                  <span class="status-text">Checking...</span>
+                </div>
               </div>
             </div>
           </div>
