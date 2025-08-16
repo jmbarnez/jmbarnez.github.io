@@ -560,11 +560,9 @@ export const Exploration = {
       this.spawnXpFloat(card, `+${item.xp || 12} XP`);
       this.gainXP(item.xp || 12);
     } else {
-      // Regular items (discovered or dropped)
+      // Regular items (discovered or dropped) - add in a single batched call
       const qty = item.count || 1;
-      for (let i = 0; i < qty; i++) {
-        Inventory.addItem(item.name, item.type || null, card);
-      }
+      Inventory.addItem(item.name, item.type || null, card, qty);
       AudioManager.playPickupFor({ name: item.name, category: item.category || 'ground', subtype: item.subtype });
       
       // Only give XP for discovered items, not dropped items

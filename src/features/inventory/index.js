@@ -494,34 +494,38 @@ export const Inventory = {
 
   // Context menu removed in favor of right-click equip
 
-  addItem(name, type = null, animationSource = null) {
+  addItem(name, type = null, animationSource = null, qty = 1) {
+    // Coerce qty
+    qty = Math.max(1, Number(qty) || 1);
+
     // Handle coins specially - add to coin pouch
     if (name === 'Coin' || name === 'Coins' || name === 'Gold Coin' || name === 'Small Coin') {
-      this.addCoins(1);
+      this.addCoins(qty);
       return;
     }
-    
+
+    // Try to find existing stack to merge into
     const existing = gameState.inventory.find(i => i && i.name === name && (i.type || null) === (type || null));
-    if (existing && !this.isEquipmentType(type)) { 
-      existing.count++; 
-      this.debouncedRender(); 
-      SaveManager.debouncedSave(); // Auto-save after adding item
-      
-      // Animate to existing item slot if inventory is open
+    if (existing && !this.isEquipmentType(type)) {
+      existing.count = Math.max(1, (existing.count || 0) + qty);
+      // Single batched UI update + save
+      this.debouncedRender();
+      SaveManager.debouncedSave();
+      // Animate once
       this.animateItemToSlot(name, existing, animationSource);
-      return; 
+      return;
     }
-    
+
+    // Otherwise find an empty slot and place the stack
     for (let i = 0; i < this.slots; i++) {
-      if (!gameState.inventory[i]) { 
-        const newItem = { name, count: 1, type: (type || null) };
-        gameState.inventory[i] = newItem; 
-        this.debouncedRender(); 
-        SaveManager.debouncedSave(); // Auto-save after adding new item
-        
-        // Animate to new item slot if inventory is open
+      if (!gameState.inventory[i]) {
+        const newItem = { name, count: qty, type: (type || null) };
+        gameState.inventory[i] = newItem;
+        this.debouncedRender();
+        SaveManager.debouncedSave();
+        // Animate once to the created slot
         this.animateItemToSlot(name, newItem, animationSource, i);
-        return; 
+        return;
       }
     }
     const log = document.getElementById('game-log');

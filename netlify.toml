@@ -1,6 +1,6 @@
 [build]
-  # Build command for Vite
-  command = "npm run build"
+  # Build command for Vite - first generate runtime config.json from env, then build
+  command = "node scripts/write-config.js && npm run build"
   # Directory to publish (Vite builds to 'dist' by default)
   publish = "dist"
   # Functions directory

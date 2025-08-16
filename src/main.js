@@ -204,6 +204,7 @@ import { Fishing } from './features/fishing/index.js';
 // Cooking feature removed
 import { AudioManager } from './systems/AudioManager.js';
 import { PanelManager } from './ui/PanelManager.js';
+import { sendPlayerState, flushPlayerState } from './utils/playerStateSync.js';
 import { Skills } from './features/skills/index.js';
 import { IdleManager } from './systems/IdleManager.js';
 import { SaveManager } from './systems/SaveManager.js';
@@ -339,7 +340,47 @@ function bootGame() {
       UI.updateStats(); 
       // Trigger debounced save when stats change
       SaveManager.debouncedSave();
+      // Also sync relevant minimal player state to Supabase (debounced)
+      try { sendPlayerState(gameState.playerId || gameState.userId || 'guest', { stats: gameState.stats }); } catch {}
     }, 1000);
+
+  // Flush player state on unload to ensure last-minute changes are saved
+  window.addEventListener('beforeunload', (e) => {
+    try {
+      const uid = gameState.playerId || gameState.userId || 'guest';
+      const payload = JSON.stringify({ user_id: uid, state: { stats: gameState.stats } });
+
+      // Try a keepalive fetch with Authorization header if we have a synchronous session token available
+      try {
+        const supabase = (typeof window !== 'undefined' && window.getSupabase) ? window.getSupabase?.() : null;
+        // Prefer synchronous session access if available
+        const session = (supabase && supabase.auth && typeof supabase.auth.session === 'function') ? supabase.auth.session() : null;
+        const token = session?.access_token || null;
+        if (token && navigator.sendBeacon && ('keepalive' in Request.prototype || true)) {
+          // Use fetch with keepalive and Authorization header where supported
+          try {
+            navigator.sendBeacon = navigator.sendBeacon || undefined; // keep linter happy
+          } catch (e) {}
+          try {
+            fetch('/.netlify/functions/supabase-upsert-player-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: payload,
+              keepalive: true
+            });
+            return;
+          } catch (err) {
+            // fall through to flushPlayerState
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      // Fallback: best-effort async flush (may be cancelled by browser)
+      try { flushPlayerState(uid, { stats: gameState.stats }); } catch (e) {}
+    } catch (err) {}
+  });
     
     setInterval(() => UI.updateClock(), 1000);
     const startAmbientOnInteraction = (e) => { AudioManager.startAmbientSounds(); document.removeEventListener('pointerdown', startAmbientOnInteraction); document.removeEventListener('keydown', startAmbientOnInteraction); };
@@ -1027,19 +1068,31 @@ function initializeChangelog() {
   const changelogPanel = document.getElementById('changelog-panel');
   const changelogClose = document.getElementById('changelog-close');
   
-  if (changelogToggle && changelogPanel) {
-    changelogToggle.addEventListener('click', () => {
-      AudioManager.unlockAudioContext();
-      AudioManager.playButtonClick();
-      
-      // Toggle the panel visibility
-      if (changelogPanel.style.display === 'block') {
-        changelogPanel.style.display = 'none';
-      } else {
-        changelogPanel.style.display = 'block';
+  // changelogToggle removed from UI; open changelog by clicking version label instead
+  const versionLabel = document.querySelector('.version-info-screen');
+  if (versionLabel && changelogPanel) {
+    versionLabel.setAttribute('role', 'button');
+    versionLabel.setAttribute('tabindex', '0');
+    versionLabel.style.cursor = 'pointer';
+    const pressIn = () => versionLabel.classList.add('pressed');
+    const pressOut = () => versionLabel.classList.remove('pressed');
+    versionLabel.addEventListener('mousedown', pressIn);
+    versionLabel.addEventListener('mouseup', pressOut);
+    versionLabel.addEventListener('mouseleave', pressOut);
+    versionLabel.addEventListener('touchstart', (e) => { pressIn(); e.preventDefault(); }, { passive: true });
+    versionLabel.addEventListener('touchend', (e) => { pressOut(); e.preventDefault(); }, { passive: true });
+    versionLabel.addEventListener('click', () => {
+      try { AudioManager.unlockAudioContext(); AudioManager.playButtonClick(); } catch {}
+      changelogPanel.style.display = (changelogPanel.style.display === 'block') ? 'none' : 'block';
+    });
+    // keyboard activation
+    versionLabel.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        try { AudioManager.unlockAudioContext(); AudioManager.playButtonClick(); } catch {}
+        changelogPanel.style.display = (changelogPanel.style.display === 'block') ? 'none' : 'block';
       }
     });
-  } else {
   }
   
   if (changelogClose && changelogPanel) {

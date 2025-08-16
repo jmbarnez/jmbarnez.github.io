@@ -236,33 +236,19 @@ body:not(.login-mode) .login-controls { display: none !important; }
 .zone-card.fishing-zone { width: 100%; max-width: none; }
 .zone-card.dragging { cursor: default; }
 
-/* Beach themed background gradient for Serene Shores */
+/* Beach themed solid sandy background for Serene Shores (location desktop) */
 .beach-vector {
-  background: linear-gradient(135deg, 
-    #87CEEB 0%,     /* Sky blue */
-    #B0E0E6 25%,    /* Powder blue */
-    #F0E68C 50%,    /* Khaki sand */
-    #DEB887 75%,    /* Burlywood */
-    #F4A460 100%    /* Sandy brown */
-  );
-  background-attachment: fixed;
-  background-size: 200% 200%;
-  animation: beachWaves 12s ease-in-out infinite;
+  background: #F4E7C3; /* Sandy beach */
+  background-attachment: initial;
+  background-size: auto;
+  animation: none;
 }
 
 [data-theme="dark"] .beach-vector {
-  background: linear-gradient(135deg, 
-    #2C5F2D 0%,     /* Dark teal */
-    #1B4B5A 25%,    /* Dark blue-green */
-    #8B7355 50%,    /* Dark sand */
-    #5D4E37 75%,    /* Dark brown */
-    #3E2723 100%    /* Dark brown */
-  );
-}
-
-@keyframes beachWaves {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  background: #bfae86; /* Sandy toned for dark theme */
+  background-attachment: initial;
+  background-size: auto;
+  animation: none;
 }
 
 /* Themed frames for zones */
@@ -1574,18 +1560,26 @@ button, input[type="button"], input[type="submit"], .btn, .header-btn {
 
 .location-badge .loc-icon { font-size: 12px; }
 
-/* Beach theme for badge */
+/* Beach theme for badge - subtle gradient with textured overlay */
 .location-badge.beach {
-  background: linear-gradient(135deg, #B0E0E6 0%, #87CEEB 45%, #F0E68C 80%);
+  background-image: linear-gradient(135deg, rgba(135,206,235,0.95) 0%, rgba(240,230,140,0.95) 60%, rgba(244,164,96,0.95) 100%), url('assets/beach-background.png');
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, 140%;
+  background-blend-mode: overlay;
   color: #1b365d;
-  border-color: #5aa9d6;
+  border-color: #d6c39a;
 }
 
-/* Dark theme variant */
+/* Dark theme variant - toned gradient with textured overlay */
 body[data-theme="dark"] .location-badge.beach {
-  background: linear-gradient(135deg, #2F4F4F 0%, #22577A 45%, #8B7355 80%);
+  background-image: linear-gradient(135deg, rgba(44,95,45,0.9) 0%, rgba(139,115,85,0.9) 60%, rgba(62,39,35,0.9) 100%), url('assets/beach-background.png');
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, 140%;
+  background-blend-mode: overlay;
   color: #e0f7ff;
-  border-color: #3a7ea8;
+  border-color: #a58f61;
 }
 
 /* Forest theme for badge */
@@ -1818,7 +1812,7 @@ body[data-theme="dark"] .location-badge.forest {
 
 .campfire-interactive:hover {
   transform: scale(1.1);
-  filter: brightness(1.2);
+  filter: none;
 }
 
 .campfire-interactive:active {
@@ -1829,9 +1823,22 @@ body[data-theme="dark"] .location-badge.forest {
   width: 100%;
   height: 100%;
   fill: currentColor;
-  filter: drop-shadow(0 0 4px rgba(255, 136, 0, 0.6));
+  filter: none; /* remove heavy shadow; use thin outline instead */
   position: relative;
   z-index: 2;
+}
+
+/* Add a solid black edge / shadow around the campfire to ground it visually */
+/* Thin black outline around the campfire SVG icon */
+.campfire-icon svg * {
+  /* Force a thin black outline on all child shapes of the campfire SVG.
+     Use !important to override inline SVG attributes from sprite symbols. */
+  stroke: rgba(0,0,0,0.95) !important;
+  stroke-width: 1px !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  vector-effect: non-scaling-stroke !important;
+  /* Keep original fills intact (don't set fill here) so icon colors remain correct */
 }
 
 .campfire-flames {
@@ -1903,11 +1910,11 @@ body[data-theme="dark"] .location-badge.forest {
 @keyframes campfireIdle {
   0%, 100% { 
     transform: scale(1);
-    filter: brightness(1) drop-shadow(0 0 4px rgba(255, 136, 0, 0.6));
+    filter: drop-shadow(0 0 4px rgba(255, 136, 0, 0.6));
   }
   50% { 
     transform: scale(1.02);
-    filter: brightness(1.1) drop-shadow(0 0 6px rgba(255, 136, 0, 0.8));
+    filter: drop-shadow(0 0 6px rgba(255, 136, 0, 0.8));
   }
 }
 
@@ -1949,11 +1956,11 @@ body[data-theme="dark"] .location-badge.forest {
 @keyframes campfireCooking {
   0%, 100% { 
     transform: scale(1.05);
-    filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
+    filter: drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
   }
   50% { 
     transform: scale(1.1);
-    filter: brightness(1.5) drop-shadow(0 0 12px rgba(255, 136, 0, 1));
+    filter: drop-shadow(0 0 12px rgba(255, 136, 0, 1));
   }
 }
 
@@ -5417,6 +5424,37 @@ body[data-theme="dark"] .bush::before {
   box-shadow: var(--medieval-shadow);
 }
 
+/* Version label on login screen used as changelog button */
+.version-info-screen {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: var(--bg-panel);
+  border: 2px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--medieval-shadow);
+  cursor: pointer;
+  user-select: none;
+}
+
+.version-info-screen:focus {
+  outline: none;
+}
+
+/* Visual pressed state when interacting */
+.version-info-screen.pressed,
+.version-info-screen:active {
+  background: var(--bg-hover);
+  border-color: var(--border-highlight);
+  transform: translateY(1px);
+  color: var(--text-primary);
+}
+
 .changelog-panel {
   position: fixed;
   top: 50%;
@@ -5433,8 +5471,8 @@ body[data-theme="dark"] .bush::before {
   box-shadow: var(--modal-shadow);
   backdrop-filter: blur(20px);
   z-index: 50000;
-  animation: slideInFromTop 0.3s ease-out;
-  transition: box-shadow 0.2s ease;
+  animation: none;
+  transition: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5694,8 +5732,8 @@ body[data-theme="dark"] .changelog-item {
   box-shadow: var(--modal-shadow);
   backdrop-filter: blur(20px);
   z-index: 50000;
-  animation: slideInFromTop 0.3s ease-out;
-  transition: box-shadow 0.2s ease;
+  animation: none;
+  transition: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
