@@ -21,6 +21,7 @@ export const gameState: GameState = {
     manaMax: CONFIG.BALANCE.STATS.STARTING_MANA 
   },
   fishing: { level: 1, xp: 0, xpToNext: CONFIG.BALANCE.XP.BASE_XP_TO_NEXT },
+  cooking: { level: 1, xp: 0, xpToNext: CONFIG.BALANCE.XP.BASE_XP_TO_NEXT },
   exploration: { level: 1, xp: 0, xpToNext: CONFIG.BALANCE.XP.BASE_XP_TO_NEXT },
   combat: {
     attack: { level: 1, xp: 0, xpToNext: CONFIG.BALANCE.XP.BASE_XP_TO_NEXT },

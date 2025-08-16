@@ -1725,6 +1725,438 @@ body[data-theme="dark"] .location-badge.forest {
   }
 }
 
+/* Campfire Area Styling */
+.campfire-area {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.campfire-interactive {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  /* Make it draggable/drop target but not openable via click */
+  cursor: default;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+  animation: campfireIdle 3s ease-in-out infinite;
+}
+
+/* Overlay that displays the item being cooked + progress */
+.campfire-cooking-overlay {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 6px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.campfire-cooking-overlay .cooking-item-icon svg {
+  width: 40px;
+  height: 40px;
+  fill: currentColor;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
+}
+
+.campfire-cooking-overlay .progress-bar-bg {
+  width: 120px;
+  height: 8px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.campfire-cooking-overlay .progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #FF4444, #FF8800, #FFDD00);
+  transition: width 0.12s linear;
+}
+
+.campfire-cooking-overlay .progress-text {
+  color: white;
+  font-size: 10px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+/* Per-item overlay when cooking remains on inventory item */
+.item-cooking-overlay {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.item-cooking-overlay .progress-bar-bg {
+  width: 40px;
+  height: 6px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.item-cooking-overlay .progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #FF4444, #FF8800);
+  transition: width 0.12s linear;
+}
+.item-cooking-overlay .progress-text { display: none; }
+
+.campfire-interactive:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.campfire-interactive:active {
+  transform: scale(0.95);
+}
+
+.campfire-icon {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  filter: drop-shadow(0 0 4px rgba(255, 136, 0, 0.6));
+  position: relative;
+  z-index: 2;
+}
+
+.campfire-flames {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 60%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.flame {
+  position: absolute;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  opacity: 0.8;
+  animation: flameFlicker 1.5s ease-in-out infinite;
+}
+
+.flame-1 {
+  width: 48px;
+  height: 80px;
+  background: linear-gradient(45deg, #FF4444, #FF8800, #FFDD00);
+  left: 35%;
+  top: 20%;
+  animation-delay: 0s;
+}
+
+.flame-2 {
+  width: 64px;
+  height: 100px;
+  background: linear-gradient(45deg, #FF6666, #FFAA00, #FFFF44);
+  left: 45%;
+  top: 10%;
+  animation-delay: 0.3s;
+}
+
+.flame-3 {
+  width: 40px;
+  height: 72px;
+  background: linear-gradient(45deg, #FF8800, #FFDD00, #FFFF88);
+  left: 25%;
+  top: 25%;
+  animation-delay: 0.6s;
+}
+
+.campfire-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.campfire-interactive:hover .campfire-label {
+  opacity: 1;
+}
+
+/* Campfire animations */
+@keyframes campfireIdle {
+  0%, 100% { 
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 4px rgba(255, 136, 0, 0.6));
+  }
+  50% { 
+    transform: scale(1.02);
+    filter: brightness(1.1) drop-shadow(0 0 6px rgba(255, 136, 0, 0.8));
+  }
+}
+
+@keyframes flameFlicker {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1) rotate(-1deg);
+    opacity: 0.8;
+  }
+  25% {
+    transform: scaleY(1.1) scaleX(0.9) rotate(1deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scaleY(0.9) scaleX(1.1) rotate(-0.5deg);
+    opacity: 0.7;
+  }
+  75% {
+    transform: scaleY(1.05) scaleX(0.95) rotate(0.5deg);
+    opacity: 0.85;
+  }
+}
+
+/* Campfire cooking state */
+.campfire-interactive.cooking {
+  animation: campfireCooking 1s ease-in-out infinite;
+}
+
+.campfire-interactive.cooking .flame {
+  animation-duration: 0.8s;
+  opacity: 1;
+}
+
+.campfire-interactive.cooking .campfire-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
+}
+
+@keyframes campfireCooking {
+  0%, 100% { 
+    transform: scale(1.05);
+    filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
+  }
+  50% { 
+    transform: scale(1.1);
+    filter: brightness(1.5) drop-shadow(0 0 12px rgba(255, 136, 0, 1));
+  }
+}
+
+/* Cooking Panel Styling */
+.cooking-panel {
+  min-width: 400px;
+  min-height: 300px;
+}
+
+.cooking-area {
+  padding: var(--spacing-md);
+}
+
+.cooking-info {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--bg-accent);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius);
+}
+
+.cooking-info p {
+  margin: 0;
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.cooking-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.cooking-slot {
+  background: var(--bg-panel);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  text-align: center;
+  min-height: 80px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.cooking-slot.cooking {
+  border-color: #FF8800;
+  box-shadow: 0 0 8px rgba(255, 136, 0, 0.3);
+}
+
+.cooking-slot.drag-over {
+  border-color: var(--border-highlight);
+  background: var(--bg-accent);
+}
+
+.slot-content {
+  position: relative;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-item {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-inventory);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.slot-item.empty {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.slot-item svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.slot-label {
+  font-size: 8px;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.cooking-progress-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+.progress-bar-bg {
+  width: 80%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF4444, #FF8800, #FFDD00);
+  width: 0%;
+  transition: width 0.1s linear;
+  border-radius: 2px;
+  box-shadow: 0 0 4px rgba(255, 136, 0, 0.6);
+}
+
+.progress-text {
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: var(--font-ui);
+}
+
+.cooking-timer {
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  font-size: 8px;
+  color: var(--text-secondary);
+}
+
+.timer-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-accent);
+  border: 1px solid var(--border-primary);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF8800, #FFAA00);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.timer-text {
+  display: block;
+  text-align: center;
+}
+
+.cooking-skills {
+  border-top: 1px solid var(--border-primary);
+  padding-top: var(--spacing-md);
+}
+
+.skill-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.skill-label {
+  font-size: 9px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.skill-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-accent);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.skill-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #66BB6A);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.skill-xp {
+  font-size: 8px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .activity-section::before { content: none; }
 
 .activity-section h2,
@@ -2810,6 +3242,23 @@ body[data-theme="dark"] .location-badge.forest {
 
 /* Responsive design */
 @media (max-width: 768px) {
+  /* Mobile campfire adjustments */
+  .campfire-area {
+    top: 10px;
+    left: 10px;
+    transform: scale(0.4);
+  }
+  
+  .campfire-interactive {
+    width: 280px;
+    height: 280px;
+  }
+  
+  .campfire-label {
+    font-size: 7px;
+    bottom: -18px;
+  }
+
   .game-header {
     flex-direction: column;
     gap: var(--spacing-md);

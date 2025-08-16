@@ -58,6 +58,7 @@ export interface Discovery {
 export interface GameState {
   stats: Stats;
   fishing: Skill;
+  cooking: Skill;
   exploration: Skill;
   combat: CombatSkills;
   foraging: Skill;

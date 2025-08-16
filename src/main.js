@@ -201,6 +201,7 @@ import { Inventory } from './features/inventory/index.js';
 import { Equipment, setInventory } from './features/equipment/index.js';
 import { Exploration } from './features/exploration/index.js';
 import { Fishing } from './features/fishing/index.js';
+import { Cooking } from './features/cooking/index.js';
 import { AudioManager } from './systems/AudioManager.js';
 import { PanelManager } from './ui/PanelManager.js';
 import { Skills } from './features/skills/index.js';
@@ -248,6 +249,9 @@ function bootGame() {
     
     logger.debug('Initializing fishing system...');
     Fishing.init();
+    
+    logger.debug('Initializing cooking system...');
+    Cooking.init();
     
     logger.debug('Initializing panel management...');
     PanelManager.init();
@@ -357,6 +361,8 @@ function bootGame() {
     Inventory.init();
     setInventory(Inventory);
     Equipment.init();
+    Fishing.init();
+    Cooking.init();
     PanelManager.init();
     Skills.init();
     try { SaveManager.startAutoSave?.(); } catch {}

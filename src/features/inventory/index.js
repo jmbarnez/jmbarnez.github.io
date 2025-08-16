@@ -209,6 +209,25 @@ export const Inventory = {
       count.textContent = item.count;
       itemEl.appendChild(count);
     }
+    // If this inventory slot has cooking metadata, add per-item overlay so it persists across renders
+    try {
+      const meta = gameState.inventory[index]?.cooking;
+      if (meta) {
+        const overlay = document.createElement('div');
+        overlay.className = 'item-cooking-overlay';
+        overlay.innerHTML = '<div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0s</span>';
+        itemEl.appendChild(overlay);
+        // initialize progress if startTime present
+        if (meta.startTime && meta.cookTime) {
+          const elapsed = Date.now() - meta.startTime;
+          const progress = Math.max(0, Math.min(1, elapsed / meta.cookTime));
+          const fill = overlay.querySelector('.progress-bar-fill');
+          const text = overlay.querySelector('.progress-text');
+          if (fill) fill.style.width = `${Math.floor(progress * 100)}%`;
+          if (text) text.textContent = `${Math.ceil(Math.max(0, meta.cookTime - elapsed) / 1000)}s`;
+        }
+      }
+    } catch {}
     this.addItemEventListeners(itemEl, item, index);
     cell.appendChild(itemEl);
   },
@@ -239,7 +258,13 @@ export const Inventory = {
       'Golden Carp': { symbol: 'fish-carp', color: '#FFD700' },
       'Fish': { symbol: 'fish-minnow', color: '#87CEEB' }, // Generic fish
       'Raw Fish': { symbol: 'fish-minnow', color: '#87CEEB' },
-      'Cooked Fish': { symbol: 'fish-minnow', color: '#DEB887' }
+      'Cooked Fish': { symbol: 'fish-minnow', color: '#DEB887' },
+      // Cooked fish variants
+      'Cooked Minnow': { symbol: 'cooked-fish-minnow', color: '#CD853F' },
+      'Cooked Trout': { symbol: 'cooked-fish-trout', color: '#CD853F' },
+      'Cooked Bass': { symbol: 'cooked-fish-bass', color: '#CD853F' },
+      'Cooked Salmon': { symbol: 'cooked-fish-salmon', color: '#CD853F' },
+      'Cooked Golden Carp': { symbol: 'cooked-fish-carp', color: '#B8860B' }
     };
     
     // Resource/material mapping for common items
@@ -523,6 +548,30 @@ export const Inventory = {
       entry.textContent = 'Inventory is full!';
       log.prepend(entry);
     }
+  },
+
+  // Remove a quantity of an item from inventory. Returns true if removal succeeded.
+  removeItem(name, amount = 1) {
+    try {
+      for (let i = 0; i < this.slots; i++) {
+        const slot = gameState.inventory[i];
+        if (!slot) continue;
+        if (slot.name === name) {
+          const slotCount = slot.count || 1;
+          if (slotCount <= amount) {
+            gameState.inventory[i] = null;
+          } else {
+            slot.count = slotCount - amount;
+          }
+          this.debouncedRender();
+          SaveManager.debouncedSave();
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error('Inventory.removeItem error', err);
+    }
+    return false;
   },
 
   // Animate item to specific inventory slot if inventory panel is open, or to inventory icon if closed
