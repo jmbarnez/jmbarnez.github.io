@@ -1,5 +1,32 @@
 // Prevent ReferenceError for initializeServerStatusPanel
+let serverStatusInitialized = false;
+let changelogInitialized = false;
+
+// Function to reset initialization flags for clean login screen setup
+function resetLoginScreenFlags() {
+  serverStatusInitialized = false;
+  changelogInitialized = false;
+  
+  // Reset loginMuteToggle flag
+  const loginMuteToggle = document.getElementById('loginMuteToggle');
+  if (loginMuteToggle) {
+    loginMuteToggle.dataset.listenersSet = 'false';
+  }
+  
+  // Reset UI panel button initialization flag
+  if (window.UI) {
+    window.UI._panelButtonsInitialized = false;
+  }
+}
+
+// Make reset function globally available
+window.resetLoginScreenFlags = resetLoginScreenFlags;
+
 function initializeServerStatusPanel() {
+  // Prevent multiple initializations
+  if (serverStatusInitialized) return;
+  serverStatusInitialized = true;
+  
   const serverStatusToggle = document.getElementById('server-status-toggle');
   const serverStatusPanel = document.getElementById('server-status-panel');
 
@@ -27,6 +54,8 @@ function initializeServerStatusPanel() {
 
   if (serverStatusToggle && serverStatusPanel) {
     serverStatusToggle.addEventListener('click', () => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
       if (serverStatusPanel.style.display === 'block') {
         serverStatusPanel.style.display = 'none';
       } else {
@@ -41,6 +70,8 @@ function initializeServerStatusPanel() {
   const refreshBtn = document.getElementById('server-status-refresh');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
       checkServerStatus();
     });
   }
@@ -129,6 +160,8 @@ function initializeServerStatusPanel() {
 
   if (modeToggleBtn) {
     modeToggleBtn.addEventListener('click', () => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
       const next = currentMode === 'simple' ? 'advanced' : 'simple';
       applyMode(next);
     });
@@ -153,6 +186,8 @@ function initializeServerStatusPanel() {
   const closeBtn = document.getElementById('server-status-close');
   if (closeBtn && serverStatusPanel) {
     closeBtn.addEventListener('click', () => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
       serverStatusPanel.style.display = 'none';
     });
   }
@@ -177,6 +212,11 @@ import { ErrorHandler } from './utils/errorHandler.js';
 import { NotificationManager } from './systems/NotificationManager.js';
 
 function bootGame() {
+  // Ensure login mode is disabled and main UI is visible
+  document.body.classList.remove('login-mode');
+  const loginScreen = document.getElementById('login-screen');
+  if (loginScreen) loginScreen.hidden = true;
+  
   // Initialize error handling first
   ErrorHandler.initialize();
   logger.info('Error handler initialized');
@@ -196,21 +236,6 @@ function bootGame() {
     // Make notification manager globally available
     window.notify = NotificationManager;
     
-    // Test notification system (remove this in production)
-    setTimeout(() => {
-      NotificationManager.success('Welcome!', 'Dark mode is now the standard theme');
-      setTimeout(() => {
-        NotificationManager.info('Notification System', 'Universal notifications are now active in the bottom left');
-      }, 2000);
-    }, 1000);
-    
-    // Add demo functions to window for testing (remove in production)
-    window.testNotifications = () => {
-      NotificationManager.success('Success', 'This is a success notification!');
-      setTimeout(() => NotificationManager.error('Error', 'This is an error notification!'), 500);
-      setTimeout(() => NotificationManager.warning('Warning', 'This is a warning notification!'), 1000);
-      setTimeout(() => NotificationManager.info('Info', 'This is an info notification!'), 1500);
-    };
     
     try { UI.initChat?.(); } catch {}
     
@@ -246,8 +271,7 @@ function bootGame() {
       ]).then(([clickLoaded, hoverLoaded]) => {
         if (clickLoaded || hoverLoaded) {
           AudioManager.useSampleSfx = true;
-          console.debug('UI sample SFX loaded, using sample sounds for button interactions');
-        }
+          }
       }).catch(() => {});
     } catch (e) {}
     
@@ -328,21 +352,6 @@ function bootGame() {
     // Make notification manager globally available
     window.notify = NotificationManager;
     
-    // Test notification system (remove this in production)
-    setTimeout(() => {
-      NotificationManager.success('Welcome!', 'Dark mode is now the standard theme');
-      setTimeout(() => {
-        NotificationManager.info('Notification System', 'Universal notifications are now active in the bottom left');
-      }, 2000);
-    }, 1000);
-    
-    // Add demo functions to window for testing (remove in production)
-    window.testNotifications = () => {
-      NotificationManager.success('Success', 'This is a success notification!');
-      setTimeout(() => NotificationManager.error('Error', 'This is an error notification!'), 500);
-      setTimeout(() => NotificationManager.warning('Warning', 'This is a warning notification!'), 1000);
-      setTimeout(() => NotificationManager.info('Info', 'This is an info notification!'), 1500);
-    };
     
     try { UI.initChat?.(); } catch {}
     Inventory.init();
@@ -392,15 +401,12 @@ function initGame() {
   }
 
   const existingToken = (window).__authToken || localToken || sessionToken;
-  console.log('Existing authToken:', existingToken ? 'present' : 'not found');
   
   if (existingToken) {
     // Token exists, try to validate it with the server
-    console.log('Found existing token, validating with server...');
     validateTokenAndBoot(existingToken);
   } else {
     // No token, show login screen
-    console.log('No token found, showing login screen...');
     showLoginScreen();
   }
 }
@@ -416,14 +422,12 @@ async function validateTokenAndBoot(token) {
     
     if (response.ok) {
       // Token is valid, boot the game
-      console.log('Token validated successfully, booting game...');
       document.body.classList.remove('login-mode');
       const loginScreen = document.getElementById('login-screen');
       if (loginScreen) loginScreen.hidden = true;
       bootGame();
     } else {
       // Token invalid, clear it and show login
-      console.log('Token validation failed, clearing token and showing login...');
       localStorage.removeItem('authToken');
       sessionStorage.removeItem('authToken');
       localStorage.removeItem('playerName');
@@ -439,21 +443,31 @@ async function validateTokenAndBoot(token) {
   }
 }
 
-function showLoginScreen() {
+export function showLoginScreen() {
   const loginScreen = document.getElementById('login-screen');
   if (!loginScreen) {
     console.error('Login screen element not found!');
     return;
   }
   
-  console.log('Login screen found, making it visible...');
   loginScreen.hidden = false;
   document.body.classList.add('login-mode');
   
-  console.log('Login screen should now be visible');
   
   // Check server status when login screen opens
   checkServerStatus();
+  
+  // Load UI sounds for login screen buttons
+  try {
+    Promise.all([
+      AudioManager.loadUIClickSound(),
+      AudioManager.loadUIHoverSound()
+    ]).then(([clickLoaded, hoverLoaded]) => {
+      if (clickLoaded || hoverLoaded) {
+        AudioManager.useSampleSfx = true;
+      }
+    }).catch(() => {});
+  } catch (e) {}
   
   // Initialize changelog functionality
   initializeChangelog();
@@ -477,6 +491,8 @@ function showLoginScreen() {
   
   // Form switching
   const showLoginForm = () => {
+    AudioManager.unlockAudioContext();
+    AudioManager.playButtonClick();
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
     setStatus('');
@@ -484,6 +500,8 @@ function showLoginScreen() {
   };
   
   const showRegisterForm = () => {
+    AudioManager.unlockAudioContext();
+    AudioManager.playButtonClick();
     loginForm.style.display = 'none';
     registerForm.style.display = 'block';
     setStatus('');
@@ -613,8 +631,6 @@ function showLoginScreen() {
   const authFetch = async (path, body) => {
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${path}`;
-    console.log('Making auth request to:', url);
-    console.log('Request body:', body);
     
     const res = await fetch(url, { 
       method: 'POST', 
@@ -622,11 +638,7 @@ function showLoginScreen() {
       body: JSON.stringify(body) 
     });
     
-    console.log('Response status:', res.status);
-    console.log('Response headers:', res.headers.get('content-type'));
-    
     const responseText = await res.text();
-    console.log('Raw response:', responseText);
     
     if (!responseText) {
       throw new Error('Empty response from server');
@@ -634,7 +646,6 @@ function showLoginScreen() {
     
     try {
       const responseData = JSON.parse(responseText);
-      console.log('Response data:', responseData);
       return responseData;
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
@@ -644,6 +655,8 @@ function showLoginScreen() {
   };
   
   const onLogin = async () => {
+    AudioManager.unlockAudioContext();
+    AudioManager.playButtonClick();
     clearAllErrors();
     
     const c = getLoginCreds(); 
@@ -664,10 +677,8 @@ function showLoginScreen() {
     setStatus('Signing in...');
     setButtonLoading('login-submit', true);
     
-    console.log('Attempting login with:', { username: c.username, password: '***' });
     try {
       const out = await authFetch('/api/login', c);
-      console.log('Login response:', out);
       if (out?.token) {
         const rememberMe = document.getElementById('remember-me')?.checked;
         if (rememberMe) {
@@ -691,7 +702,6 @@ function showLoginScreen() {
           bootGame();
         }, 500);
       } else {
-        console.error('Login failed:', out?.error || 'No token in response');
         setStatus(out?.error || 'Login failed');
         if (out?.error === 'Invalid credentials') {
           showError('login-username', 'Invalid username or password');
@@ -707,6 +717,8 @@ function showLoginScreen() {
   };
   
   const onRegister = async () => {
+    AudioManager.unlockAudioContext();
+    AudioManager.playButtonClick();
     clearAllErrors();
     
     const c = getRegisterCreds(); 
@@ -782,10 +794,46 @@ function showLoginScreen() {
   document.getElementById('login-submit')?.removeEventListener('click', onLogin);
   document.getElementById('register-submit')?.removeEventListener('click', onRegister);
   
+  // Clear loginMuteToggle listeners by cloning the element
+  const loginMuteToggle = document.getElementById('loginMuteToggle');
+  if (loginMuteToggle && !loginMuteToggle.dataset.listenersSet) {
+    loginMuteToggle.dataset.listenersSet = 'true';
+    
+    // Add mute toggle functionality
+    loginMuteToggle.addEventListener('click', (e) => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
+      const btn = e.target.closest('button');
+      const svg = btn.querySelector('svg use');
+      const isMuted = btn.classList.contains('muted');
+      if (isMuted) {
+        btn.classList.remove('muted');
+        btn.title = 'Mute Music';
+        svg.setAttribute('href', '#icon-volume');
+        // Unmute logic for login music (to be implemented later)
+      } else {
+        btn.classList.add('muted');
+        btn.title = 'Unmute Music';
+        svg.setAttribute('href', '#icon-volume-mute');
+        // Mute logic for login music (to be implemented later)
+      }
+    });
+    
+    loginMuteToggle.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  }
+  
   document.getElementById('show-register')?.addEventListener('click', showRegisterForm);
   document.getElementById('show-login')?.addEventListener('click', showLoginForm);
   document.getElementById('login-submit')?.addEventListener('click', onLogin);
   document.getElementById('register-submit')?.addEventListener('click', onRegister);
+  
+  // Add hover sounds to login screen buttons
+  document.getElementById('login-submit')?.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  document.getElementById('register-submit')?.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  document.getElementById('show-register')?.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  document.getElementById('show-login')?.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  document.getElementById('forgot-password')?.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+  // loginMuteToggle hover listener moved to prevent duplicates
   
   // Password strength checking
   document.getElementById('register-password')?.addEventListener('input', (e) => {
@@ -812,6 +860,8 @@ function showLoginScreen() {
   
   // Forgot password functionality
   document.getElementById('forgot-password')?.addEventListener('click', () => {
+    AudioManager.unlockAudioContext();
+    AudioManager.playButtonClick();
     setStatus('Password reset functionality coming soon!');
   });
   
@@ -824,23 +874,7 @@ function showLoginScreen() {
   });
   
   // Light mode switch on login screen removed per request
-  
-  document.getElementById('loginMuteToggle')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    const svg = btn.querySelector('svg use');
-    const isMuted = btn.classList.contains('muted');
-    if (isMuted) {
-      btn.classList.remove('muted');
-      btn.title = 'Mute Music';
-      svg.setAttribute('href', '#icon-volume');
-      // Unmute logic for login music (to be implemented later)
-    } else {
-      btn.classList.add('muted');
-      btn.title = 'Unmute Music';
-      svg.setAttribute('href', '#icon-volume-mute');
-      // Mute logic for login music (to be implemented later)
-    }
-  });
+  // loginMuteToggle event listener moved to prevent duplicates
 }
 
 
@@ -861,7 +895,6 @@ function getApiBaseUrl() {
 
 // Server status checking function
 async function checkServerStatus() {
-  console.log('=== Server Status Check Starting ===');
   // Local safe resolution for API base URL to avoid undefined errors
   const resolveApiBase = () => {
     if (typeof getApiBaseUrl === 'function') {
@@ -874,7 +907,6 @@ async function checkServerStatus() {
     return window.location.origin;
   };
   const apiBase = resolveApiBase();
-  console.log('API Base URL:', apiBase);
   
   const updateStatus = (elementId, status, text) => {
     const indicator = document.getElementById(elementId);
@@ -890,7 +922,6 @@ async function checkServerStatus() {
     indicator.classList.remove('online', 'offline', 'checking');
     indicator.classList.add(status);
     textEl.textContent = text;
-    console.log(`Status update: ${elementId} -> ${status} (${text})`);
   };
 
   // Check Web Server (always online if we can load the page)
@@ -928,9 +959,7 @@ async function checkServerStatus() {
   // Check Database connectivity (Supabase via function)
   try {
     const dbUrl = `${getApiBaseUrl()}/api/health/db`;
-    console.log('Checking DB health at:', dbUrl);
     const dbRes = await fetch(dbUrl, { cache: 'no-store' });
-    console.log('DB health response:', dbRes.status, dbRes.statusText);
     if (dbRes.ok) {
       updateStatus('adv-db-status', 'online', 'Connected');
     } else {
@@ -946,9 +975,7 @@ async function checkServerStatus() {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const saveUrl = `${getApiBaseUrl()}/api/save`;
-    console.log('Checking save at:', saveUrl, 'with token:', !!token);
     const saveRes = await fetch(saveUrl, { headers });
-    console.log('Save response:', saveRes.status, saveRes.statusText);
     if (saveRes.ok || saveRes.status === 401) {
       updateStatus('adv-save-status', 'online', 'Connected');
     } else {
@@ -962,9 +989,7 @@ async function checkServerStatus() {
   // Market: ping list endpoint
   try {
     const listUrl = `${getApiBaseUrl()}/api/market/listings`;
-    console.log('Checking market at:', listUrl);
     const listRes = await fetch(listUrl, { cache: 'no-store' });
-    console.log('Market response:', listRes.status, listRes.statusText);
     if (listRes.ok) {
       updateStatus('adv-market-status', 'online', 'Connected');
     } else {
@@ -978,9 +1003,7 @@ async function checkServerStatus() {
   // Check Chat Server (Netlify only, no WebSocket)
   try {
     const chatUrl = `${getApiBaseUrl()}/api/chat/players`;
-    console.log('Checking chat at:', chatUrl);
     const chatPlayers = await fetch(chatUrl, { cache: 'no-store' });
-    console.log('Chat response:', chatPlayers.status, chatPlayers.statusText);
     if (chatPlayers.ok) {
       updateStatus('adv-chat-status', 'online', 'Connected');
     } else {
@@ -991,25 +1014,36 @@ async function checkServerStatus() {
     updateStatus('adv-chat-status', 'offline', 'Offline');
   }
 
-  console.log('=== Server Status Check Complete ===');
 }
 
 function initializeChangelog() {
+  // Prevent multiple initializations
+  if (changelogInitialized) return;
+  changelogInitialized = true;
+  
   const changelogToggle = document.getElementById('changelog-toggle');
   const changelogPanel = document.getElementById('changelog-panel');
   const changelogClose = document.getElementById('changelog-close');
   
   if (changelogToggle && changelogPanel) {
     changelogToggle.addEventListener('click', () => {
-      console.log('Changelog button clicked');
-      changelogPanel.style.display = 'block';
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
+      
+      // Toggle the panel visibility
+      if (changelogPanel.style.display === 'block') {
+        changelogPanel.style.display = 'none';
+      } else {
+        changelogPanel.style.display = 'block';
+      }
     });
   } else {
-    console.log('Changelog elements not found:', { changelogToggle, changelogPanel });
   }
   
   if (changelogClose && changelogPanel) {
     changelogClose.addEventListener('click', () => {
+      AudioManager.unlockAudioContext();
+      AudioManager.playButtonClick();
       changelogPanel.style.display = 'none';
     });
   }
@@ -1029,7 +1063,6 @@ function initializeChangelog() {
         changelogPanel.style.top = `${y}px`;
         changelogPanel.style.transform = 'none';
       } catch (e) {
-        console.log('Error loading changelog position:', e);
       }
     }
     

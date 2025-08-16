@@ -4357,20 +4357,46 @@ body[data-theme="dark"] .location-badge.forest {
   transform: translateY(-1px);
 }
 
+/* Login button specific styling */
+.login-btn {
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+  border-color: #1e40af !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  text-align: center !important;
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.login-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+  border-color: #1e3a8a !important;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
 /* Create Account button specific styling */
 .create-account-btn {
-  background: linear-gradient(135deg, var(--accent-success), #2d7f32) !important;
-  border-color: var(--accent-success) !important;
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  border-color: #059669 !important;
+  color: white !important;
   font-family: var(--font-ui) !important;
-  font-size: 10px !important;
-  letter-spacing: 0.5px !important;
-  text-transform: uppercase !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  min-height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .create-account-btn:hover {
-  background: linear-gradient(135deg, #2d7f32, var(--accent-success)) !important;
-  border-color: #1b5e20 !important;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
+  background: linear-gradient(135deg, #047857, #059669) !important;
+  border-color: #065f46 !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4) !important;
   transform: translateY(-1px) !important;
 }
 
@@ -4383,6 +4409,29 @@ body[data-theme="dark"] .location-badge.forest {
 
 .auth-form {
   transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Make all login screen text gray instead of white */
+.login-screen,
+.login-screen .auth-dialog,
+.login-screen .auth-form,
+.login-screen .auth-row,
+.login-screen .auth-options,
+.login-screen .remember-me span,
+.login-screen .auth-status,
+.login-screen label,
+.login-screen input::placeholder {
+  color: #6b7280 !important;
+}
+
+.login-screen .auth-dialog h2,
+.login-screen .auth-title,
+.login-screen .form-title {
+  color: #6b7280 !important;
+}
+
+.login-screen .auth-row input {
+  color: #6b7280 !important;
 }
 
 .auth-form.switching {
@@ -4653,6 +4702,9 @@ body[data-theme="dark"] .bush::before {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  line-height: 1;
+  text-align: center;
 }
 
 .dialog-close:hover {
@@ -4679,6 +4731,10 @@ body[data-theme="dark"] .bush::before {
   transition: all 0.2s ease;
   flex-shrink: 0;
   z-index: 1000;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  text-align: center;
 }
 
 .panel-close-btn:hover {
@@ -4987,6 +5043,10 @@ body[data-theme="dark"] .bush::before {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  text-align: center;
 }
 
 .changelog-close-btn:hover {
@@ -5259,6 +5319,10 @@ body[data-theme="dark"] .changelog-item {
   font-size: 18px;
   font-weight: bold;
   transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  text-align: center;
 }
 
 .server-status-close-btn:hover {

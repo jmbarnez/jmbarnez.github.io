@@ -2,12 +2,14 @@ import { clamp } from '../../core/dom.js';
 import { gameState } from '../../state/gameState.js';
 import { Inventory } from '../inventory/index.js';
 import { AudioManager } from '../../systems/AudioManager.js';
-import { FISH_TABLE } from '../../data/fish.js';
+import { FISH_TABLE, SPECIAL_CATCHES } from '../../data/fish.js';
 import { SaveManager } from '../../systems/SaveManager.js';
+import { NotificationManager } from '../../systems/NotificationManager.js';
 import { debounce, batchDomUpdates, perfMonitor } from '../../utils/performance.js';
 
 export const Fishing = {
   fishTypes: FISH_TABLE,
+  specialCatches: SPECIAL_CATCHES,
 
   init() {
     // Bind debounced method to this context
@@ -26,24 +28,52 @@ export const Fishing = {
   },
 
   catchFish() {
-    const totalWeight = this.fishTypes.reduce((sum, fish) => sum + fish.weight, 0);
+    // Combine regular fish and special catches into one pool
+    const allCatches = [...this.fishTypes, ...this.specialCatches];
+    const totalWeight = allCatches.reduce((sum, catch_) => sum + catch_.weight, 0);
     let random = Math.random() * totalWeight;
-    for (const fish of this.fishTypes) { random -= fish.weight; if (random <= 0) return fish; }
+    for (const catch_ of allCatches) { 
+      random -= catch_.weight; 
+      if (random <= 0) return catch_; 
+    }
     return this.fishTypes[0];
   },
 
-  completeFishing(fish) {
+  completeFishing(catch_) {
     gameState.isFishing = false;
     const fishBtn = document.getElementById('fishBtn');
     if (fishBtn) { fishBtn.disabled = false; fishBtn.removeAttribute('aria-busy'); }
-    Inventory.addItem(fish.name, null, fishBtn);
-    this.gainXP(fish.xp);
-    const status = document.getElementById('status'); if (status) status.textContent = `Caught a ${fish.name}! (+${fish.xp} XP)`;
+    
+    // Handle treasure chest differently
+    if (catch_.category === 'treasure') {
+      this.handleTreasureChest(catch_, fishBtn);
+    } else {
+      // Regular fish
+      Inventory.addItem(catch_.name, null, fishBtn);
+      const status = document.getElementById('status'); 
+      if (status) status.textContent = `Caught a ${catch_.name}! (+${catch_.xp} XP)`;
+    }
+    
+    this.gainXP(catch_.xp);
     gameState.stats.stamina = clamp(gameState.stats.stamina - 5, 0, gameState.stats.staminaMax);
     gameState.stats.mana = clamp(gameState.stats.mana - 2, 0, gameState.stats.manaMax);
     const staminaBar = document.getElementById('stamina-bar'); if (staminaBar) staminaBar.style.width = `${(gameState.stats.stamina / gameState.stats.staminaMax) * 100}%`;
     const manaBar = document.getElementById('mana-bar'); if (manaBar) manaBar.style.width = `${(gameState.stats.mana / gameState.stats.manaMax) * 100}%`;
     SaveManager.debouncedSave(); // Auto-save after fishing completion
+  },
+
+  handleTreasureChest(treasureChest, fishBtn) {
+    // Treasure chest: drop some coins and a random item
+    const coins = 5 + Math.floor(Math.random() * 20);
+    for (let i = 0; i < coins; i++) {
+      Inventory.addItem('Small Coin', null, fishBtn);
+    }
+    const extras = ['Sea Shell', 'Driftwood', 'Seaweed'];
+    const extra = extras[Math.floor(Math.random()*extras.length)];
+    Inventory.addItem(extra, null, fishBtn);
+    AudioManager.playGoldPickup();
+    const status = document.getElementById('status'); 
+    if (status) status.textContent = `Found a ${treasureChest.name}! (+${treasureChest.xp} XP)`;
   },
 
   gainXP(amount) {
@@ -52,8 +82,12 @@ export const Fishing = {
     gameState.fishing.xp += amount;
     while (gameState.fishing.xp >= gameState.fishing.xpToNext) {
       gameState.fishing.xp -= gameState.fishing.xpToNext;
+      const oldLevel = gameState.fishing.level;
       gameState.fishing.level++;
       gameState.fishing.xpToNext = Math.floor(gameState.fishing.xpToNext * 1.2);
+      
+      // Show level up notification
+      NotificationManager.success('Level Up!', `Fishing level ${oldLevel} → ${gameState.fishing.level}`);
     }
     
     this.debouncedUpdateUI();

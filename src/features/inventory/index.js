@@ -13,6 +13,12 @@ export const Inventory = {
   dragFromIndex: null,
   dragFromEquipment: null,
 
+  // Helper function to check if an item type is equipment
+  isEquipmentType(type) {
+    const equipmentTypes = ['helmet', 'chest', 'gloves', 'pants', 'shoes', 'ring', 'amulet'];
+    return equipmentTypes.includes(type);
+  },
+
   init() {
     ErrorHandler.wrap(() => {
       this.setupDragAndDrop();
@@ -100,16 +106,54 @@ export const Inventory = {
   setupCellEventListeners(cell, i) {
     cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('drag-over'); });
     cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
-    cell.addEventListener('drop', () => {
+    cell.addEventListener('drop', (e) => {
       cell.classList.remove('drag-over');
       const targetIndex = i;
+      
+      // Handle ground item drops
+      const groundItemId = e.dataTransfer?.getData('text/ground-item');
+      if (groundItemId) {
+        const groundCard = document.querySelector(`[data-card-id="${groundItemId}"]`);
+        if (groundCard) {
+          // Extract item data from ground card
+          const itemData = {
+            name: groundCard.dataset.itemName,
+            count: parseInt(groundCard.dataset.itemCount) || 1,
+            type: groundCard.dataset.itemType || null,
+            category: groundCard.dataset.category || null
+          };
+          
+          // Try to add to target slot
+          if (!gameState.inventory[targetIndex]) {
+            // Empty slot - add item
+            gameState.inventory[targetIndex] = itemData;
+            groundCard.remove(); // Remove from ground
+            AudioManager.playDrop();
+            this.debouncedRender();
+            SaveManager.debouncedSave();
+          } else {
+            // Slot occupied - try to stack if same item and not equipment
+            const targetItem = gameState.inventory[targetIndex];
+            if (targetItem.name === itemData.name && (targetItem.type || null) === (itemData.type || null) && !this.isEquipmentType(itemData.type)) {
+              targetItem.count = Math.max(1, (targetItem.count || 0) + itemData.count);
+              groundCard.remove(); // Remove from ground
+              AudioManager.playDrop();
+              this.debouncedRender();
+              SaveManager.debouncedSave();
+            }
+            // If can't stack, do nothing (keep ground item on ground)
+          }
+        }
+        return;
+      }
+      
       if (this.dragFromIndex !== null) {
         const fromIndex = this.dragFromIndex;
         if (fromIndex === targetIndex) return;
         const sourceItem = gameState.inventory[fromIndex];
         const targetItem = gameState.inventory[targetIndex] || null;
-        // If same name and type, stack
-        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null)) {
+        // If same name and type, stack (but not equipment)
+        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null) && !this.isEquipmentType(sourceItem.type)) {
           const add = Math.max(1, sourceItem.count || 1);
           targetItem.count = Math.max(1, (targetItem.count || 0) + add);
           gameState.inventory[fromIndex] = null;
@@ -304,9 +348,11 @@ export const Inventory = {
       if (item?.type) {
         const cursorX = e.clientX;
         const cursorY = e.clientY;
+        // Create a single item copy for equipping (don't equip entire stack)
+        const singleItem = { name: item.name, type: item.type, count: 1 };
         const equip = window.__equipmentApi?.equipItem || null;
-        if (equip) { equip(item, index, { cursorX, cursorY }); }
-        else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index, { cursorX, cursorY })); }
+        if (equip) { equip(singleItem, index, { cursorX, cursorY }); }
+        else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(singleItem, index, { cursorX, cursorY })); }
         AudioManager.playClick();
       }
     });
@@ -419,9 +465,11 @@ export const Inventory = {
           const touch = e.changedTouches[0];
           const cursorX = touch.clientX;
           const cursorY = touch.clientY;
+          // Create a single item copy for equipping (don't equip entire stack)
+          const singleItem = { name: item.name, type: item.type, count: 1 };
           const equip = window.__equipmentApi?.equipItem || null;
-          if (equip) { equip(item, index, { cursorX, cursorY }); }
-          else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(item, index, { cursorX, cursorY })); }
+          if (equip) { equip(singleItem, index, { cursorX, cursorY }); }
+          else { import('../equipment/index.js').then(mod => mod.Equipment.equipItem(singleItem, index, { cursorX, cursorY })); }
           AudioManager.playClick();
         }
       }
@@ -446,7 +494,7 @@ export const Inventory = {
     }
     
     const existing = gameState.inventory.find(i => i && i.name === name && (i.type || null) === (type || null));
-    if (existing) { 
+    if (existing && !this.isEquipmentType(type)) { 
       existing.count++; 
       this.debouncedRender(); 
       SaveManager.debouncedSave(); // Auto-save after adding item
@@ -571,7 +619,6 @@ export const Inventory = {
         if (this.dragFromIndex !== null) {
           // If dropping on the grid but not on a specific slot, do nothing
           // The item should stay in its original position
-          console.log('Dropped on grid, keeping item in original position');
         }
         
         // Clear drag state
@@ -908,7 +955,7 @@ export const Inventory = {
       if (targetIndex !== dragData.index) {
         const sourceItem = gameState.inventory[dragData.index];
         const targetItem = gameState.inventory[targetIndex] || null;
-        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null)) {
+        if (sourceItem && targetItem && sourceItem.name === targetItem.name && (sourceItem.type || null) === (targetItem.type || null) && !this.isEquipmentType(sourceItem.type)) {
           const add = Math.max(1, sourceItem.count || 1);
           targetItem.count = Math.max(1, (targetItem.count || 0) + add);
           gameState.inventory[dragData.index] = null;

@@ -97,7 +97,6 @@ async function deleteUser(userId) {
 
 // Chat functions
 async function addChatMessage(type, text, playerName, playerId) {
-  console.log('addChatMessage called with:', { type, text, playerName, playerId });
   
   try {
     const { data, error } = await supabase
@@ -113,15 +112,12 @@ async function addChatMessage(type, text, playerName, playerId) {
       ])
       .select();
     
-    console.log('addChatMessage result:', { data, error });
     
     if (error) {
-      console.error('addChatMessage error:', error);
       throw error;
     }
     return data[0];
   } catch (err) {
-    console.error('addChatMessage exception:', err);
     throw err;
   }
 }
@@ -139,7 +135,6 @@ async function getChatMessages(since) {
 }
 
 async function addPlayer(playerId, playerName) {
-  console.log('addPlayer called with:', { playerId, playerName });
   
   try {
     const { data, error } = await supabase
@@ -153,15 +148,12 @@ async function addPlayer(playerId, playerName) {
       ], { onConflict: 'player_id' })
       .select();
     
-    console.log('addPlayer result:', { data, error });
     
     if (error) {
-      console.error('addPlayer error:', error);
       throw error;
     }
     return data[0];
   } catch (err) {
-    console.error('addPlayer exception:', err);
     throw err;
   }
 }
@@ -239,7 +231,6 @@ async function createMarketListingRow({ sellerId, sellerName, item, quantity, pr
   } catch (err) {
     // If schema differs (column name mismatch), try common alternatives to be resilient.
     const msg = (err && err.message) ? String(err.message).toLowerCase() : '';
-    console.warn('Primary insert failed, attempting fallback inserts. Error:', err?.message || err);
 
     // If problem references 'item' column, try 'item_name' or 'name'
     if (msg.includes("could not find the 'item' column") || msg.includes("column \"item\" does not exist") || msg.includes('item')) {
@@ -267,7 +258,6 @@ async function createMarketListingRow({ sellerId, sellerName, item, quantity, pr
           if (e2) throw e2;
           return d2;
         } catch (e2) {
-          console.warn('Fallback insert failed for candidate', cand, e2?.message || e2);
           continue;
         }
       }

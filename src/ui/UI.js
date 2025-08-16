@@ -128,6 +128,35 @@ export const UI = {
       if (btn.classList && btn.classList.contains('no-sfx')) return;
       try { AudioManager.playButtonHover(); } catch {}
     }, { capture: true });
+
+    // Unlock audio context on first user interaction anywhere for reliability on localhost:8889
+    try {
+      const unlockOnFirstInteraction = () => {
+        try { AudioManager.unlockAudioContext(); } catch {}
+        window.removeEventListener('pointerdown', unlockOnFirstInteraction);
+        window.removeEventListener('mousedown', unlockOnFirstInteraction);
+        window.removeEventListener('touchstart', unlockOnFirstInteraction);
+        window.removeEventListener('keydown', unlockOnFirstInteraction);
+      };
+      window.addEventListener('pointerdown', unlockOnFirstInteraction, { passive: true });
+      window.addEventListener('mousedown', unlockOnFirstInteraction);
+      window.addEventListener('touchstart', unlockOnFirstInteraction, { passive: true });
+      window.addEventListener('keydown', unlockOnFirstInteraction);
+    } catch {}
+
+    // Explicit wiring for login screen buttons to ensure audio plays reliably
+    try {
+      const loginSubmitBtn = document.getElementById('login-submit');
+      const showRegisterBtn = document.getElementById('show-register');
+      if (loginSubmitBtn) {
+        loginSubmitBtn.addEventListener('click', () => { AudioManager.unlockAudioContext(); AudioManager.playButtonClick(); });
+        loginSubmitBtn.addEventListener('mouseenter', () => { AudioManager.unlockAudioContext(); AudioManager.playButtonHover(); });
+      }
+      if (showRegisterBtn) {
+        showRegisterBtn.addEventListener('click', () => { AudioManager.unlockAudioContext(); AudioManager.playButtonClick(); });
+        showRegisterBtn.addEventListener('mouseenter', () => { AudioManager.unlockAudioContext(); AudioManager.playButtonHover(); });
+      }
+    } catch {}
   },
 
   showLogin() {
@@ -422,9 +451,11 @@ export const UI = {
       try { AudioManager.startAmbientSounds(); } catch {}
       e.currentTarget?.blur?.();
       preventDuplicateClicks(this.elements.exploreBtn, 500);
+      // Play sound once for the button click
+      AudioManager.playButtonClick();
       // Toggle reliably
-      if (gameState.isExploring) { AudioManager.playButtonClick(); Exploration.stop(); }
-      else { AudioManager.playButtonClick(); Exploration.start(); }
+      if (gameState.isExploring) { Exploration.stop(); }
+      else { Exploration.start(); }
     }, 100));
     if (this.elements.exitBtn) this.elements.exitBtn.addEventListener('click', async () => {
       AudioManager.playButtonClick();
@@ -432,7 +463,6 @@ export const UI = {
         // Save game state before logout
         const { SaveManager } = await import('../systems/SaveManager.js');
         await SaveManager.saveNow();
-        console.log('Game saved successfully before logout');
       } catch (error) {
         console.error('Failed to save before logout:', error);
       }
@@ -442,13 +472,11 @@ export const UI = {
         const playerName = localStorage.getItem('playerName');
         if (chatPlayerId) {
           const leaveUrl = `${getApiBaseUrl()}/api/chat/leave`;
-          console.log('Notifying chat leave at:', leaveUrl, { chatPlayerId, playerName });
           await fetch(leaveUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ playerId: chatPlayerId, playerName })
           });
-          console.log('Chat leave notified');
         }
       } catch (e) {
         console.warn('Failed to notify chat leave:', e);
@@ -457,8 +485,14 @@ export const UI = {
       try { localStorage.removeItem('authToken'); } catch {}
       try { localStorage.removeItem('playerName'); } catch {}
       try { localStorage.removeItem('chatPlayerId'); } catch {}
-      // Hard reload to ensure clean boot into login screen
-      window.location.reload();
+      // Reset initialization flags for clean login screen setup
+      if (window.resetLoginScreenFlags) {
+        window.resetLoginScreenFlags();
+      }
+      
+      // Properly show login screen instead of reloading
+      const { showLoginScreen } = await import('../main.js');
+      showLoginScreen();
     });
     if (this.elements.audioToggleBtn) this.elements.audioToggleBtn.addEventListener('click', async () => {
       AudioManager.playButtonClick();
@@ -497,6 +531,7 @@ export const UI = {
     const skillsBtn = document.getElementById('toggleSkills');
     const chatBtn = document.getElementById('toggleChat');
     const marketBtn = document.getElementById('toggleMarket');
+    
     const equipPanel = document.getElementById('panel-equipment');
     const invPanel = document.getElementById('panel-inventory');
     const skillsPanel = document.getElementById('panel-skills');
@@ -557,7 +592,6 @@ export const UI = {
           document.getElementById('chat-input')?.focus?.(); 
           // Request fresh player list when chat panel opens
           if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-            console.log('Requesting fresh player list on chat panel open');
             window.globalChat._send({ type: 'requestPlayers' });
           }
         } catch {} 
@@ -577,7 +611,7 @@ export const UI = {
       togglePanel(marketPanel); 
       syncFab(marketBtn, marketPanel); 
       if (marketPanel && marketPanel.style.display !== 'none') {
-        this.initTestMarket(); // Initialize test data
+        this.initMarket();
         
         // Set up more frequent auto-refresh for better user experience
         if (!this.marketRefreshInterval) {
@@ -741,7 +775,6 @@ export const UI = {
         });
       }
     } catch {}
-
   },
 
   bindResetAccount() {
@@ -804,7 +837,6 @@ export const UI = {
   initChat() {
     // Prevent multiple initializations
     if (this.chatInitialized) {
-      console.log('Chat already initialized, skipping...');
       return;
     }
     
@@ -828,7 +860,6 @@ export const UI = {
 
     // Mark as initialized
     this.chatInitialized = true;
-    console.log('Initializing chat client...');
 
     // Unread message counter
     let unreadCount = 0;
@@ -902,7 +933,6 @@ export const UI = {
       
       // Request fresh player list when showing players
       if (playersVisible && window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-        console.log('Requesting fresh player list on players panel open');
         window.globalChat._send({ type: 'requestPlayers' });
       }
     };
@@ -915,7 +945,6 @@ export const UI = {
     }
 
     const setStatus = (status) => {
-      console.log('Chat status update:', status);
       if (!chatBtn) {
         console.warn('Chat button not found for status update');
         return;
@@ -923,14 +952,12 @@ export const UI = {
       chatBtn.classList.toggle('online', status === 'online');
       chatBtn.classList.toggle('offline', status !== 'online');
       chatBtn.title = status === 'online' ? 'Global Chat (Online)' : 'Global Chat (Offline)';
-      console.log('Applied chat status classes:', chatBtn.className);
     };
 
     // Local flag to avoid repeating the connected notification
     let chatConnectedNotified = false;
 
     const addMessage = (msg) => {
-      console.log('Chat message received:', msg);
       const messageEl = document.createElement('div');
       messageEl.className = `chat-message ${msg.type}`;
       
@@ -964,7 +991,6 @@ export const UI = {
       );
       
       if (isDuplicate) {
-        console.log('Skipping duplicate message:', msg);
         return;
       }
       
@@ -1001,9 +1027,7 @@ export const UI = {
       const playersContainer = document.getElementById('online-players');
       if (!playersContainer) return;
       
-      console.log('Updating players list:', players);
       const currentPlayerName = localStorage.getItem('playerName') || '';
-      console.log('Current player name from localStorage:', currentPlayerName);
       
       // Deduplicate by name to avoid duplicates from server
       const seen = new Set();
@@ -1037,11 +1061,9 @@ export const UI = {
         const isCurrentPlayer = player.name === currentPlayerName;
         if (isCurrentPlayer) {
           playerEl.classList.add('current-player');
-          console.log('Found current player:', player.name);
         }
         playerEl.textContent = player.name;
         playersContainer.appendChild(playerEl);
-        console.log(`Added player: ${player.name} (current: ${isCurrentPlayer})`);
       });
     };
 
@@ -1065,7 +1087,6 @@ export const UI = {
 
     // Cleanup any existing chat client
     if (window.globalChat) {
-      console.log('Cleaning up existing chat client...');
       try {
         if (window.globalChat.ws) {
           window.globalChat.ws.close();
@@ -1073,7 +1094,6 @@ export const UI = {
         // Clear the global reference
         window.globalChat = null;
       } catch (e) {
-        console.log('Error cleaning up existing chat:', e);
       }
     }
 
@@ -1088,9 +1108,7 @@ export const UI = {
     const statusCheckInterval = setInterval(() => {
       try {
         const info = chat.getDebugInfo?.();
-        console.log('Chat status check:', info);
         if (info && info.mode === 'http' && chat._httpStarted) {
-          console.log('Chat connected in HTTP mode');
           setStatus('online');
           // show local-only connected notice in chat once per connection
           try {
@@ -1102,12 +1120,11 @@ export const UI = {
               chatMessages.appendChild(msgEl);
               setTimeout(() => { try { if (msgEl.parentNode) msgEl.parentNode.removeChild(msgEl); } catch {} }, 3000);
             }
-          } catch (e) { console.warn('Could not show connected notice', e); }
+          } catch (e) { }
 
           clearInterval(statusCheckInterval);
         } else if (statusCheckCount > 10) {
           // After 10 checks (~6 seconds), give up
-          console.log('Chat connection timeout, setting offline');
           setStatus('offline');
           clearInterval(statusCheckInterval);
         }
@@ -1121,39 +1138,20 @@ export const UI = {
     // Initialize market sync after chat connection (HTTP mode)
     setTimeout(() => {
       if (window.globalChat && window.globalChat.mode === 'http') {
-        console.log('Initializing market sync...');
         this.initializeMarketSync();
       }
     }, 2000); // Wait 2 seconds for connection to stabilize
     
     // Debug function for checking market state
     window.debugMarket = () => {
-      console.log('=== Market Debug Info ===');
-      console.log('Server market listings:', this.serverMarketListings);
-      console.log('Server listings count:', (this.serverMarketListings || []).length);
-      console.log('Chat connected:', window.globalChat?.ws?.readyState === 1);
-      console.log('========================');
     };
     
     // Debug function for checking chat state
     window.debugChat = () => {
-      console.log('=== Chat Debug Info ===');
-      console.log('Current player name (localStorage):', localStorage.getItem('playerName'));
-      console.log('Chat client name:', chat.name);
-      console.log('WebSocket state:', chat.ws?.readyState);
-      console.log('WebSocket state text:', ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][chat.ws?.readyState] || 'NONE');
-      console.log('Chat debug info:', chat.getDebugInfo());
-      console.log('Players count element:', playersCount?.textContent);
-      console.log('Players container children:', document.getElementById('online-players')?.children.length);
-      console.log('Location hostname:', location.hostname);
-      console.log('Location port:', location.port);
-      console.log('Location protocol:', location.protocol);
-      console.log('========================');
     };
     
     // Manual reconnect function for debugging
     window.reconnectChat = () => {
-      console.log('Manually reconnecting chat...');
       chat.forceReconnect();
     };
   },
@@ -1227,7 +1225,6 @@ export const UI = {
 
   setStatus(text) { if (this.elements.status) this.elements.status.textContent = text; },
 
-  addToLog(message) { /* log removed */ },
 
   saveGame() {
     try {
@@ -1628,10 +1625,6 @@ export const UI = {
     const currentPlayer = localStorage.getItem('playerName') || 'Unknown';
     const serverPlayerListings = (this.serverMarketListings || []).filter(listing => listing.seller === currentPlayer);
     
-    console.log('Loading my listings...');
-    console.log('Current player:', currentPlayer);
-    console.log('Server player listings:', serverPlayerListings.length, 'listings');
-    console.log('Player listings data:', serverPlayerListings);
     
     if (serverPlayerListings.length === 0) {
       myListings.innerHTML = '<div class="market-empty">You have no active listings</div>';
@@ -1651,12 +1644,10 @@ export const UI = {
       </div>
     `).join('');
     
-    console.log('My listings UI updated with', serverPlayerListings.length, 'listings');
   },
 
   // Remove listing by ID from both local and server
   removeMyListingById(listingId) {
-    console.log('removeMyListingById called with ID:', listingId);
     const currentPlayer = localStorage.getItem('playerName') || 'Unknown';
     
     // Find listing in server data
@@ -1664,12 +1655,10 @@ export const UI = {
     const listing = serverPlayerListings.find(l => l.id === listingId);
     
     if (!listing) {
-      console.log('No server listing found with ID:', listingId);
       this.setStatus('Error: Could not find listing to remove');
       return;
     }
 
-    console.log('Found listing to remove:', listing);
 
     const token = getAuthToken();
     if (!token) {
@@ -1715,12 +1704,9 @@ export const UI = {
     // Get server listings (only source of truth now)
     const serverListings = this.serverMarketListings || [];
     
-    console.log('Server market listings:', serverListings.length, 'total listings');
-    console.log('Current player:', currentPlayer);
     
     // Filter out current player's listings (they should see them in "My Listings" tab)
     const otherPlayersListings = serverListings.filter(listing => listing.seller !== currentPlayer);
-    console.log('Other players listings:', otherPlayersListings.length);
     
     return otherPlayersListings;
   },
@@ -1765,7 +1751,6 @@ export const UI = {
       return;
     }
 
-    console.log('Listing item via API:', item.name, 'quantity:', quantity, 'current count:', item.count);
 
     // Require auth
     const token = getAuthToken();
@@ -1820,8 +1805,7 @@ export const UI = {
             window.Inventory.debouncedRender();
           }
         } catch (e) {
-          console.log('Could not update inventory display:', e);
-        }
+            }
         this.populateInventorySelect();
         // Refresh UI tabs
         this.loadMarketListings('equipment');
@@ -1837,12 +1821,10 @@ export const UI = {
   },
 
   buyPlayerItem(listingId, quantityToBuy = 1) {
-    console.log('buyPlayerItem called with listingId:', listingId, 'quantity:', quantityToBuy);
     const listing = (this.serverMarketListings || []).find(l => l.id === listingId);
     
     if (!listing) {
       this.setStatus('Item no longer available');
-      console.log('Listing not found for ID:', listingId);
       return;
     }
 
@@ -1850,7 +1832,6 @@ export const UI = {
     const currentPlayer = localStorage.getItem('playerName') || 'Unknown';
     if (listing.seller === currentPlayer) {
       this.setStatus('Cannot buy your own items!');
-      console.log('Player attempted to buy their own listing');
       return;
     }
 
@@ -1865,7 +1846,6 @@ export const UI = {
     const playerCoins = gameState.coins || 0;
     if (playerCoins < totalCost) {
       this.setStatus('Not enough coins!');
-      console.log('Insufficient coins. Have:', playerCoins, 'Need:', totalCost);
       return;
     }
 
@@ -1914,7 +1894,6 @@ export const UI = {
             }
           }
         } catch (e) {
-          console.log('Inventory addition failed:', e);
           gameState.coins += totalCost;
           this.setStatus('Purchase failed: Error adding to inventory');
           return;
@@ -1945,7 +1924,6 @@ export const UI = {
   },
 
   addToInventoryWithType(itemName, quantity, itemType) {
-    console.log('Adding to inventory:', itemName, 'quantity:', quantity, 'type:', itemType);
     
     // Ensure we have a valid inventory array
     if (!gameState.inventory || !Array.isArray(gameState.inventory)) {
@@ -1960,7 +1938,6 @@ export const UI = {
     if (existingIndex !== -1) {
       // Stack with existing item
       gameState.inventory[existingIndex].count += quantity;
-      console.log('Stacked with existing item at index', existingIndex, '. New count:', gameState.inventory[existingIndex].count);
     } else {
       // Find first empty slot
       let emptyIndex = -1;
@@ -2025,9 +2002,7 @@ export const UI = {
           type: finalType,
           icon: null // Store icon info if available
         };
-        console.log('Added to empty slot', emptyIndex, 'with count:', quantity, 'and type:', finalType);
       } else {
-        console.log('No inventory space available!');
         this.setStatus('Inventory full! Could not add item.');
         return false;
       }
@@ -2038,10 +2013,8 @@ export const UI = {
       // Try the main Inventory module render method
       if (window.Inventory && typeof window.Inventory.render === 'function') {
         window.Inventory.render();
-        console.log('Inventory display updated via Inventory.render()');
       } else if (window.Inventory && typeof window.Inventory.debouncedRender === 'function') {
         window.Inventory.debouncedRender();
-        console.log('Inventory display updated via debouncedRender()');
       }
       
       // Also trigger a general UI update
@@ -2053,10 +2026,8 @@ export const UI = {
       this.populateInventorySelect();
       
     } catch (e) {
-      console.log('Could not update inventory display:', e);
     }
     
-    console.log('Final inventory state:', gameState.inventory);
     return true;
   },
 
@@ -2088,44 +2059,18 @@ export const UI = {
     });
   },
 
-  initTestMarket() {
-    // Give player some coins for testing
-    if (!gameState.coins || gameState.coins < 100) {
-      gameState.coins = 500;
-      this.updateStats();
-    }
-
-    // No longer adding test listings - real player listings only
-    console.log('Market initialized - ready for real player listings only');
-    
+  initMarket() {
     // Always fetch the latest from server on open
     this.requestMarketDataFromServer();
   },
 
-  // Remove all test listings from the market
-  removeAllTestListings() {
-    // Only operate on server listings now
-    if (this.serverMarketListings) {
-      const originalLength = this.serverMarketListings.length;
-      this.serverMarketListings = this.serverMarketListings.filter(listing => 
-        !listing.seller.startsWith('TestPlayer') && 
-        !listing.id.startsWith('test_')
-      );
-      
-      if (this.serverMarketListings.length !== originalLength) {
-        console.log(`Removed ${originalLength - this.serverMarketListings.length} test listings. ${this.serverMarketListings.length} real listings remain.`);
-      }
-    }
-  },
 
   // Auto-refresh market listings from server (used internally by auto-refresh timers)
   refreshMarketListings() {
-    console.log('Auto-refreshing market listings from SERVER...');
     
     // Request fresh data from server - this is the ONLY source of truth
     this.requestMarketDataFromServer();
     
-    console.log('Market auto-refresh requested from server');
   },
 
   // Auto-refresh the currently visible market tab without switching tabs
@@ -2150,7 +2095,6 @@ export const UI = {
     
     // Only auto-refresh the buy tab (where listings are shown)
     if (mainTabType === 'buy') {
-      console.log(`Auto-refreshing ${subTabType} listings...`);
       
       // Request fresh data from server (this will trigger refreshCurrentMarketView)
       this.requestMarketDataFromServer();
@@ -2221,7 +2165,6 @@ export const UI = {
   clearMarketData() {
     // Clear server market listings
     this.serverMarketListings = [];
-    console.log('Cleared all market data');
     this.loadMarketListings('equipment');
     this.loadMarketListings('resources');
     this.loadMyListings();
@@ -2442,7 +2385,6 @@ export const UI = {
   initDesktopSocialButtons() {
     // Desktop social buttons removed - only mobile bottom panel buttons remain
     // Chat and market buttons are now in the bottom panel
-    console.log('Social buttons now in bottom panel only');
   },
 
   syncDesktopNotifications() {
@@ -2488,7 +2430,6 @@ export const UI = {
         document.getElementById('chat-input')?.focus?.();
         // Request fresh player list when chat panel opens
         if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-          console.log('Requesting fresh player list on chat panel open');
           window.globalChat._send({ type: 'requestPlayers' });
         }
       } catch {}
@@ -2513,7 +2454,7 @@ export const UI = {
     // Special handling for market
     if (panelType === 'market' && !isVisible) {
       try {
-        this.initTestMarket();
+        this.initMarket();
       } catch {}
     }
   },
@@ -2556,7 +2497,6 @@ export const UI = {
         document.getElementById('chat-input')?.focus?.();
         // Request fresh player list when chat panel opens
         if (window.globalChat && window.globalChat.ws && window.globalChat.ws.readyState === 1) {
-          console.log('Requesting fresh player list on chat panel open');
           window.globalChat._send({ type: 'requestPlayers' });
         }
       } catch {}
@@ -2581,7 +2521,7 @@ export const UI = {
     // Special handling for market
     if (panelType === 'market' && !isVisible) {
       try {
-        this.initTestMarket();
+        this.initMarket();
       } catch {}
     }
   },
@@ -2601,11 +2541,9 @@ export const UI = {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Market data received via API:', data);
         // Process market data if available
         if (data.listings) {
           this.serverMarketListings = data.listings;
-          console.log('Updated server market listings:', this.serverMarketListings.length, 'items');
           // Refresh the current market view
           this.refreshCurrentMarketView();
         }
@@ -2619,14 +2557,12 @@ export const UI = {
 
   // Request market data from server (HTTP-only mode)
   requestMarketDataFromServer() {
-    console.log('Requesting market data from server...');
     // Always use direct API call since we're HTTP-only
     this.requestMarketDataViaAPI();
   },
 
   // Initialize market sync (HTTP-only mode)
   initializeMarketSync() {
-    console.log('Initializing market sync...');
     // Request initial market data
     this.requestMarketDataFromServer();
     
@@ -2636,7 +2572,6 @@ export const UI = {
       
       // Refresh market data every 30 seconds
       this._marketRefreshInterval = setInterval(() => {
-        console.log('Periodic market data refresh...');
         this.requestMarketDataFromServer();
       }, 30000);
     }
@@ -2687,7 +2622,6 @@ export const UI = {
     pendingSales.push(newSale);
     localStorage.setItem(pendingSalesKey, JSON.stringify(pendingSales));
     
-    console.log(`Added pending sale: ${quantity}x ${itemName} for ${goldAmount} coins from ${buyerName}`);
   },
 
   // Show brief notification that item was sold
@@ -2742,7 +2676,6 @@ export const UI = {
     // Add coins to player's account
     if (typeof gameState !== 'undefined' && gameState.coins !== undefined) {
       gameState.coins += sale.goldAmount;
-      console.log(`Collected ${sale.goldAmount} coins from sale. New total: ${gameState.coins}`);
       this.updateCoinDisplay();
     }
     
@@ -2820,7 +2753,6 @@ export const UI = {
     
     // Only refresh if we're on the buy tab (where listings are displayed)
     if (mainTabType === 'buy') {
-      console.log(`Refreshing current market view: ${subTabType}`);
       this.loadMarketListings(subTabType);
       
       // Update listing count status

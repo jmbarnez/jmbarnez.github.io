@@ -4,6 +4,7 @@ import { DiscoveryPools, MAX_DISCOVERY_CARDS, ItemCatalog } from '../../data/con
 import { AudioManager } from '../../systems/AudioManager.js';
 import { IdleManager } from '../../systems/IdleManager.js';
 import { SaveManager } from '../../systems/SaveManager.js';
+import { NotificationManager } from '../../systems/NotificationManager.js';
 import { Inventory } from '../inventory/index.js';
 
 export const Exploration = {
@@ -603,8 +604,12 @@ export const Exploration = {
     gameState.exploration.xp += amount;
     while (gameState.exploration.xp >= gameState.exploration.xpToNext) {
       gameState.exploration.xp -= gameState.exploration.xpToNext;
+      const oldLevel = gameState.exploration.level;
       gameState.exploration.level++;
       gameState.exploration.xpToNext = Math.floor(gameState.exploration.xpToNext * 1.25);
+      
+      // Show level up notification
+      NotificationManager.success('Level Up!', `Exploration level ${oldLevel} → ${gameState.exploration.level}`);
     }
     const badge = document.querySelector('[data-skill-level="exploration"]');
     if (badge) badge.textContent = gameState.exploration.level;

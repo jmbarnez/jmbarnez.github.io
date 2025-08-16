@@ -18,9 +18,7 @@ export const AudioManager = {
   footstepIntervalId: null,
   windIntervalId: null,
   walkingPanDir: 1,
-  // SFX synthesis controls
-  useSampleSfx: false,
-  noiseBuffer: null,
+  // SFX synthesis controls (removed duplicate declaration)
   // UI click sample
   uiClickAudio: null,
   uiClickVolume: 0.18,
@@ -29,6 +27,8 @@ export const AudioManager = {
   uiHoverAudio: null,
   uiHoverVolume: 0.16,
   uiHoverLoading: false,
+  // Audio unlock flag (browser autoplay restrictions)
+  audioUnlocked: false,
   // Gold pickup sample
   goldPickupAudio: null,
   goldPickupVolume: 0.22,
@@ -37,6 +37,12 @@ export const AudioManager = {
   // Generic pickup samples by type (shell/wood/seaweed/fish/location/default)
   pickupCache: new Map(), // key -> { audio: HTMLAudioElement, volume: number }
   pickupVolume: 0.2,
+  
+  // Audio throttling to prevent duplicate sounds
+  lastClickTime: 0,
+  lastHoverTime: 0,
+  clickThrottle: 100, // ms
+  hoverThrottle: 150, // ms
 
   ensureContext() {
     if (!this.context) {
@@ -329,46 +335,9 @@ export const AudioManager = {
     src.stop(ctx.currentTime + durationMs / 1000);
   },
 
-  playSweep({ startFreq = 800, endFreq = 300, durationMs = 120, type = 'square', gain = 0.15 }) {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
-    if (!this.masterGain) {
-      this.masterGain = ctx.createGain();
-      this.masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
-      this.masterGain.connect(ctx.destination);
-    }
-    if (!this.sfxGain) {
-      this.sfxGain = ctx.createGain();
-      this.sfxGain.gain.setValueAtTime(0.15, ctx.currentTime);
-      this.sfxGain.connect(this.masterGain);
-    }
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(Math.max(1, startFreq), ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), ctx.currentTime + durationMs / 1000);
-    gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(gain, ctx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
-    osc.connect(gainNode);
-    gainNode.connect(this.sfxGain);
-    osc.start();
-    osc.stop(ctx.currentTime + durationMs / 1000 + 0.02);
-  },
+  // Duplicate playSweep function removed
 
-  ensureNoiseBuffer() {
-    if (this.noiseBuffer) return this.noiseBuffer;
-    const ctx = this.ensureContext();
-    if (!ctx) return null;
-    const bufferSize = Math.max(1, Math.floor(0.5 * ctx.sampleRate));
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.7;
-    }
-    this.noiseBuffer = buffer;
-    return buffer;
-  },
+  // Duplicate ensureNoiseBuffer function removed
 
   playNoise({ durationMs = 120, gain = 0.05, filterType = 'highpass', filterFreq = 1200 }) {
     const ctx = this.ensureContext();
@@ -399,6 +368,16 @@ export const AudioManager = {
 
   playClick() { this.playUIClick(); },
   playUIClick() {
+    // Throttle to prevent duplicate sounds
+    const now = Date.now();
+    if (now - this.lastClickTime < this.clickThrottle) return;
+    this.lastClickTime = now;
+    
+    // Ensure AudioContext is running before attempting to play any sound (helps on initial user interaction)
+    try {
+      const ctx = this.ensureContext();
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    } catch {}
     // Prefer sample if allowed and available; otherwise clicky synth
     if (this.useSampleSfx && this.uiClickAudio) {
       try { const a = this.uiClickAudio.cloneNode(true); a.volume = this.uiClickVolume; a.play(); return; } catch {}
@@ -458,11 +437,44 @@ export const AudioManager = {
   },
   setUIHoverSound(url) { return this.loadUIHoverSound(url); },
   playButtonHover() {
+    // Throttle to prevent duplicate sounds
+    const now = Date.now();
+    if (now - this.lastHoverTime < this.hoverThrottle) return;
+    this.lastHoverTime = now;
+    
     if (this.useSampleSfx && this.uiHoverAudio) {
       try { const a = this.uiHoverAudio.cloneNode(true); a.volume = this.uiHoverVolume; a.play(); return; } catch {}
     }
     this.playNoiseBurst({ durationMs: 30, gain: 0.035, filterType: 'highpass', filterFreq: 2600 });
     this.playTone({ frequency: 1150, durationMs: 55, type: 'triangle', gain: 0.1 });
+  },
+  // Unlock Web Audio context on first user interaction and prepare gains
+  unlockAudioContext() {
+    if (this.audioUnlocked) return;
+    try {
+      const ctx = this.ensureContext();
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+
+      if (!this.masterGain && ctx) {
+        this.masterGain = ctx.createGain();
+        this.masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+        this.masterGain.connect(ctx.destination);
+      }
+      if (!this.ambientGain && ctx) {
+        this.ambientGain = ctx.createGain();
+        this.ambientGain.gain.setValueAtTime(this.ambientVolume, ctx.currentTime);
+        this.ambientGain.connect(this.masterGain);
+      }
+      if (!this.sfxGain && ctx) {
+        this.sfxGain = ctx.createGain();
+        this.sfxGain.gain.setValueAtTime(this.uiClickVolume, ctx.currentTime);
+        this.sfxGain.connect(this.masterGain);
+      }
+      this.audioUnlocked = true;
+    } catch {
+      // tolerate failures; we'll still try on next interaction
+      this.audioUnlocked = true;
+    }
   },
   playButtonClick() { this.playUIClick(); },
   playClickDeep() { this.playUIClick(); },

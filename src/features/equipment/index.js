@@ -56,14 +56,51 @@ export const Equipment = {
   canEquip(itemType, slotType) { return itemType === slotType || (itemType === 'ring' && (slotType === 'ring1' || slotType === 'ring2')); },
 
   equipItem(item, fromIndex, cursorPos = null) {
+    // Check if the same item is already equipped in any slot
+    const isAlreadyEquipped = Object.values(gameState.equipment).some(equippedItem => 
+      equippedItem && equippedItem.name === item.name
+    );
+    
+    if (isAlreadyEquipped) {
+      // Show notification that item is already equipped
+      if (cursorPos && cursorPos.cursorX !== undefined && cursorPos.cursorY !== undefined) {
+        Tooltip.showNotification(cursorPos.cursorX, cursorPos.cursorY, 'Already equipped!');
+      }
+      return; // Don't equip duplicate
+    }
+    
+    const sourceItem = gameState.inventory[fromIndex];
+    if (!sourceItem) return;
+    
     let targetSlot = item.type;
     if (item.type === 'ring') targetSlot = gameState.equipment.ring1 ? 'ring2' : 'ring1';
+    
+    // Handle existing equipped item
     if (gameState.equipment[targetSlot]) {
       const unequippedItem = gameState.equipment[targetSlot];
-      gameState.inventory.push(unequippedItem);
+      // Try to find an empty slot for the unequipped item
+      let emptyIndex = gameState.inventory.findIndex(slot => slot === null);
+      if (emptyIndex === -1) {
+        // No empty slots, append to end
+        gameState.inventory.push(unequippedItem);
+      } else {
+        gameState.inventory[emptyIndex] = unequippedItem;
+      }
     }
-    gameState.equipment[targetSlot] = item;
-    gameState.inventory.splice(fromIndex, 1);
+    
+    // Equip the single item
+    const itemToEquip = { name: item.name, type: item.type };
+    gameState.equipment[targetSlot] = itemToEquip;
+    
+    // Handle source item stack
+    if (sourceItem.count > 1) {
+      // Reduce stack by 1
+      sourceItem.count--;
+    } else {
+      // Remove single item
+      gameState.inventory[fromIndex] = null;
+    }
+    
     if (inventoryRef) inventoryRef.debouncedRender();
     this.debouncedUpdateUI();
     AudioManager.playEquip();

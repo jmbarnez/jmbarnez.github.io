@@ -759,15 +759,15 @@
               <span>Remember me</span>
             </label>
           </div>
-          <div class="auth-actions">
-            <button id="login-submit" class="primary-btn">
+          <div class="auth-actions" style="flex-direction: column; gap: 16px; align-items: center;">
+            <button id="login-submit" class="primary-btn login-btn" style="width: 100%; text-align: center;">
               <span class="btn-text">Login</span>
               <span class="btn-loading" style="display: none;">
                 <div class="spinner"></div>
                 Signing in...
               </span>
             </button>
-            <button id="show-register" class="secondary-btn create-account-btn">Create New Account</button>
+            <button id="show-register" class="secondary-btn create-account-btn" style="width: 100%; text-align: center;">Create Account</button>
           </div>
         </div>
 
@@ -807,7 +807,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.67</div>
+      <div class="version-info-screen">v0.1.69</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -834,6 +834,44 @@
           <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
         </div>
         <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.69</div>
+            <div class="changelog-date">August 16, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Equipment no longer stacks in inventory - each piece remains separate
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Right-clicking equipment stacks now equips only one item instead of entire stack
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Duplicate equipment prevention - cannot equip the same item in multiple slots
+              </div>
+              <div class="changelog-item fixed">
+                <span class="changelog-tag">FIXED</span>
+                Double click sound on explore button - now plays only once per click
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Level up notifications now appear for exploration and fishing skill progression
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Treasure chests moved from exploration to fishing as rare catches
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Red X close buttons properly centered in all panel UIs
+              </div>
+              <div class="changelog-item removed">
+                <span class="changelog-tag">REMOVED</span>
+                Development console logging removed from chat functions for cleaner production build
+              </div>
+            </div>
+          </div>
           <div class="changelog-section">
             <div class="changelog-version">Version 0.1.67</div>
             <div class="changelog-date">August 15, 2025</div>

@@ -18,8 +18,6 @@ export const DiscoveryPools = {
     { name: 'Driftwood', category: 'ground', rarity: 35, xp: 3, icon: 'icon-driftwood', description: 'A piece of smoothed driftwood' },
     { name: 'Seaweed', category: 'ground', rarity: 30, xp: 2, icon: 'icon-seaweed', description: 'Fresh seaweed tangled in the tide' },
     { name: 'Small Coin', category: 'ground', rarity: 14, xp: 3, icon: 'icon-coin', description: 'A weathered coin glinting in the sand' },
-    // Treasure chest (rare)
-    { name: 'Treasure Chest', category: 'treasure', rarity: 3, xp: 12, icon: 'icon-treasure-chest', description: 'A chest half-buried in sand' },
     
     // Location discovery (unlocks after level 5+; appears rarely once eligible)
     { name: 'Whispering Woods', category: 'location', unlockLocationKey: 'forest', minLevel: 5, rarity: 2, xp: 10, icon: 'icon-location', description: 'You sense a path into the woods...' },

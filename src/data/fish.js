@@ -7,4 +7,9 @@ export const FISH_TABLE = [
   { name: 'Golden Carp', weight: 1, xp: 20, minLevel: 12, color: '#d4af37', icon: 'fish-carp' }
 ];
 
+// Special fishing catches (not regular fish)
+export const SPECIAL_CATCHES = [
+  { name: 'Treasure Chest', weight: 2, xp: 12, minLevel: 1, category: 'treasure', icon: 'icon-treasure-chest' }
+];
+
 

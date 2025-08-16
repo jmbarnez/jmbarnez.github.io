@@ -19,12 +19,6 @@ function generateId() {
 }
 
 exports.handler = async (event, context) => {
-  console.log('=== Chat Function Call ===');
-  console.log('Path:', event.path);
-  console.log('Method:', event.httpMethod);
-  console.log('Environment check:');
-  console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'MISSING');
-  console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
   
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -46,11 +40,9 @@ exports.handler = async (event, context) => {
     if (httpMethod === 'GET' && action === 'messages') {
       // Get recent messages from database
       const since = parseInt(event.queryStringParameters?.since || '0');
-      console.log('Messages request - since:', since);
       
       try {
         const dbMessages = await getChatMessages(since);
-        console.log('Found', dbMessages.length, 'messages from database');
         
         // Convert database format to client format
         const messages = dbMessages.map(msg => ({
@@ -83,7 +75,6 @@ exports.handler = async (event, context) => {
       // Get active players from database
       try {
         const activePlayers = await getActivePlayers();
-        console.log('Found', activePlayers.length, 'active players from database');
         
         // Convert database format to client format
         const players = activePlayers.map(player => ({
@@ -115,7 +106,6 @@ exports.handler = async (event, context) => {
       const willUseId = suppliedId || generateId();
       const playerName = sanitize(name) || `Adventurer-${willUseId}`;
 
-      console.log('Player joining:', playerName, 'with ID:', willUseId, '(suppliedId:', !!suppliedId, ')');
 
       try {
         // Check if this player already exists (by id)
@@ -129,7 +119,6 @@ exports.handler = async (event, context) => {
 
         // Upsert player row
         const player = await addPlayer(willUseId, playerName);
-        console.log('Player upsert result:', player);
 
         // Do not create or return any system join message. Presence is tracked in chat_players only.
         return {
@@ -173,7 +162,6 @@ exports.handler = async (event, context) => {
         };
       }
       
-      console.log('Message request - Player ID:', playerId, 'Text:', sanitizedText);
       
       try {
         // Update player activity
@@ -229,9 +217,7 @@ exports.handler = async (event, context) => {
     if (httpMethod === 'GET' && action === 'test') {
       // Test database connection
       try {
-        console.log('Testing database connection...');
         const testPlayers = await getActivePlayers();
-        console.log('Database test successful, found players:', testPlayers.length);
         return {
           statusCode: 200,
           headers,
