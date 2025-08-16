@@ -525,32 +525,39 @@ export const Inventory = {
     }
   },
 
-  // Animate item to specific inventory slot if inventory panel is open
+  // Animate item to specific inventory slot if inventory panel is open, or to inventory icon if closed
   animateItemToSlot(itemName, item, animationSource, slotIndex = null) {
     // Check if inventory panel is open
     const inventoryPanel = document.getElementById('panel-inventory');
-    if (!inventoryPanel || inventoryPanel.style.display === 'none') {
-      return; // No animation if inventory is closed
-    }
+    const isPanelOpen = inventoryPanel && inventoryPanel.style.display !== 'none';
     
-    // Find the target slot
-    let targetSlot = null;
-    if (slotIndex !== null) {
-      // New item - use specific slot index
-      targetSlot = document.querySelector(`[data-index="${slotIndex}"]`);
+    let targetElement = null;
+    
+    if (!isPanelOpen) {
+      // Panel is closed - target the inventory button in the bottom UI panel
+      targetElement = document.getElementById('toggleInventory');
+      if (!targetElement) {
+        return; // No inventory button found
+      }
     } else {
-      // Existing item - find the slot containing this item
-      const allSlots = document.querySelectorAll('.cell');
-      for (let i = 0; i < allSlots.length; i++) {
-        const slotItem = gameState.inventory[i];
-        if (slotItem && slotItem.name === itemName && slotItem === item) {
-          targetSlot = allSlots[i];
-          break;
+      // Panel is open - target specific slot as before
+      if (slotIndex !== null) {
+        // New item - use specific slot index
+        targetElement = document.querySelector(`[data-index="${slotIndex}"]`);
+      } else {
+        // Existing item - find the slot containing this item
+        const allSlots = document.querySelectorAll('.cell');
+        for (let i = 0; i < allSlots.length; i++) {
+          const slotItem = gameState.inventory[i];
+          if (slotItem && slotItem.name === itemName && slotItem === item) {
+            targetElement = allSlots[i];
+            break;
+          }
         }
       }
     }
     
-    if (!targetSlot || !animationSource) return;
+    if (!targetElement || !animationSource) return;
     
     // Create animated item element
     const animatedItem = document.createElement('div');
@@ -579,7 +586,7 @@ export const Inventory = {
     
     // Get source and target positions
     const sourceRect = animationSource.getBoundingClientRect();
-    const targetRect = targetSlot.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
     
     // Position at source
     animatedItem.style.left = `${sourceRect.left + sourceRect.width / 2 - 12}px`;

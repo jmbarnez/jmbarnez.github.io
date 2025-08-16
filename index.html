@@ -791,15 +791,15 @@
             <input id="register-confirm" type="password" placeholder="Confirm Password" autocomplete="new-password"/>
             <div class="input-error" id="register-confirm-error"></div>
           </div>
-          <div class="auth-actions">
-            <button id="register-submit" class="primary-btn">
+          <div class="auth-actions" style="flex-direction: column; gap: 16px; align-items: center;">
+            <button id="register-submit" class="primary-btn login-btn" style="width: 100%; text-align: center;">
               <span class="btn-text">Create Account</span>
               <span class="btn-loading" style="display: none;">
                 <div class="spinner"></div>
                 Creating...
               </span>
             </button>
-            <button id="show-login" class="secondary-btn back-to-login-btn">Back to Login</button>
+            <button id="show-login" class="secondary-btn back-to-login-btn" style="width: 100%; text-align: center;">Back to Login</button>
           </div>
         </div>
         
@@ -807,7 +807,7 @@
       </div>
       
       <!-- Version number - bottom left of screen -->
-      <div class="version-info-screen">v0.1.69</div>
+      <div class="version-info-screen">v0.1.69-addon</div>
       
       <!-- Right side vertical buttons -->
       <div class="right-side-buttons">
@@ -834,6 +834,32 @@
           <button id="changelog-close" class="changelog-close-btn" title="Close">×</button>
         </div>
         <div class="changelog-content">
+          <div class="changelog-section">
+            <div class="changelog-version">Version 0.1.69-addon</div>
+            <div class="changelog-date">August 16, 2025</div>
+            <div class="changelog-items">
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Back to Login button text made bigger and more prominent (16px, font-weight 600)
+              </div>
+              <div class="changelog-item new">
+                <span class="changelog-tag">NEW</span>
+                Shift-click ground items to pick up only half of the stack, leaving the rest
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Item animations now target inventory icon when panel is closed for better visual feedback
+              </div>
+              <div class="changelog-item improved">
+                <span class="changelog-tag">IMPROVED</span>
+                Chat colors now randomized and persistent per user - no more color picker needed
+              </div>
+              <div class="changelog-item removed">
+                <span class="changelog-tag">REMOVED</span>
+                Chat color picker removed in favor of automatic persistent color assignment
+              </div>
+            </div>
+          </div>
           <div class="changelog-section">
             <div class="changelog-version">Version 0.1.69</div>
             <div class="changelog-date">August 16, 2025</div>
@@ -1436,9 +1462,6 @@
             <h2 class="drag-handle">Global Chat</h2>
             <button class="panel-close-btn" title="Close">×</button>
             <div class="chat-header-controls">
-              <div class="chat-color-control">
-                <input type="color" id="chatColorPickerPanel" value="#4ecdc4" class="color-picker-small" title="Choose your chat name color">
-              </div>
               <button id="togglePlayersBtn" class="players-toggle-btn" title="Toggle Online Players">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>

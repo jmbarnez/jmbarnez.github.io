@@ -474,6 +474,31 @@ export const Exploration = {
     const onClick = (ev) => {
       if (isDragging) return; // Don't collect if we were dragging
       ev.preventDefault();
+      
+      // Check for shift-click to pick up only half
+      if (ev.shiftKey && item.count > 1) {
+        const halfAmount = Math.ceil(item.count / 2); // Use ceil so we always pick up at least 1
+        const remainingAmount = item.count - halfAmount;
+        
+        // Create item for collection with half amount
+        const halfItem = { ...item, count: halfAmount };
+        
+        // Update the ground item with remaining amount
+        item.count = remainingAmount;
+        card.dataset.itemCount = remainingAmount;
+        
+        // Update the display
+        const titleEl = card.querySelector('.discovery-title');
+        if (titleEl) {
+          const displayName = remainingAmount > 1 ? `${item.name} (x${remainingAmount})` : item.name;
+          titleEl.textContent = displayName;
+        }
+        
+        // Collect the half amount
+        this.collectGroundItem(card, halfItem, { ...opts, noRemove: true });
+        return;
+      }
+      
       this.collectGroundItem(card, item, opts);
     };
 
@@ -554,8 +579,10 @@ export const Exploration = {
       }
     }
 
-    // Remove from ground
-    card.remove();
+    // Remove from ground (unless noRemove option is set)
+    if (!opts.noRemove) {
+      card.remove();
+    }
     
     // Handle discovery tracking for found items
     if (item.category && item.category !== 'ground') {

@@ -77,7 +77,6 @@ export const UI = {
       audioToggleBtn: $('audioToggleBtn'),
       ambienceVolume: $('ambienceVolume'),
       sfxVolume: $('sfxVolume'),
-      chatColorPickerPanel: $('chatColorPickerPanel'),
       settingsBtn: $('settingsBtn'),
       settingsPanel: $('settingsPanel'),
     };
@@ -506,18 +505,8 @@ export const UI = {
     if (this.elements.ambienceVolume) this.elements.ambienceVolume.addEventListener('input', (e) => { const volume = parseInt(e.target.value) / 100; AudioManager.setAmbientVolume(volume); });
     if (this.elements.sfxVolume) this.elements.sfxVolume.addEventListener('input', (e) => { const volume = parseInt(e.target.value) / 100; AudioManager.setSfxVolume(volume); });
     
-    // Chat color picker in panel
-    if (this.elements.chatColorPickerPanel) {
-      // Load saved color
-      const savedColor = localStorage.getItem('chatNameColor') || '#4ecdc4';
-      this.elements.chatColorPickerPanel.value = savedColor;
-      
-      this.elements.chatColorPickerPanel.addEventListener('input', (e) => {
-        const newColor = e.target.value;
-        localStorage.setItem('chatNameColor', newColor);
-        AudioManager.playButtonClick();
-      });
-    }
+    // Generate persistent random chat color for current user
+    this.ensureChatColor();
     
     // Removed save button - everything auto-saves to server now
     
@@ -831,6 +820,35 @@ export const UI = {
         setTimeout(() => window.location.reload(), 1000);
       });
     });
+  },
+
+  // Generate and store a persistent random chat color for the current user
+  ensureChatColor() {
+    const currentPlayerName = localStorage.getItem('playerName') || '';
+    if (!currentPlayerName) return;
+    
+    // Check if user already has a color assigned
+    const existingColor = localStorage.getItem(`chatColor_${currentPlayerName}`);
+    if (existingColor) {
+      localStorage.setItem('chatNameColor', existingColor);
+      return;
+    }
+    
+    // Generate a random color from our palette
+    const chatColors = [
+      '#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b',
+      '#eb4d4b', '#6c5ce7', '#a29bfe', '#fd79a8', '#e17055',
+      '#00b894', '#00cec9', '#0984e3', '#6c5ce7', '#fdcb6e',
+      '#e84393', '#9b59b6', '#3498db', '#1abc9c', '#2ecc71',
+      '#f39c12', '#e67e22', '#e74c3c', '#8e44ad', '#2980b9'
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * chatColors.length);
+    const assignedColor = chatColors[randomIndex];
+    
+    // Store both with player name key (for persistence) and current key (for immediate use)
+    localStorage.setItem(`chatColor_${currentPlayerName}`, assignedColor);
+    localStorage.setItem('chatNameColor', assignedColor);
   },
 
   // Global chat functionality with full UI integration
