@@ -1,15 +1,52 @@
-// Load environment variables from .env file  
+// Load environment variables from .env file or, as a fallback for local dev,
+// from netlify.toml's [dev.environment] block so Netlify functions have creds
+const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 
 // Supabase integration helper
 const { createClient } = require('@supabase/supabase-js');
 
+// If running locally and env vars are not set, try to read them from netlify.toml
+function loadEnvFromNetlifyTomlIfMissing() {
+  const requiredKeys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_ANON_KEY', 'JWT_SECRET'];
+  const missing = requiredKeys.filter((k) => !process.env[k]);
+  if (missing.length === 0) return;
+
+  try {
+    const tomlPath = path.join(__dirname, '../../../netlify.toml');
+    if (!fs.existsSync(tomlPath)) return;
+    const toml = fs.readFileSync(tomlPath, 'utf8');
+
+    // Find the [dev.environment] block
+    const devEnvStart = toml.indexOf('[dev.environment]');
+    if (devEnvStart === -1) return;
+
+    const after = toml.slice(devEnvStart);
+    const lines = after.split(/\r?\n/).slice(1);
+    for (const line of lines) {
+      // stop at next TOML table/block
+      if (/^\s*\[.*\]/.test(line)) break;
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"([^"]*)"\s*$/);
+      if (m) {
+        const key = m[1];
+        const val = m[2];
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+  } catch (err) {
+    // non-fatal
+    console.warn('Could not load env from netlify.toml:', err && err.message);
+  }
+}
+
+loadEnvFromNetlifyTomlIfMissing();
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn('Supabase environment variables not set');
+  console.warn('Supabase environment variables not set. Expected SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);

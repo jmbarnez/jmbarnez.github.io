@@ -209,25 +209,8 @@ export const Inventory = {
       count.textContent = item.count;
       itemEl.appendChild(count);
     }
-    // If this inventory slot has cooking metadata, add per-item overlay so it persists across renders
-    try {
-      const meta = gameState.inventory[index]?.cooking;
-      if (meta) {
-        const overlay = document.createElement('div');
-        overlay.className = 'item-cooking-overlay';
-        overlay.innerHTML = '<div class="progress-bar-bg"><div class="progress-bar-fill"></div></div><span class="progress-text">0s</span>';
-        itemEl.appendChild(overlay);
-        // initialize progress if startTime present
-        if (meta.startTime && meta.cookTime) {
-          const elapsed = Date.now() - meta.startTime;
-          const progress = Math.max(0, Math.min(1, elapsed / meta.cookTime));
-          const fill = overlay.querySelector('.progress-bar-fill');
-          const text = overlay.querySelector('.progress-text');
-          if (fill) fill.style.width = `${Math.floor(progress * 100)}%`;
-          if (text) text.textContent = `${Math.ceil(Math.max(0, meta.cookTime - elapsed) / 1000)}s`;
-        }
-      }
-    } catch {}
+    // Cooking overlays removed - no-op placeholder
+    try {} catch {}
     this.addItemEventListeners(itemEl, item, index);
     cell.appendChild(itemEl);
   },

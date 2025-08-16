@@ -1931,17 +1931,19 @@ body[data-theme="dark"] .location-badge.forest {
 }
 
 /* Campfire cooking state */
-.campfire-interactive.cooking {
-  animation: campfireCooking 1s ease-in-out infinite;
+.campfire.cooking {
+  /* cooking visual state removed */
+  /* keep placeholder to avoid empty-rule linter warnings */
+  --campfire-placeholder: 1;
 }
 
-.campfire-interactive.cooking .flame {
-  animation-duration: 0.8s;
+.campfire .flame {
   opacity: 1;
 }
 
-.campfire-interactive.cooking .campfire-icon {
-  filter: drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
+.campfire .campfire-icon {
+  /* static icon styling kept */
+  --campfire-icon-placeholder: 1;
 }
 
 @keyframes campfireCooking {
@@ -1956,29 +1958,9 @@ body[data-theme="dark"] .location-badge.forest {
 }
 
 /* Cooking Panel Styling */
-.cooking-panel {
-  min-width: 400px;
-  min-height: 300px;
-}
 
-.cooking-area {
-  padding: var(--spacing-md);
-}
-
-.cooking-info {
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm);
-  background: var(--bg-accent);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--border-radius);
-}
-
-.cooking-info p {
-  margin: 0;
-  font-size: 9px;
-  color: var(--text-secondary);
-  text-align: center;
-}
+/* Cooking panel styles removed */
+.cooking-panel { display: none !important; }
 
 .cooking-slots {
   display: grid;

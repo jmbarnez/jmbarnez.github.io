@@ -17,6 +17,12 @@
   functions = "netlify/functions"
   autoLaunch = false
 
+[dev.environment]
+  SUPABASE_URL = "https://xixectvmhqtqtlztsmrr.supabase.co"
+  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeGVjdHZtaHF0cXRsenRzbXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjg2NTAsImV4cCI6MjA3MDgwNDY1MH0.Z9lfNdYTqbJLnXjYrOyYBMWcWEfAnDAGXaiiBnvK78s"
+  SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeGVjdHZtaHF0cXRsenRzbXJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTIyODY1MCwiZXhwIjoyMDcwODA0NjUwfQ.ixp7i8IeiUI1hmT1HGI9qbHvd-jAEiqy8ezpWZIlLUI"
+  JWT_SECRET = "xi0D1ZsCCyxe1U5ERCrfVHU2N0g4/KOR1HJp/Ms8h0hOUF6YEKUhiTw6IOCl2cFV38dTEyR/kDjrYgomu6XS+w=="
+
 # API endpoints are automatically mapped to function files by Netlify
 # /api/login -> netlify/functions/login.js
 # /api/register -> netlify/functions/register.js  
@@ -91,7 +97,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
 
 # Environment variables (set these in Netlify dashboard)
-# SUPABASE_URL = "your-supabase-url"
-# SUPABASE_ANON_KEY = "your-supabase-anon-key"
-# SUPABASE_SERVICE_ROLE_KEY = "your-supabase-service-role-key"
-# JWT_SECRET = "your-jwt-secret"
+# SUPABASE_URL = "https://xixectvmhqtqtlztsmrr.supabase.co"
+# SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeGVjdHZtaHF0cXRsenRzbXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMjg2NTAsImV4cCI6MjA3MDgwNDY1MH0.Z9lfNdYTqbJLnXjYrOyYBMWcWEfAnDAGXaiiBnvK78s"
+# SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeGVjdHZtaHF0cXRsenRzbXJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTIyODY1MCwiZXhwIjoyMDcwODA0NjUwfQ.ixp7i8IeiUI1hmT1HGI9qbHvd-jAEiqy8ezpWZIlLUI"
+# JWT_SECRET = "xi0D1ZsCCyxe1U5ERCrfVHU2N0g4/KOR1HJp/Ms8h0hOUF6YEKUhiTw6IOCl2cFV38dTEyR/kDjrYgomu6XS+w=="
