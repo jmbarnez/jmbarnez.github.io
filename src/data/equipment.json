@@ -1,0 +1,11 @@
+[
+  {
+    "id": "wooden_sword",
+    "name": "Wooden Sword",
+    "slot": "weapon",
+    "rarity": "common",
+    "icon": "/icons.svg#icon-driftwood",
+    "stats": { "atk": 2 }
+  }
+]
+

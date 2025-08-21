@@ -1,0 +1,76 @@
+/* AI: Styling for player chat bubbles. */
+.player-chat-bubble {
+  position: absolute;
+  background-color: var(--panel-bg); /* AI: Use theme variable for dark mode background */
+  padding: 4px 8px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  font-size: 8px;
+  font-weight: 500;
+  color: var(--text-color); /* AI: Use theme variable for dark mode text color */
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  z-index: 60;
+  pointer-events: none;
+  max-width: 120px;
+  min-width: 20px;
+  transform: translateX(-50%) translateY(-100%);
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.player-chat-bubble.hidden {
+  display: none;
+}
+
+.bubble-tail {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--panel-bg); /* AI: Use theme variable for dark mode tail color */
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));
+}
+
+.typing-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+  padding: 2px 4px; /* AI: Add padding for better visibility */
+  background-color: rgba(0, 0, 0, 0.7); /* AI: Add background for better contrast */
+  border-radius: 8px;
+}
+
+.typing-dots .dot {
+  width: 4px;
+  height: 4px;
+  margin: 0 1px;
+  background-color: var(--text-color); /* AI: Use theme variable for dark mode typing dots */
+  border-radius: 50%;
+  animation: typing-dot-animation 1.2s infinite ease-in-out;
+  box-shadow: 0 0 2px var(--text-color); /* AI: Add subtle glow for better visibility */
+}
+
+.typing-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-dot-animation {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}

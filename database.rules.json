@@ -1,0 +1,38 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "areas": {
+      "$areaId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "players": {
+          "$playerId": {
+            ".read": "auth != null",
+            ".write": "auth != null && (auth.uid == $playerId || auth.uid == 'TYE52DZAPoQKqgppIwDSjeVzOtc2')"
+          }
+        },
+        "enemies": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "players": {
+      "$playerId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid == $playerId || auth.uid == 'TYE52DZAPoQKqgppIwDSjeVzOtc2')"
+      },
+      ".indexOn": "isOnline"
+    },
+    "globalChat": {
+      "messages": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": "ts"
+      }
+    }
+  }
+}
+
+

@@ -1,0 +1,1 @@
+// This file is deprecated. Enemy spawning and movement are now handled by the dedicated Node.js server.

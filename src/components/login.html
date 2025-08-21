@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sandbox idle - Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link rel="icon" href="/icons.svg" />
+  <link rel="stylesheet" href="/src/styles/login.css">
+  <link rel="stylesheet" href="/src/styles/theme.css">
+  <link rel="stylesheet" href="/src/styles/tw.css">
+</head>
+<body class="login-view">
+  <div class="fixed inset-0 z-40 font-ui flex items-center justify-center" id="login-screen">
+    <div class="login-panel">
+      <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Please wait...</p>
+      </div>
+      <form id="login-form" class="login-form flex flex-col items-center gap-4">
+        <div class="input-group w-full">
+          <input type="email" id="login-email" name="email" placeholder="Email" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="input-group w-full">
+          <input type="password" id="login-password" name="password" placeholder="Password" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="form-link">
+          <p class="text-slate-400 text-sm">Don't have an account? <a href="#" id="show-register" class="link-accent text-sky-300 hover:text-sky-200">Register</a></p>
+        </div>
+        <button type="submit" id="login-submit" class="login-button w-full px-4 py-3 rounded bg-gradient-to-br from-sky-500/80 to-indigo-700/90 text-slate-100 font-semibold border border-sky-400/40 hover:from-sky-500/90 hover:to-indigo-700 transition">Login</button>
+      </form>
+      <form id="register-form" class="login-form flex flex-col items-center gap-4">
+        <div class="input-group w-full">
+          <input type="email" id="register-email" name="email" placeholder="Email" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="input-group w-full">
+          <input type="text" id="register-username" name="username" placeholder="Username" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="input-group w-full">
+          <input type="password" id="register-password" name="password" placeholder="Password" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="input-group w-full">
+          <input type="password" id="register-confirm-password" name="confirmPassword" placeholder="Confirm Password" required class="login-input w-full rounded border border-sky-400/20 bg-slate-900/60 text-slate-200 px-4 py-3 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 transition">
+        </div>
+        <div class="form-link">
+          <p class="text-slate-400 text-sm">Already have an account? <a href="#" id="show-login" class="link-accent text-sky-300 hover:text-sky-200">Login</a></p>
+        </div>
+        <button type="submit" id="register-submit" class="login-button w-full px-4 py-3 rounded bg-gradient-to-br from-sky-500/80 to-indigo-700/90 text-slate-100 font-semibold border border-sky-400/40 hover:from-sky-500/90 hover:to-indigo-700 transition">Register</button>
+      </form>
+      <p id="login-message" class="login-message text-center text-sm text-red-400 mt-2"></p>
+      <div id="online-status-light" class="status-light"></div>
+    </div>
+
+    <button id="version-button" type="button" class="corner-button bottom-left px-3 py-2 rounded border border-sky-400/20 bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 transition">v0.2.0</button>
+
+    <div id="version-panel" class="hidden fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] bg-slate-900/95 text-slate-200 border border-sky-400/20 rounded-2xl shadow-2xl backdrop-blur-2xl z-50">
+      <div id="version-header" class="p-4 border-b border-sky-400/20 font-semibold cursor-move select-none flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-300" aria-hidden="true"><use href="/icons.svg#icon-grip" /></svg>
+          Version Changelog
+        </div>
+        <button id="close-version-panel" type="button" class="panel-close absolute top-2 right-2 text-red-500 hover:text-red-300 text-lg leading-none" data-no-drag aria-label="Close">×</button>
+      </div>
+      <div class="p-4 max-h-[400px] overflow-y-auto">
+        <div class="version-section mb-4 pb-4 border-b border-sky-400/10">
+          <div class="version-title text-sky-300 mb-2">v0.2.0</div>
+          <ul class="changelog space-y-2">
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-emerald-400/35 bg-emerald-400/10 text-emerald-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">New</span>
+              Combat system implemented (basic auto-attack, projectiles, enemy HP, rewards).
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Updated</span>
+              Chat system revamp: minimal bottom-left chat with temporary visibility and message bubbles.
+            </li>
+          </ul>
+        </div>
+        <div class="version-section mb-4 pb-4 border-b border-sky-400/10">
+          <div class="version-title text-sky-300 mb-2">v0.1.1</div>
+          <ul class="changelog space-y-2">
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-emerald-400/35 bg-emerald-400/10 text-emerald-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">New</span>
+              Added a settings panel with a master volume slider.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Improved</span>
+              Consolidated the Inventory, Equipment, and Skills panels into a single tabbed interface.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Improved</span>
+              The main panel can now be toggled with the 'Tab' key.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Improved</span>
+              Redesigned the equipment panel with a modular, robotic theme.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-violet-400/35 bg-violet-400/10 text-violet-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Fixed</span>
+              Resolved an issue where the settings panel would not open.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">New</span>
+              Added visual target marker and movement debug info.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Refactor</span>
+              Improved player movement, braking, and deceleration logic.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Refactor</span>
+              Player drone size has been significantly reduced.
+            </li>
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-orange-400/35 bg-orange-400/10 text-orange-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Fix</span>
+              Implemented smooth interpolation for remote players.
+            </li>
+          </ul>
+        </div>
+        <div class="version-section mb-4">
+          <div class="version-title text-sky-300 mb-2">v0.1.0</div>
+          <ul class="changelog space-y-2">
+            <li class="text-sm leading-relaxed">
+              <span class="inline-flex items-center rounded-full border border-sky-400/35 bg-sky-400/10 text-sky-300 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Refactor</span>
+              <span class="inline-flex items-center rounded-full border border-emerald-500 bg-emerald-500/15 text-emerald-400 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase mr-2">Release</span>
+              Complete refactor and version reset to 0.1.0
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disclaimer Popup -->
+  <div id="disclaimer-popup" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[10000] flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-slate-900/95 border border-sky-400/30 rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl backdrop-blur-2xl">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-4" style="color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff;">Disclaimer</h2>
+        <p class="text-slate-200 mb-4 leading-relaxed">
+          Welcome to <span style="color: #ffffff; text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 30px #ffffff; font-weight: bold;">Wuzaru</span>!
+        </p>
+        <p class="text-slate-300 text-sm leading-relaxed">
+          This is an early development build. Features may be incomplete, unstable, or subject to change. Your progress may be lost at any time.
+        </p>
+      </div>
+      <button id="disclaimer-accept" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg transition-colors duration-200 shadow-lg">
+        I Understand
+      </button>
+    </div>
+  </div>
+
+  <!-- reCAPTCHA removed -->
+  <script type="module" src="/src/utils/disclaimer.js"></script>
+  <script type="module" src="/src/app/login-loader.js"></script>
+</body>
+</html>

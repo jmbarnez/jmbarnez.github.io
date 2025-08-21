@@ -1,0 +1,408 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  /* Use relative path so Vite rewrites to hashed asset in build */
+  background-image: url('../../assets/beach-background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  font-family: 'Press Start 2P', cursive;
+}
+
+/* Enhanced transparent login panel - Dark Theme (Not draggable) */
+.login-panel {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 16px;
+  border: 1px solid rgba(64, 123, 255, 0.2);
+  background: rgba(0, 5, 15, 0.8);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  padding: 2rem 1.75rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(64, 123, 255, 0.1),
+    inset 0 -1px 0 rgba(64, 123, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg,
+    rgba(64, 123, 255, 0.05) 0%,
+    rgba(0, 30, 60, 0.08) 50%,
+    rgba(64, 123, 255, 0.05) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Form styling */
+.login-form {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Title styling */
+.login-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #d1d5db;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  text-shadow: 0 2px 8px rgba(64, 123, 255, 0.3);
+}
+
+.changelog-panel-large .login-title {
+  cursor: grab;
+}
+
+/* Input group */
+.input-group {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+/* Enhanced input styling */
+.login-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 15, 35, 0.6);
+  border: 1px solid rgba(64, 123, 255, 0.2);
+  border-radius: 8px;
+  color: #d1d5db;
+  font-size: 0.875rem;
+  font-family: inherit;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.login-input::placeholder {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #407bff;
+  background: rgba(0, 25, 55, 0.8);
+  box-shadow:
+    0 0 0 2px rgba(64, 123, 255, 0.3),
+    0 4px 12px rgba(64, 123, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.login-input:hover:not(:focus) {
+  border-color: rgba(64, 123, 255, 0.4);
+  background: rgba(0, 20, 45, 0.7);
+}
+
+/* Form links */
+.form-link {
+  text-align: center;
+  margin: 0.5rem 0 0.5rem 0;
+}
+
+.form-link p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+.link-accent {
+  color: #64b5f6;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.link-accent:hover {
+  color: #90caf9;
+  text-shadow: 0 0 8px rgba(100, 181, 246, 0.6);
+}
+
+/* Enhanced button styling */
+.login-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg,
+    rgba(64, 123, 255, 0.8) 0%,
+    rgba(30, 64, 175, 0.9) 100%);
+  border: 1px solid rgba(64, 123, 255, 0.4);
+  border-radius: 8px;
+  color: #f3f4f6;
+  font-size: 0.875rem;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(144, 202, 249, 0.3),
+    transparent);
+  transition: left 0.5s ease;
+}
+
+.login-button:hover {
+  background: linear-gradient(135deg,
+    rgba(64, 123, 255, 0.9) 0%,
+    rgba(30, 64, 175, 1) 100%);
+  border-color: rgba(64, 123, 255, 0.6);
+  box-shadow:
+    0 4px 15px rgba(64, 123, 255, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.login-button:hover::before {
+  left: 100%;
+}
+
+.login-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 8px rgba(64, 123, 255, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+#register-form .login-button {
+  margin-top: 15px;
+}
+
+/* Login message */
+.login-message {
+  margin: 1rem 0 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #ef4444;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Hide other containers when in login mode */
+body.login-view #ui-container,
+body.login-view #game-container {
+  display: none !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .login-panel {
+    max-width: 320px;
+    padding: 1.5rem 1.25rem;
+  }
+  
+  .login-title {
+    font-size: 1.25rem;
+  }
+  
+  .login-input,
+  .login-button {
+    font-size: 0.8rem;
+  }
+}
+
+.corner-button {
+  position: absolute;
+  background: rgba(0, 15, 35, 0.6);
+  border: 1px solid rgba(64, 123, 255, 0.2);
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-family: inherit;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  z-index: 51;
+}
+
+.corner-button:hover {
+  transform: scale(1.05) translateY(-2px);
+  background: rgba(0, 25, 55, 0.8);
+  border-color: #407bff;
+  color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(64, 123, 255, 0.2);
+}
+
+.bottom-left {
+  bottom: 1rem;
+  left: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.bottom-right {
+  bottom: 1rem;
+  right: 1rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-right img {
+  width: 24px;
+  height: 24px;
+  filter: invert(75%) sepia(10%) saturate(1000%) hue-rotate(180deg);
+}
+
+/* Generic panel + .hidden moved to theme.css. Keep login-specific styles here. */
+
+/* Versioned changelog layout */
+.version-section {
+  margin-bottom: 1rem;
+}
+
+.version-title {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  color: #90caf9;
+  text-shadow: 0 0 6px rgba(144, 202, 249, 0.35);
+}
+
+/* Hide login-specific elements when in desktop view */
+body.desktop-view #login-screen .corner-button,
+body.desktop-view #login-screen .login-panel {
+  display: none !important;
+}
+
+.status-light {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #9ca3af; /* Default to grey */
+  box-shadow: 0 0 8px rgba(156, 163, 175, 0.6);
+}
+
+.status-light.online {
+  background-color: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+.status-light.offline {
+  background-color: #f44336;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.8);
+}
+
+.loading-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 5, 15, 0.9);
+  /* display: flex; */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 10;
+  color: #d1d5db;
+  font-size: 0.875rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.recaptcha-container { display: none; }
+
+/* Changelog tags */
+.changelog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.changelog li {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  margin-right: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(64, 123, 255, 0.35);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.tag--refactor {
+  color: #33A1C9;
+  border-color: #33A1C9;
+  background: rgba(51, 161, 201, 0.15);
+}
+
+.tag--release {
+  color: #22c55e;
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+/* Additional tag variants */
+.tag--fix {
+  color: #60a5fa; /* blue-400 */
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.tag--feature {
+  color: #a78bfa; /* violet-400 */
+  border-color: #a78bfa;
+  background: rgba(167, 139, 250, 0.15);
+}
+
+.tag--breaking {
+  color: #ef4444; /* red-500 */
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}

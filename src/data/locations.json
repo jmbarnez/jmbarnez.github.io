@@ -1,0 +1,14 @@
+[
+  {
+    "id": "beach",
+    "name": "Sandy Beach",
+    "spawnRates": {
+      "seashell": 5,
+      "driftwood": 4,
+      "seaweed": 6,
+      "message_in_bottle": 2,
+      "treasure_chest": 1
+    }
+  }
+]
+

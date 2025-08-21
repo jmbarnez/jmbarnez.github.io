@@ -1,0 +1,112 @@
+[
+  {
+    "id": "seashell",
+    "name": "Seashell",
+    "description": "A beautiful spiral seashell.",
+    "icon": "/icons.svg#icon-seashell",
+    "color": "#f2d3a2",
+    "spawnable": true,
+    "stackable": true,
+    "maxStack": 99,
+    "weight": 5
+  },
+  {
+    "id": "driftwood",
+    "name": "Driftwood",
+    "description": "Weathered wood washed ashore.",
+    "icon": "/icons.svg#icon-driftwood",
+    "color": "#c8a47a",
+    "spawnable": true,
+    "stackable": true,
+    "maxStack": 99,
+    "weight": 4
+  },
+  {
+    "id": "seaweed",
+    "name": "Seaweed",
+    "description": "Fresh strands of seaweed.",
+    "icon": "/icons.svg#icon-seaweed",
+    "color": "#66bb6a",
+    "spawnable": true,
+    "stackable": true,
+    "maxStack": 99,
+    "weight": 6
+  },
+  {
+    "id": "message_in_bottle",
+    "name": "Message in a Bottle",
+    "description": "A sealed bottle with a note.",
+    "icon": "/icons.svg#icon-message-in-bottle",
+    "color": "#9fd3ff",
+    "spawnable": true,
+    "stackable": true,
+    "maxStack": 10,
+    "weight": 2
+  },
+  {
+    "id": "treasure_chest",
+    "name": "Treasure Chest",
+    "description": "A sturdy chest. It feels heavy.",
+    "icon": "/icons.svg#icon-treasure-chest",
+    "color": "#f4c542",
+    "spawnable": true,
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 1
+  },
+  {
+    "id": "sand",
+    "name": "Sand",
+    "description": "Fine grains of beach sand.",
+    "icon": "/icons.svg#icon-sand",
+    "color": "#e7d8b0",
+    "spawnable": false,
+    "stackable": true,
+    "maxStack": 999,
+    "weight": 0
+  },
+  {
+    "id": "stone",
+    "name": "Stone",
+    "description": "A common stone.",
+    "icon": "/icons.svg#icon-stone",
+    "color": "#888888",
+    "spawnable": true,
+    "stackable": true,
+    "maxStack": 99,
+    "weight": 10
+  },
+  {
+    "id": "sandstone",
+    "name": "Sandstone",
+    "description": "A sedimentary rock composed of sand-sized grains.",
+    "icon": "/icons.svg#icon-sandstone",
+    "color": "#d9c493",
+    "spawnable": false,
+    "stackable": true,
+    "maxStack": 99,
+    "weight": 12
+  },
+  {
+    "id": "pickaxe",
+    "name": "Pickaxe",
+    "description": "A sturdy tool for mining.",
+    "icon": "pickaxe",
+    "color": "#9ca3af",
+    "spawnable": false,
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 25
+  },
+  {
+    "id": "fishing_pole",
+    "name": "Fishing Pole",
+    "description": "A simple pole for catching fish.",
+    "icon": "fishing_pole",
+    "color": "#8b5e3c",
+    "spawnable": false,
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 20
+  }
+]

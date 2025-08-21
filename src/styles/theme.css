@@ -1,0 +1,77 @@
+/* Theme variables and base only */
+
+:root {
+  --background-color: #05070b; /* deeper slate/ink */
+  --panel-bg: #0d1320;
+  --panel-border: #3b82f6; /* sky-500 */
+  --text-color: #e5e7eb; /* slate-200 */
+  --accent-color: #60a5fa; /* sky-400 */
+  --input-bg: #0b1220;
+  --input-border: #60a5fa;
+  --button-bg: #0f172a; /* slate-900 */
+  --button-hover-bg: #111827;
+  --font-family: 'Press Start 2P', cursive;
+  --glow-outer: 0 0 24px rgba(64, 123, 255, 0.12);
+  --glow-inner: 0 0 60px rgba(64, 123, 255, 0.06);
+}
+
+html {
+  /* AI: Set the base background color on the root html element. */
+  /* This color should match the sand color of the game canvas for a seamless look. */
+  background-color: #000000;
+}
+
+body {
+  /* AI: The background color is now inherited from the html element. */
+  color: var(--text-color);
+  font-family: var(--font-family);
+}
+
+/* AI: Ensure the game's background is transparent on the desktop view. */
+body.desktop-view {
+  background-color: transparent;
+}
+
+/* Subtle blue glow helper */
+.glow-blue {
+  box-shadow: var(--glow-outer), var(--glow-inner);
+}
+
+/* Give login panel a subtle glow without changing layout */
+.login-panel {
+  box-shadow: var(--glow-outer), var(--glow-inner), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Component-specific overrides removed.
+   Keep per-page styles in their own CSS (e.g., login.css, desktop.css).
+*/
+
+/* Icon enhancements: subtle outline + shadow for definition */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.icon--outline {
+  stroke: currentColor;
+  stroke-opacity: 0.35;
+  stroke-width: 0.75px;
+  paint-order: stroke fill;
+}
+
+/* Shared utilities */
+.hidden { display: none; }
+
+/* Generic panel close button used across pages */
+.panel-close {
+  background: transparent;
+  border: none;
+  color: #d1d5db; /* slate-300 */
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.full-screen-background {
+  background:#05070b;
+}

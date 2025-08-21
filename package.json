@@ -1,0 +1,51 @@
+{
+  "name": "sandbox-idle",
+  "version": "0.2.0",
+  "description": "Sandbox Idle - Desktop Game",
+  "main": "src/main.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"cd server && npm start\"",
+    "dev:client": "vite",
+    "dev:server": "cd server && npm start",
+    "dev:full": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .js,.ts",
+    "lint:fix": "eslint src --ext .js,.ts --fix",
+    "format": "prettier -w .",
+    "clean": "rm -rf dist node_modules/.vite"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
+    "dotenv": "^17.2.1",
+    "firebase": "^12.1.0",
+    "firebase-admin": "^13.4.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@tailwindcss/postcss": "^4.1.12",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-import": "^2.32.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "sass": "^1.90.0",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.19"
+  },
+  "keywords": [
+    "game",
+    "idle",
+    "browser",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC"
+}
