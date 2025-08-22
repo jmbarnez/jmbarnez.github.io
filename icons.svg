@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <defs>
+    <!-- Item Icons -->
+    <symbol id="icon-seashell" viewBox="0 0 32 32">
+      <path d="M16 4c-2 0-4 1-5 3-1 2-1 4 0 6 1 2 3 3 5 3s4-1 5-3c1-2 1-4 0-6-1-2-3-3-5-3z" fill="#f2d3a2"/>
+      <path d="M16 7c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2z" fill="#e7c38f"/>
+      <path d="M13 12c0 1 1 2 2 2s2-1 2-2" fill="#d9c493"/>
+    </symbol>
+
+    <symbol id="icon-driftwood" viewBox="0 0 32 32">
+      <path d="M8 20l16-4M10 16l12-3M12 12l8-2M14 8l4-1" stroke="#8b5e3c" stroke-width="3" stroke-linecap="round"/>
+      <path d="M9 22l14-3M11 18l10-2M13 14l6-1" stroke="#6d4a32" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <symbol id="icon-seaweed" viewBox="0 0 32 32">
+      <path d="M16 28c0-4 2-6 2-10s-2-6-2-10M14 28c0-3 1-5 1-8s-1-5-1-8M18 28c0-3-1-5-1-8s1-5 1-8" stroke="#66bb6a" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="16" cy="6" r="1" fill="#4a8c4a"/>
+      <circle cx="14" cy="8" r="1" fill="#4a8c4a"/>
+      <circle cx="18" cy="8" r="1" fill="#4a8c4a"/>
+    </symbol>
+
+    <symbol id="icon-message-in-bottle" viewBox="0 0 32 32">
+      <rect x="10" y="6" width="12" height="20" rx="2" fill="#9fd3ff"/>
+      <rect x="11" y="7" width="10" height="18" rx="1" fill="#60a5fa"/>
+      <rect x="12" y="12" width="8" height="8" fill="#e5e7eb"/>
+      <line x1="14" y1="14" x2="18" y2="18" stroke="#374151" stroke-width="1"/>
+      <line x1="14" y1="18" x2="18" y2="14" stroke="#374151" stroke-width="1"/>
+    </symbol>
+
+    <symbol id="icon-treasure-chest" viewBox="0 0 32 32">
+      <rect x="6" y="16" width="20" height="12" rx="2" fill="#f4c542"/>
+      <rect x="8" y="14" width="16" height="2" fill="#d97706"/>
+      <rect x="6" y="18" width="20" height="10" rx="2" fill="#92400e"/>
+      <rect x="14" y="20" width="4" height="6" fill="#fbbf24"/>
+      <circle cx="16" cy="23" r="1" fill="#d97706"/>
+    </symbol>
+
+    <symbol id="icon-sand" viewBox="0 0 32 32">
+      <circle cx="8" cy="24" r="1" fill="#e7d8b0"/>
+      <circle cx="12" cy="26" r="1" fill="#d9c493"/>
+      <circle cx="16" cy="22" r="1" fill="#e7d8b0"/>
+      <circle cx="20" cy="24" r="1" fill="#d9c493"/>
+      <circle cx="24" cy="26" r="1" fill="#e7d8b0"/>
+      <circle cx="10" cy="20" r="1" fill="#bca970"/>
+      <circle cx="14" cy="28" r="1" fill="#d9c493"/>
+      <circle cx="18" cy="18" r="1" fill="#e7d8b0"/>
+      <circle cx="22" cy="20" r="1" fill="#bca970"/>
+    </symbol>
+
+    <symbol id="icon-stone" viewBox="0 0 32 32">
+      <path d="M12 12l8 8M16 8l4 12M20 12l-8 8" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="16" cy="16" r="8" fill="none" stroke="#4b5563" stroke-width="1"/>
+      <circle cx="16" cy="16" r="6" fill="#9ca3af"/>
+    </symbol>
+
+    <symbol id="icon-sandstone" viewBox="0 0 32 32">
+      <rect x="8" y="12" width="16" height="12" rx="2" fill="#d9c493"/>
+      <line x1="10" y1="14" x2="22" y2="14" stroke="#bca970" stroke-width="2"/>
+      <line x1="8" y1="16" x2="24" y2="16" stroke="#bca970" stroke-width="2"/>
+      <line x1="10" y1="18" x2="22" y2="18" stroke="#bca970" stroke-width="2"/>
+      <line x1="12" y1="20" x2="20" y2="20" stroke="#bca970" stroke-width="2"/>
+      <line x1="8" y1="22" x2="24" y2="22" stroke="#bca970" stroke-width="2"/>
+    </symbol>
+
+    <!-- UI Icons -->
+    <symbol id="icon-grip" viewBox="0 0 24 24">
+      <circle cx="6" cy="12" r="1" fill="currentColor"/>
+      <circle cx="12" cy="12" r="1" fill="currentColor"/>
+      <circle cx="18" cy="12" r="1" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-gear" viewBox="0 0 24 24">
+      <path d="M12 2l1 4h6l-2 6-4 2-4-2-2-6h6l1-4z" fill="currentColor"/>
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1"/>
+    </symbol>
+
+    <symbol id="icon-mining" viewBox="0 0 24 24">
+      <path d="M8 12l8-4v8l-8-4z" fill="currentColor"/>
+      <path d="M6 8l4 2v4l-4-2v-4z" fill="currentColor" opacity="0.7"/>
+    </symbol>
+
+    <symbol id="icon-alien" viewBox="0 0 24 24">
+      <ellipse cx="12" cy="10" rx="8" ry="6" fill="currentColor"/>
+      <circle cx="9" cy="9" r="2" fill="#000"/>
+      <circle cx="15" cy="9" r="2" fill="#000"/>
+      <path d="M8 12c2 1 6 1 8 0" stroke="#000" stroke-width="1" fill="none"/>
+    </symbol>
+
+    <symbol id="icon-fishing" viewBox="0 0 24 24">
+      <path d="M4 8l16 4M4 12l12 3M4 16l8 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="20" cy="14" r="1" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-gathering" viewBox="0 0 24 24">
+      <path d="M12 4c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5z" fill="currentColor"/>
+      <circle cx="10" cy="7" r="1" fill="#000"/>
+      <circle cx="14" cy="7" r="1" fill="#000"/>
+      <circle cx="12" cy="9" r="1" fill="#000"/>
+    </symbol>
+
+    <!-- Equipment Icons -->
+    <symbol id="icon-helmet" viewBox="0 0 24 24">
+      <path d="M8 8l8-2v6l-8 2v-6z" fill="currentColor"/>
+      <path d="M6 10v4l2-1v-2l-2 1z" fill="currentColor" opacity="0.5"/>
+      <path d="M18 10v4l-2-1v-2l2 1z" fill="currentColor" opacity="0.5"/>
+    </symbol>
+
+    <symbol id="icon-chest" viewBox="0 0 24 24">
+      <path d="M6 8h12v8H6V8z" fill="currentColor"/>
+      <rect x="8" y="10" width="8" height="4" fill="none" stroke="currentColor" stroke-width="1"/>
+    </symbol>
+
+    <symbol id="icon-arms" viewBox="0 0 24 24">
+      <rect x="4" y="8" width="4" height="8" rx="2" fill="currentColor"/>
+      <rect x="16" y="8" width="4" height="8" rx="2" fill="currentColor"/>
+      <circle cx="6" cy="6" r="2" fill="currentColor"/>
+      <circle cx="18" cy="6" r="2" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-legs" viewBox="0 0 24 24">
+      <rect x="6" y="12" width="3" height="8" rx="1.5" fill="currentColor"/>
+      <rect x="15" y="12" width="3" height="8" rx="1.5" fill="currentColor"/>
+      <circle cx="7.5" cy="20" r="2" fill="currentColor"/>
+      <circle cx="16.5" cy="20" r="2" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-ring" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-amulet" viewBox="0 0 24 24">
+      <path d="M8 4l8 4v8l-8-4V4z" fill="currentColor"/>
+      <circle cx="12" cy="10" r="2" fill="#000"/>
+    </symbol>
+
+    <!-- Tool Icons -->
+    <symbol id="icon-pickaxe" viewBox="0 0 24 24">
+      <path d="M4 16l12-8M6 12l8-4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <rect x="14" y="6" width="6" height="4" rx="1" fill="currentColor"/>
+    </symbol>
+
+    <symbol id="icon-shovel" viewBox="0 0 24 24">
+      <rect x="6" y="4" width="12" height="4" rx="2" fill="currentColor"/>
+      <path d="M12 8v12M8 20l8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>

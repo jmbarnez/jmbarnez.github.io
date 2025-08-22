@@ -1,5 +1,6 @@
 // Math utility functions
 // AI: Safe performance.now() wrapper with fallback to Date.now()
+import { isInWater } from '../game/world.js';
 export function getTime() {
   return (typeof window !== 'undefined' && window.performance && window.performance.now) ? window.performance.now() : Date.now();
 }
@@ -68,7 +69,7 @@ export function clampWorldCoordinates(x, y, game, padding = 12) {
   let cy = Math.max(padding, Math.min(game.WORLD_HEIGHT - padding, y));
 
   // If in water, nudge towards center (assuming water is usually at edges or specific regions)
-  if (game.isInWater(cx, cy)) {
+  if (isInWater(cx, cy)) {
     // This is a simple heuristic; more complex terrain might need a proper pathfinding or random safe spot logic.
     cx = game.WORLD_WIDTH * 0.4 + (cx - game.WORLD_WIDTH * 0.4) * 0.5;
     cy = game.WORLD_HEIGHT * 0.4 + (cy - game.WORLD_HEIGHT * 0.4) * 0.5;

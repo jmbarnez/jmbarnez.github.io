@@ -1,171 +1,104 @@
 // In‑game HUD drawing (toasts, prompts, progress bars)
+// TOOLTIP FUNCTIONALITY REMOVED: All DOM-based tooltips eliminated per user request
+// Canvas-based highlighting via highlightManager is now the only visual feedback mechanism
+// Right-click functionality preserved for game interactions
 import { game } from './core.js';
 import { worldToScreenCoords, screenToWorldCoords } from '../utils/math.js';
 import { drawPixelIcon, drawOutline, getItemBounds, isPointInItemBounds } from '../data/pixelIcons.js';
-import { showHighlight, hideHighlight } from '../utils/domUtils.js';
 import { getNearestWorldObject, worldObjects } from './worldObjects.js';
 import { getEnemies } from './enemies.js'; // AI: Import getEnemies to access enemy list
 import { INTERACTION_RADIUS } from '../utils/constants.js'; // AI: Import INTERACTION_RADIUS constant
+// DOM tooltip utilities removed - no longer needed with canvas-only highlighting
+// ensureTooltipOverlay, showInventoryTooltip, hideInventoryTooltip eliminated
+import { camera } from './world.js'; // AI: Import camera for coordinate conversion
+
+// Global variables for tooltip management - REMOVED
+// Tooltip functionality eliminated per user request
+// Canvas-based highlighting handles all visual feedback
 
 /**
- * Renders dynamic DOM elements for ground items, resource nodes, world objects, and enemies
- * to provide precise mouse hover highlighting.
- * This function identifies the item, node, object, or enemy currently under the mouse cursor
- * and applies a visual highlight (outline) to its corresponding DOM element. It ensures that
- * only one interactable entity is highlighted at a time.
+ * Initialize event listeners for highlight events from the highlight manager
+ * Sets up listeners for 'highlight-changed' and 'highlight-cleared' events on the canvas
+ * Note: Tooltip functionality removed - only canvas-based highlighting remains
  */
-export function renderDomGroundItemHint() {
-  const { mouse, canvas, ctx, WORLD_WIDTH, WORLD_HEIGHT } = game;
-  // AI: Ensure canvas and mouse coordinates are valid before proceeding.
-  if (!canvas || !ctx || !mouse || typeof mouse.x === 'undefined' || typeof mouse.y === 'undefined') {
+export function initHighlightEventListeners() {
+  if (!game.canvas) {
+    console.warn('Cannot initialize highlight event listeners: Canvas not available');
     return;
   }
 
-  // AI: Convert raw mouse coordinates (which are already world coordinates from core.js)
-  // to screen coordinates to check for mouse over on DOM elements.
-  const screenMouseX = worldToScreenCoords(mouse.x, mouse.y, game.camera || { x: 0, y: 0, zoom: 1 }).x;
-  const screenMouseY = worldToScreenCoords(mouse.x, mouse.y, game.camera || { x: 0, y: 0, zoom: 1 }).y;
+  // Remove any existing listeners to avoid duplicates
+  game.canvas.removeEventListener('highlight-changed', handleHighlightChanged);
+  game.canvas.removeEventListener('highlight-cleared', handleHighlightCleared);
 
-  let hoveredElement = null;
-  let hoveredEntity = null; // AI: Store the actual entity object (item, node, object, or enemy)
-  let hoverType = null; // AI: To distinguish between groundItem, resourceNode, worldObject, enemy
+  // Add event listeners for highlight events
+  game.canvas.addEventListener('highlight-changed', handleHighlightChanged);
+  game.canvas.addEventListener('highlight-cleared', handleHighlightCleared);
 
-  // AI: Helper function to check if mouse is over an entity and update hovered state.
-  // It returns the DOM element if hovered and within the interaction radius, otherwise null.
-  const checkHover = (entity, type, domClass, scale = 1.5, interactionRadius = INTERACTION_RADIUS) => {
-    // AI: Skip if entity is dead (enemies) or otherwise not interactable.
-    if (entity.isDead || entity.hp <= 0) return null;
-
-    // AI: Convert entity's world coordinates to screen coordinates for DOM element lookup.
-    const entityScreenCoords = worldToScreenCoords(entity.x, entity.y, game.camera || { x: 0, y: 0, zoom: 1 });
-    if (!entityScreenCoords) return null; // Entity is off-screen.
-
-    // AI: Find the corresponding DOM element using a data attribute that uniquely identifies it.
-    // This assumes DOM elements have a 'data-item-key', 'data-node-key', or 'data-object-id' attribute.
-    const keyAttribute = type === 'groundItem' ? 'data-item-key' :
-                         type === 'resourceNode' ? 'data-node-key' :
-                         type === 'worldObject' ? 'data-object-id' :
-                         type === 'enemy' ? 'data-enemy-id' : null;
-
-    let element = document.querySelector(`.${domClass}[${keyAttribute}="${entity.id || entity.type}_${entity.x}_${entity.y}"]`);
-    // AI: For world objects and enemies, we might need a simpler ID if their DOM elements are not tied to coords.
-    if (!element && (type === 'worldObject' || type === 'enemy')) {
-      element = document.querySelector(`.${domClass}[${keyAttribute}="${entity.id}"]`);
-    }
-
-    if (!element || element.classList.contains('hidden')) return null;
-
-    // AI: Check if mouse is over the DOM element's *visual* bounds.
-    // This is crucial for precise interaction.
-    const elementRect = element.getBoundingClientRect();
-    const isMouseOverElement =
-      screenMouseX >= elementRect.left &&
-      screenMouseX <= elementRect.right &&
-      screenMouseY >= elementRect.top &&
-      screenMouseY <= elementRect.bottom;
-
-    if (isMouseOverElement) {
-      // AI: Also check the distance in world coordinates to ensure it's within interaction range.
-      const dist = Math.hypot(game.player.x - entity.x, game.player.y - entity.y);
-      if (dist <= interactionRadius) {
-        return element;
-      }
-    }
-    return null;
-  };
-
-  try {
-    // AI: Iterate through enemies first, as they are a primary interaction target for combat.
-    for (const enemy of getEnemies()) {
-      const enemyElement = checkHover(enemy, 'enemy', 'enemy-sprite'); // Assuming enemies have a 'enemy-sprite' class on their DOM elements
-      if (enemyElement) {
-        hoveredElement = enemyElement;
-        hoveredEntity = enemy;
-        hoverType = 'enemy';
-        break; // Only highlight one enemy
-      }
-    }
-
-    // AI: If no enemy is hovered, check resource nodes.
-    if (!hoveredElement) {
-      for (const node of game.resourceNodes) {
-        const nodeElement = checkHover(node, 'resourceNode', 'resource-node');
-        if (nodeElement) {
-          hoveredElement = nodeElement;
-          hoveredEntity = node;
-          hoverType = 'resourceNode';
-          break; // Only highlight one node
-        }
-      }
-    }
-
-    // AI: If no resource node is hovered, check world objects.
-    if (!hoveredElement) {
-        // AI: Check world objects (e.g., market, portals)
-        for (const object of worldObjects) {
-            const objectElement = checkHover(object, 'worldObject', 'world-object-icon'); // Assuming world objects have a 'world-object-icon' class
-            if (objectElement) {
-                hoveredElement = objectElement;
-                hoveredEntity = object;
-                hoverType = 'worldObject';
-                break;
-            }
-        }
-    }
-
-    // AI: If no world object is hovered, check ground items.
-    if (!hoveredElement) {
-      for (const item of game.groundItems) {
-        const itemElement = checkHover(item, 'groundItem', 'ground-item');
-        if (itemElement) {
-          hoveredElement = itemElement;
-          hoveredEntity = item;
-          hoverType = 'groundItem';
-          break; // Only highlight one item
-        }
-      }
-    }
-    
-    // AI: If there was a previously hovered element and it's no longer the current hovered element,
-    // remove its highlight. This ensures only one element is highlighted at a time.
-    if (game._lastDomHintEl && game._lastDomHintEl !== hoveredElement) {
-      game._lastDomHintEl.dataset.highlighted = 'false';
-      game._lastDomHintEl.classList.remove('highlighted-border'); // AI: Remove CSS highlight class
-      // AI: Dispatch a custom event to notify canvas elements to remove their outline.
-      game.canvas.dispatchEvent(new CustomEvent('remove-entity-outline', { detail: { element: game._lastDomHintEl } }));
-    }
-
-    // AI: Apply highlighting to the newly hovered element if a valid one was found.
-    // The highlight now uses the canvas-drawn precise outline.
-    if (hoveredElement && hoveredElement !== game._lastDomHintEl) {
-      hoveredElement.dataset.highlighted = 'true';
-      hoveredElement.classList.add('highlighted-border'); // AI: Add CSS highlight class for general styling
-      // AI: Dispatch a custom event to notify canvas elements to draw their outline.
-      game.canvas.dispatchEvent(new CustomEvent('draw-entity-outline', { detail: { entity: hoveredEntity, type: hoverType, element: hoveredElement } }));
-    }
-
-    // AI: Update the reference to the last hovered element.
-    game._lastDomHintEl = hoveredElement;
-
-  } catch (error) {
-    console.warn('Error in renderDomGroundItemHint:', error);
-  }
+  console.log('Highlight event listeners initialized');
 }
 
+/**
+ * Handle highlight-changed events from the highlight manager
+ * Tooltip functionality removed - only canvas-based highlighting remains
+ * Event handlers kept for potential future use but currently no-op
+ */
+function handleHighlightChanged(event) {
+  // Tooltip functionality removed per user request
+  // Canvas-based highlighting is handled by individual render functions
+  // This handler is kept for event listener consistency but performs no action
+}
+
+/**
+ * Handle highlight-cleared events from the highlight manager
+ * Tooltip functionality removed - only canvas-based highlighting remains
+ */
+function handleHighlightCleared(event) {
+  // Tooltip functionality removed per user request
+  // Canvas-based highlighting is handled by individual render functions
+  // This handler is kept for event listener consistency but performs no action
+}
+
+/**
+ * Show tooltip for a highlighted entity
+ * REMOVED: Tooltip functionality eliminated per user request
+ * Canvas-based highlighting is now the only visual feedback mechanism
+ */
+function showEntityTooltip(entity, type) {
+  // Tooltip functionality removed - no DOM elements created for tooltips
+  // Canvas-based highlighting handled by individual render functions
+}
+
+/**
+ * Hide the current entity tooltip
+ * REMOVED: Tooltip functionality eliminated per user request
+ */
+function hideEntityTooltip() {
+  // Tooltip functionality removed - no DOM elements to hide
+  // Canvas-based highlighting is self-contained within render functions
+}
+
+/**
+ * Show entity tooltip at specific position
+ * REMOVED: DOM tooltip functionality eliminated per user request
+ * Canvas-based highlighting provides all necessary visual feedback
+ */
+function showEntityTooltipAtPosition(content, entityScreenX, entityScreenY) {
+  // DOM tooltip functionality removed - no DOM elements created
+  // Canvas-based highlighting is handled by individual render functions
+  // This function kept for compatibility but performs no action
+}
+
+/**
+ * Ensure name tags overlay exists
+ * REMOVED: DOM overlay functionality eliminated per user request
+ * Canvas-based rendering handles all visual elements
+ */
 export function ensureNameTagsOverlay() {
-  const desktop = document.getElementById('desktop-screen');
-  if (!desktop) return null;
-  let overlay = document.getElementById('name-tags');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'name-tags';
-    overlay.style.position = 'absolute';
-    overlay.style.inset = '0';
-    overlay.style.pointerEvents = 'none';
-    overlay.style.zIndex = '30';
-    desktop.appendChild(overlay);
-  }
-  return overlay;
+  // DOM overlay functionality removed - no DOM elements created
+  // Canvas-based rendering is used for all game elements
+  // This function kept for compatibility but returns null
+  return null;
 }
 
 // AI: The ensureInteractionOverlay and renderInteractionPromptDOM functions have been removed

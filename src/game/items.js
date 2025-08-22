@@ -1,6 +1,7 @@
 // Ground items & inventory drop/pickup
 import { game } from './core.js';
-import { drawPixelIcon } from '../data/pixelIcons.js';
+import { drawPixelIcon, drawOutline } from '../data/pixelIcons.js';
+import { highlightManager } from './highlightManager.js';
 
 import { isInWater } from './world.js';
 import { randi, weightedPick, clampWorldCoordinates } from '../utils/math.js';
@@ -17,70 +18,133 @@ export function drawGroundItems() {
   const iconScale = 1.5; // Increased scale for better visibility
   const iconSize = 12 * iconScale; // 18px
   const interactionRadius = 24;
-  
+
   for (const item of game.groundItems) {
     const t = item.type || 'seashell';
     // Center icon on item.x,item.y
     const halfSize = iconSize / 2;
+    const centerX = Math.round(item.x);
+    const centerY = Math.round(item.y);
+    const iconX = centerX - halfSize;
+    const iconY = centerY - halfSize;
+
     // AI: The drawPixelIcon function now returns a mask of the icon's pixels.
     // This mask is used to draw a precise outline around the icon.
-    const mask = drawPixelIcon(ctx, t, Math.round(item.x) - halfSize, Math.round(item.y) - halfSize, {
+    const mask = drawPixelIcon(ctx, t, iconX, iconY, {
       outline: false,
       scale: iconScale
     });
 
-    // AI: Check if the DOM element for this item is marked as highlighted.
-    // If it is, draw a precise outline around the item using the mask.
-    const domElement = document.getElementById(`ground-item-${item.x}_${item.y}_${item.type}`);
-    if (domElement && domElement.dataset.highlighted === 'true') {
-      drawOutline(ctx, Math.round(item.x) - halfSize, Math.round(item.y) - halfSize, iconScale, mask);
+    // Enhanced visual feedback for ground items
+    // 1. Subtle shadow/base for depth perception
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + halfSize * 0.6, halfSize * 0.8, halfSize * 0.2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Check if this ground item is currently highlighted using the highlight manager
+    if (highlightManager.isHighlighted(item)) {
+      // Enhanced highlight effect with glow
+      drawOutline(ctx, iconX, iconY, iconScale, mask);
+
+      // Add subtle glow effect around highlighted items
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, halfSize + 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.4)'; // Cyan glow matching drone theme
+      ctx.fill();
+      ctx.restore();
     }
 
-
-    // AI: Display stack count for items on the ground, much smaller and above the item icon.
+    // 3. Stack count display with enhanced styling
     if (item.count > 1) {
-      // Draw a tiny label above the item icon
+      const countText = `x${item.count}`;
+
+      // Draw background with subtle border
       ctx.save();
       ctx.font = 'bold 7px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(item.x - 8, item.y - halfSize - 12, 16, 10);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(`x${item.count}`, item.x, item.y - halfSize - 4);
+
+      const textMetrics = ctx.measureText(countText);
+      const bgWidth = Math.max(textMetrics.width + 4, 14);
+      const bgHeight = 8;
+      const bgX = centerX - bgWidth / 2;
+      const bgY = centerY - halfSize - 10;
+
+      // Background with subtle gradient
+      const gradient = ctx.createLinearGradient(bgX, bgY, bgX, bgY + bgHeight);
+      gradient.addColorStop(0, 'rgba(0,0,0,0.8)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+
+      // Border
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+
+      // Text with subtle shadow for better readability
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillText(countText, centerX + 0.5, centerY - halfSize - 3.5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(countText, centerX, centerY - halfSize - 4);
+
+      ctx.restore();
+    }
+
+    // 4. Subtle pulse effect for items ready to be picked up
+    // This provides additional visual feedback for nearby items
+    const playerDist = Math.hypot(game.player.x - item.x, game.player.y - item.y);
+    if (playerDist <= interactionRadius) {
+      const pulseIntensity = 0.2 + 0.1 * Math.sin(Date.now() * 0.003);
+      ctx.save();
+      ctx.globalAlpha = pulseIntensity;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, halfSize + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.restore();
     }
   }
 }
 
 export function spawnGroundItem() {
-  // Random sand position, avoid water and edges
-  let x = 0, y = 0, tries = 0;
-  do {
-    x = randi(12, game.WORLD_WIDTH - 12);
-    y = randi(12, game.WORLD_HEIGHT - 12);
-    tries++;
-  } while ((isInWater(x, y) || Math.hypot(x - game.player.x, y - game.player.y) < 18) && tries < 20);
-  // Beach items only (exclude chest and bottle), weighted
-  if (!beachItems.length) return;
-  const type = weightedPick(beachItems).id;
-  game.groundItems.push({ x, y, type, harvest: 0 });
+   // Random sand position, avoid water and edges
+   let x = 0, y = 0, tries = 0;
+   do {
+     x = randi(12, game.WORLD_WIDTH - 12);
+     y = randi(12, game.WORLD_HEIGHT - 12);
+     tries++;
+   } while ((isInWater(x, y) || Math.hypot(x - game.player.x, y - game.player.y) < 18) && tries < 20);
+   // Beach items only (exclude chest and bottle), weighted
+   if (!beachItems.length) return;
+   const type = weightedPick(beachItems).id;
+   const id = `ground_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+   game.groundItems.push({ id, x, y, type, harvest: 0 });
 }
 
 // API: add a world item at an explicit world coordinate
 export function addWorldItem(type, x, y, quantity = 1) {
-  const t = (type || 'seashell');
-  const q = Math.max(1, quantity|0);
-  // Bias position to safe region if in water
-  const p = clampWorldCoordinates(x, y, game, 12);
-  // Try stacking with nearby same-type items
-  const near = game.groundItems.find(g => g.type === t && Math.hypot(g.y - p.y, g.x - p.x) <= 18);
-  if (near) {
-    near.count = (near.count || 1) + q;
-  } else {
-    game.groundItems.push({ x: p.x, y: p.y, type: t, count: q });
-    playItemDropSound();
-  }
+   const t = (type || 'seashell');
+   const q = Math.max(1, quantity|0);
+   // Bias position to safe region if in water
+   const p = clampWorldCoordinates(x, y, game, 12);
+   // Try stacking with nearby same-type items
+   const near = game.groundItems.find(g => g.type === t && Math.hypot(g.y - p.y, g.x - p.x) <= 18);
+   if (near) {
+     near.count = (near.count || 1) + q;
+   } else {
+     const id = `ground_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+     game.groundItems.push({ id, x: p.x, y: p.y, type: t, count: q });
+     playItemDropSound();
+   }
 }
 
 // API: drop items at player position

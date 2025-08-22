@@ -13,6 +13,7 @@ import { onPlayerDataChange, ensurePlayerDoc, onChatMessages, updatePlayerOnline
 import { playerService } from '../services/playerService.js';
 import { initRealtimePresence } from '../utils/presence.js';
 import { showTypingIndicator, showMessageWithTimeout, hideChatBubble, showPlayerMessage, hidePlayerBubble, showPlayerTyping } from '../game/character.js';
+import { experienceManager } from '../game/experienceManager.js';
 import { updateAreaPlayer } from '../services/realtimePosition.js';
 import { worldToScreenCoords } from '../utils/math.js';
 import { createPixelIconForItem } from '../data/pixelIcons.js';
@@ -134,14 +135,12 @@ export function initDesktopScreen() {
       const xenohuntingXp = document.getElementById('skill-xp-xenohunting');
 
       if (miningBar || fishingBar || gatheringBar) {
-        // Lazy import to avoid circular deps
-        import('../game/experienceManager.js').then(({ experienceManager }) => {
-          // Initial render
-          const renderSkill = (skillKey, barEl, levelEl, xpEl) => {
-            const s = experienceManager.skills[skillKey] || { level: 1, experience: 0 };
-            const cur = s.experience;
-            const lvl = s.level;
-            const reqForThis = getExpForLevel(lvl);
+        // Initial render
+        const renderSkill = (skillKey, barEl, levelEl, xpEl) => {
+          const s = experienceManager.skills[skillKey] || { level: 1, experience: 0 };
+          const cur = s.experience;
+          const lvl = s.level;
+          const reqForThis = getExpForLevel(lvl);
             const reqNext = getExpForLevel(lvl + 1);
             const progress = Math.max(0, Math.min(1, (cur - reqForThis) / Math.max(1, reqNext - reqForThis)));
             if (barEl) barEl.style.width = `${Math.round(progress * 100)}%`;
@@ -187,7 +186,6 @@ export function initDesktopScreen() {
               renderSkill('xenohunting', xenohuntingBar, xenohuntingLevel, xenohuntingXp);
             }
           });
-        }).catch(() => {});
       }
     } catch (_) {}
   }

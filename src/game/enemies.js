@@ -8,6 +8,8 @@ import { inventoryManager } from './inventoryManager.js';
 import { createGoldDrop, updateGoldDrops, drawGoldDrops } from './goldDrops.js';
 import { database } from '../utils/firebaseClient.js';
 import { ref, runTransaction } from 'firebase/database';
+import { highlightManager } from './highlightManager.js';
+import { trackDamage } from '../services/groundItemService.js';
 
 /**
  * Enemy Management System
@@ -126,12 +128,8 @@ export function initEnemies() {
  * This ensures the renderEnemiesAsDOM function has access to current enemy data.
  */
 function updateGameEnemies() {
-    // Import game object dynamically to avoid circular dependency
-    import('./core.js').then(({ game }) => {
-        game.enemies = Array.from(enemies.values());
-    }).catch(err => {
-        console.warn('Could not update game.enemies:', err);
-    });
+    // Update game.enemies with current enemies (using static import)
+    game.enemies = Array.from(enemies.values());
 }
 
 /**
@@ -335,8 +333,15 @@ function createLocalEnemyFromTemplate(serverEnemy = {}, templateOrId = null, ove
 }
 
 /**
- * Handles enemy death with proper cleanup and rewards.
- * 
+ * Handles enemy death with server-driven item drops and immediate visual feedback.
+ *
+ * Server-driven approach:
+ * - Item drops are managed by the server and added to groundItems database
+ * - Client subscribes to groundItems changes for item spawning
+ * - No local item spawning - all items come from server subscription
+ * - Immediate XP/gold rewards for responsive gameplay
+ * - Visual effects (gold drops, sounds) for immediate feedback
+ *
  * @param {Object} enemy - Enemy object that died
  */
 function triggerEnemyDeath(enemy) {
@@ -348,7 +353,7 @@ function triggerEnemyDeath(enemy) {
     // Ensure health is 0 and mark as dead
     enemy.hp = 0;
     enemy.isDead = true;
-    
+
     // Set death start time only once to ensure fade animation starts consistently
     if (!enemy.deathStartTime) {
         enemy.deathStartTime = Date.now();
@@ -363,25 +368,53 @@ function triggerEnemyDeath(enemy) {
         targetedEnemy = null;
     }
 
-    // Award rewards only if not already granted
+    // Award immediate rewards only if not already granted
     if (!enemy.rewardsGranted) {
         const goldAmount = Math.floor(Math.random() * (enemy.loot.goldMax - enemy.loot.goldMin + 1)) + enemy.loot.goldMin;
         const xpAmount = enemy.xpValue || 10;
 
-        console.log(`[ENEMY_DEATH] Granting rewards for enemy ${enemy.id}: ${xpAmount} XP, ${goldAmount} gold.`);
+        console.log(`[ENEMY_DEATH] Granting immediate rewards for enemy ${enemy.id}: ${xpAmount} XP, ${goldAmount} gold.`);
 
+        // Immediate XP reward for responsive feedback
         if (xpAmount > 0) {
             experienceManager.addXenohuntingExp(xpAmount);
         }
-        if (goldAmount > 0) {
-            inventoryManager.addGold(goldAmount);
-            createGoldDrop(enemy.x, enemy.y - 15, goldAmount); // Visual gold drop
-            playCoinSound();
+
+        // Immediate XP reward for responsive feedback only. DO NOT grant any
+        // inventory items, gold, or ground-item visuals here — those must be
+        // created by the server as ground items so visibility can be restricted
+        // to damage contributors. Granting items locally causes desyncs and
+        // popup notifications that bypass server-authoritative drops.
+        if (xpAmount > 0) {
+            experienceManager.addXenohuntingExp(xpAmount);
         }
-        playBugDeathSound(); // Play death sound
+
+        // Play death sound for responsive feedback only
+        playBugDeathSound();
+
+        // Mark rewardsGranted to prevent duplicate immediate client-side grants
+        // (we still rely on the server to create actual dropped items).
         enemy.rewardsGranted = true;
     } else {
         console.log(`[ENEMY_DEATH] Rewards already granted for enemy ${enemy.id}.`);
+    }
+
+    // Enemy drops are handled server-side through the damage tracking system
+    // The server will create ground items based on loot tables when damage is tracked
+    // This ensures proper synchronization and prevents desync issues
+    if (!enemy.dropsProcessed) {
+        console.log(`[ENEMY_DEATH] Enemy ${enemy.id} drops will be handled server-side via damage tracking`);
+
+        // Permanent fix: Do NOT call `trackDamage(..., 0)` here. The server is
+        // authoritative and will create drops after processing positive damage
+        // transactions. Sending a death-finalization (damage=0) from the client
+        // caused transaction conflicts. Clients should only send positive damage
+        // values and rely on the RTDB sync for final state.
+
+        // Mark as processed locally so we don't attempt client-side finalization
+        enemy.dropsProcessed = true;
+    } else {
+        console.log(`[ENEMY_DEATH] Drops already processed for enemy ${enemy.id}.`);
     }
 
     enemy.deathProcessed = true; // Mark as processed after rewards are granted
@@ -479,6 +512,12 @@ export function drawEnemies() {
         }
         
         drawEnemySprite(enemy);
+
+        // Add highlight support using highlightManager
+        if (highlightManager.isHighlighted(enemy)) {
+          drawEnemyHighlight(enemy);
+        }
+
         drawEnemyUI(enemy);
         
         ctx.restore();
@@ -489,77 +528,110 @@ export function drawEnemies() {
 }
 
 /**
- * Draws the visual representation of an enemy (body, legs, antennae).
- * 
+ * Draws the visual representation of an enemy as a tiny pixel critter alien.
+ *
  * @param {Object} enemy - Enemy to draw
  */
 function drawEnemySprite(enemy) {
     const { ctx } = game;
-    
+
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
+
+    // Apply 2.5D height effect - slight vertical squash and height offset
+    const heightOffset = -enemy.size * 0.3; // Lift slightly off ground
+    ctx.translate(0, heightOffset);
+    ctx.scale(1, 0.7); // Subtle vertical squash for 2.5D effect
+
     ctx.rotate(enemy.angle + Math.PI / 2);
-    
-    // Draw shadow (use template-provided shadowColor if available)
-    ctx.fillStyle = enemy.shadowColor || 'rgba(30, 16, 12, 0.25)';
+
+    // Draw shadow - fitting pixel shadow for alien critter
+    ctx.fillStyle = enemy.shadowColor || 'rgba(0, 0, 0, 0.25)';
+
+    // Create a more fitting shadow shape - slightly oval and alien-like
     ctx.beginPath();
-    ctx.ellipse(0, enemy.size * 0.7, enemy.size, enemy.size / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, enemy.size * 0.9, enemy.size * 0.9, enemy.size * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Determine body color (fleeing enemies have reddish tint)
+    // Add a subtle inner shadow for depth
+    ctx.fillStyle = enemy.shadowColor || 'rgba(0, 0, 0, 0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, enemy.size * 0.85, enemy.size * 0.6, enemy.size * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main body color
     const bodyColor = enemy.color;
 
-    // Draw body segments
+    // Draw tiny alien body - pixel art style
+    const pixelSize = enemy.size * 0.3;
+
+    // Body - main rectangle
     ctx.fillStyle = bodyColor;
-    
-    // Head
-    ctx.beginPath();
-    ctx.ellipse(0, -enemy.size * 0.6, enemy.size * 0.4, enemy.size * 0.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Thorax
-    ctx.beginPath();
-    ctx.ellipse(0, 0, enemy.size * 0.5, enemy.size * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Abdomen
-    ctx.beginPath();
-    ctx.ellipse(0, enemy.size * 0.7, enemy.size * 0.6, enemy.size * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(-enemy.size * 0.6, -enemy.size * 0.4, enemy.size * 1.2, enemy.size * 0.8);
 
-    // Draw antennae
-    ctx.strokeStyle = enemy.color;
+    // Alien head - smaller rectangle on top
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(-enemy.size * 0.4, -enemy.size * 0.8, enemy.size * 0.8, enemy.size * 0.6);
+
+    // Eyes - tiny glowing pixels
+    ctx.fillStyle = '#FFFF00'; // Bright yellow eyes
+    ctx.fillRect(-enemy.size * 0.2, -enemy.size * 0.6, pixelSize * 0.8, pixelSize * 0.8);
+    ctx.fillRect(enemy.size * 0.1, -enemy.size * 0.6, pixelSize * 0.8, pixelSize * 0.8);
+
+    // Antennae - simple lines
+    ctx.strokeStyle = bodyColor;
     ctx.lineWidth = 1;
-    
+
+    // Left antenna
     ctx.beginPath();
-    ctx.moveTo(0, -enemy.size * 0.9);
-    ctx.quadraticCurveTo(-enemy.size * 0.8, -enemy.size * 1.6, -enemy.size * 1.2, -enemy.size * 2.0);
+    ctx.moveTo(-enemy.size * 0.3, -enemy.size * 0.9);
+    ctx.lineTo(-enemy.size * 0.5, -enemy.size * 1.3);
     ctx.stroke();
 
+    // Right antenna
     ctx.beginPath();
-    ctx.moveTo(0, -enemy.size * 0.9);
-    ctx.quadraticCurveTo(enemy.size * 0.8, -enemy.size * 1.6, enemy.size * 1.2, -enemy.size * 2.0);
+    ctx.moveTo(enemy.size * 0.3, -enemy.size * 0.9);
+    ctx.lineTo(enemy.size * 0.5, -enemy.size * 1.3);
     ctx.stroke();
 
-    // Draw animated legs (only for living enemies)
+    // Tiny antenna tips (alien sensors)
+    ctx.fillStyle = '#FF6B6B'; // Red sensor dots
+    ctx.fillRect(-enemy.size * 0.6, -enemy.size * 1.4, pixelSize * 0.6, pixelSize * 0.6);
+    ctx.fillRect(enemy.size * 0.4, -enemy.size * 1.4, pixelSize * 0.6, pixelSize * 0.6);
+
+    // Legs - simple pixel lines (only for living enemies)
     if (!enemy.isDead) {
-        const legAngle = Math.sin(enemy.legPhase) * 0.5;
+        const legAngle = Math.sin(enemy.legPhase) * 0.3;
+        ctx.strokeStyle = bodyColor;
+        ctx.lineWidth = 1;
+
+        // Three pairs of legs
         for (let i = 0; i < 3; i++) {
-            const y = (i - 1) * enemy.size * 0.4;
-            const x = Math.cos(legAngle + i * Math.PI / 2) * enemy.size * 0.8;
-            
+            const y = (i - 1) * enemy.size * 0.3;
+            const x = Math.cos(legAngle + i * Math.PI / 2) * enemy.size * 0.4;
+
+            // Left leg
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(x, y - enemy.size * 0.2);
+            ctx.moveTo(-enemy.size * 0.3, y);
+            ctx.lineTo(-enemy.size * 0.3 + x, y - enemy.size * 0.2);
             ctx.stroke();
-            
+
+            // Right leg
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(-x, y - enemy.size * 0.2);
+            ctx.moveTo(enemy.size * 0.3, y);
+            ctx.lineTo(enemy.size * 0.3 - x, y - enemy.size * 0.2);
             ctx.stroke();
         }
     }
-    
+
+    // Tiny alien details - random blinking effect
+    if (!enemy.isDead && Math.random() < 0.05) {
+        // Occasional eye glow
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-enemy.size * 0.2, -enemy.size * 0.6, pixelSize * 0.4, pixelSize * 0.4);
+        ctx.fillRect(enemy.size * 0.1, -enemy.size * 0.6, pixelSize * 0.4, pixelSize * 0.4);
+    }
+
     ctx.restore();
 }
 
@@ -569,28 +641,28 @@ function drawEnemySprite(enemy) {
 
 /**
  * Draws enemy UI elements (health bar, targeting indicator).
- * 
+ *
  * @param {Object} enemy - Enemy to draw UI for
  */
 function drawEnemyUI(enemy) {
     const { ctx } = game;
-    
+
     // Only draw UI for living enemies
     if (enemy.isDead) {
         return;
     }
-    
+
     // Draw health bar for damaged enemies
     if (enemy.hp < enemy.maxHp) {
         const barWidth = enemy.size * 2;
         const barHeight = 3;
         const barX = enemy.x - barWidth / 2;
         const barY = enemy.y - enemy.size * 2;
-        
+
         // Background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.fillRect(barX, barY, barWidth, barHeight);
-        
+
         // Health bar
         ctx.fillStyle = 'red';
         const healthRatio = Math.max(0, enemy.hp / enemy.maxHp);
@@ -602,15 +674,47 @@ function drawEnemyUI(enemy) {
         ctx.save();
         ctx.translate(enemy.x, enemy.y + enemy.size * 0.7);
         ctx.scale(1, 0.4); // 2.5D perspective effect
-        
+
         ctx.beginPath();
         ctx.arc(0, 0, enemy.size * 1.5, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
-        
+
         ctx.restore();
     }
+}
+
+/**
+ * Draws highlight outline around an enemy when highlighted.
+ *
+ * @param {Object} enemy - Enemy to draw highlight for
+ */
+function drawEnemyHighlight(enemy) {
+    const { ctx } = game;
+
+    ctx.save();
+
+    // Draw glowing highlight outline around enemy
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; // Gold color for highlight
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+    ctx.shadowBlur = 6;
+
+    // Draw circle outline around enemy
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, enemy.size * 1.2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Add a second, more subtle inner glow
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 3;
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y, enemy.size * 1.1, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
 }
 
 /**
@@ -695,6 +799,11 @@ export function damageEnemy(enemy, amount) {
     enemy.hp = newHp;
 
     console.log(`[ENEMY_DAMAGE] Applied immediate damage to enemy ${enemy.id}: ${previousHp} -> ${newHp}`);
+
+    // Track damage for shared loot system
+    trackDamage(enemy.id, amount).catch(error => {
+        console.warn(`[ENEMY_DAMAGE] Failed to track damage for enemy ${enemy.id}:`, error);
+    });
 
     // Trigger death if HP reaches 0
     if (newHp <= 0) {

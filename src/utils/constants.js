@@ -10,7 +10,7 @@ export const MAX_SPEED = 160; // pixels/second
 
 export const DEAD_ZONE = 3; // pixels
 export const DECEL_ZONE = 20; // pixels
-export const INTERACTION_RADIUS = 30; // pixels
+export const INTERACTION_RADIUS = 80; // pixels - increased for better gameplay
 export const ATTACK_RANGE = 55; // pixels
 export const MUZZLE_OFFSET = 12; // pixels
 export const DRONE_HEIGHT_OFFSET = 12; // pixels
@@ -65,6 +65,14 @@ export function setGlobalVolume(volume) {
 export function onVolumeChange(cb) {
   if (typeof cb === 'function') volumeChangeListeners.push(cb);
 }
+
+// === Loot System Constants ===
+export const DEFAULT_LOOT_CHANCE = 0.3; // 30% base chance for item drops
+export const RARE_LOOT_CHANCE = 0.1; // 10% chance for rare items
+export const EPIC_LOOT_CHANCE = 0.05; // 5% chance for epic items
+export const MIN_ITEM_DROP_COUNT = 1;
+export const MAX_ITEM_DROP_COUNT = 3;
+export const GOLD_DROP_CHANCE = 0.8; // 80% chance to drop gold
 
 // === Small app-level constants ===
 export const INVENTORY_SIZE = 24;

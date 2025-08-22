@@ -1,4 +1,5 @@
 import { game } from './core.js';
+import { highlightManager } from './highlightManager.js';
 
 /**
  * AI: World Objects System
@@ -29,6 +30,22 @@ export function initWorldObjects() {
   worldObjects.length = 0;
 
   // AI: Place market stall in a good location (center-right area)
+  const marketStall = {
+    id: 'market_stall_1',
+    type: 'market',
+    x: 600, // Center-right area
+    y: 300,
+    width: 32,
+    height: 32,
+    interactionRadius: 35,
+    action: 'Trade',
+    onInteract: () => {
+      console.log('Market stall interaction triggered');
+      // TODO: Implement market interface
+    }
+  };
+
+  worldObjects.push(marketStall);
 
   console.log(`Initialized ${worldObjects.length} world objects`);
 
@@ -88,6 +105,9 @@ export function drawWorldObjects() {
   for (const obj of worldObjects) {
     // AI: Draw the object based on its type
     switch (obj.type) {
+      case 'market':
+        drawMarketIcon(ctx, obj.x, obj.y, obj.width);
+        break;
       default:
         // AI: Fallback generic object
         ctx.fillStyle = '#666';
@@ -106,17 +126,29 @@ export function drawWorldObjects() {
       ctx.strokeRect(obj.x - obj.width/2 - 2, obj.y - obj.height/2 - 2, obj.width + 4, obj.height + 4);
       ctx.setLineDash([]); // Reset line dash
       ctx.restore();
-      
+
       // AI: Draw action prompt above object
       ctx.save();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
       ctx.fillRect(obj.x - 30, obj.y - obj.height/2 - 25, 60, 16);
-      
+
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 10px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`E - ${obj.action}`, obj.x, obj.y - obj.height/2 - 17);
+      ctx.restore();
+    }
+
+    // Add highlight support using highlightManager
+    if (highlightManager.isHighlighted(obj)) {
+      // Draw glowing highlight outline around object
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; // Gold color for highlight
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+      ctx.shadowBlur = 8;
+      ctx.strokeRect(obj.x - obj.width/2 - 3, obj.y - obj.height/2 - 3, obj.width + 6, obj.height + 6);
       ctx.restore();
     }
   }

@@ -4,8 +4,81 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>sandbox idle</title>
+  <link rel="stylesheet" href="/src/styles/theme.css" />
+  <style>
+    /* Disclaimer popup styles */
+    #disclaimer-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .disclaimer-content {
+      background: rgba(28, 32, 36, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .disclaimer-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #e5e7eb;
+      margin-bottom: 1rem;
+    }
+
+    .disclaimer-text {
+      color: #9ca3af;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .disclaimer-accept {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e5e7eb;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .disclaimer-accept:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+  </style>
 </head>
 <body>
+  <!-- Disclaimer Popup -->
+  <div id="disclaimer-popup">
+    <div class="disclaimer-content">
+      <h2 class="disclaimer-title">Welcome to Sandbox Idle</h2>
+      <p class="disclaimer-text">
+        This is an early development version of the game. Features may be incomplete,
+        bugs may occur, and the game may not be fully balanced. Your progress may be
+        reset during updates without notice.
+      </p>
+      <button id="disclaimer-accept" class="disclaimer-accept">I Understand</button>
+    </div>
+  </div>
+
   <script type="module" src="/src/app/index-loader.js"></script>
 </body>
 </html>

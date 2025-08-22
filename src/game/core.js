@@ -3,10 +3,11 @@
 import { isInWater, drawTerrain, camera } from './world.js';
 
 import { playerService } from '../services/playerService.js';
-import { spawnGroundItem, drawGroundItems } from './items.js';
+import { drawGroundItems } from './items.js';
 import { harvestNode, drawResourceNodes, subscribeResourceNodes } from './resources.js';
 import { addItemToInventory } from '../ui/inventory.js';
 import { playPickupSound } from '../utils/sfx.js';
+import { pickupGroundItem } from '../services/groundItemService.js';
 import { playMiningSound, startLaserSound, stopLaserSound, playCycleCompleteSound, playGunshotSound } from '../utils/sfx.js';
 import { drawRemotePlayers, initNetwork } from './network.js';
 import { multiplayerManager } from './multiplayerManager.js';
@@ -14,9 +15,9 @@ import { pingDisplay } from '../ui/pingDisplay.js';
 import { experienceManager } from './experienceManager.js';
 import { experienceBar } from '../ui/experienceBar.js';
 import { drawPlayer, drawSelfMarker, drawMiningLaser, getMuzzlePosition } from './player.js';
-import { renderDomGroundItemHint } from './ui.js';
 import { worldToScreenCoords, screenToWorldCoords } from '../utils/math.js';
 import { joinArea, subscribeAreaPlayers } from '../services/realtimePosition.js';
+import { subscribeGroundItems } from '../services/groundItemService.js';
 import { ACCELERATION, DECELERATION, GRAVITY, DAMPING_FACTOR, MAX_SPEED, DEAD_ZONE, DECEL_ZONE, ATTACK_RANGE, MUZZLE_OFFSET, DRONE_HEIGHT_OFFSET, FIRE_COOLDOWN, INTERACTION_RADIUS, AUTO_ATTACK_DURATION } from '../utils/constants.js';
 import { isMouseOverItem, getItemBounds } from '../data/pixelIcons.js';
 import { auth } from '../utils/firebaseClient.js';
@@ -27,7 +28,9 @@ import { initEnemies, updateEnemies, drawEnemies, findNearestEnemy, setTargetedE
 import loadingScreen from '../utils/loadingScreen.js';
 import { createProjectile, updateProjectiles, drawProjectiles, initProjectiles } from './projectiles.js';
 import { waitForCanvas } from '../utils/domUtils.js';
-import { initializeInteractiveHighlight, cleanupInteractiveHighlight } from '../utils/interactiveHighlight.js';
+import { highlightManager } from './highlightManager.js';
+import { initHighlightEventListeners } from './ui.js';
+import { initGroundItemUI, cleanupGroundItemUI, updateFloatingMessages, drawGroundItemUI } from './groundItemUI.js';
 // AI: Removed complex MP constants - using simple multiplayer manager
 
 export const game = {
@@ -49,7 +52,6 @@ export const game = {
   enemies: [], // Active enemies from enemies.js
   worldObjects: [], // Active world objects from worldObjects.js
   inventory: { seashell: 0, driftwood: 0, seaweed: 0 },
-  spawn: { max: 8, accumulator: 0 },
   // AI: Removed complex MP state - using multiplayerManager
   _lastDomHintEl: null,
   terrain: {}, // Initialize terrain object
@@ -177,21 +179,17 @@ function update(dt) {
   if (game.groundItems.some(n => n._collected)) {
     game.groundItems = game.groundItems.filter(n => !n._collected);
   }
-  // Low spawn rate: try once per second with 20% chance if under max
-  game.spawn.accumulator += dt;
-  if (game.spawn.accumulator >= 1) {
-    game.spawn.accumulator = 0;
-    if (game.groundItems.length < game.spawn.max && Math.random() < 0.2) spawnGroundItem();
-  }
+  // Ground items are now spawned server-side only (from enemy deaths)
+  // Removed client-side spawning to prevent desync issues
 
   // Shared resource nodes: idle harvesting like sand mounds
   for (const node of game.resourceNodes) {
     if (!node.active) continue;
     
-    // Stop if player moved away
+    // Stop if player moved away (use same radius as interaction)
     const dx = node.x - p.x;
     const dy = node.y - p.y;
-    const near = Math.hypot(dx, dy) <= 24;
+    const near = Math.hypot(dx, dy) <= INTERACTION_RADIUS;
     if (!near) {
       node.active = false;
       // AI: If this was the currently active mining node, deactivate it
@@ -414,6 +412,9 @@ function update(dt) {
   // Update enemies and projectiles
   updateEnemies(dt);
   updateProjectiles(dt);
+
+  // Update ground item UI (floating messages)
+  updateFloatingMessages(dt);
 }
 
 /**
@@ -468,331 +469,9 @@ function drawTargetMarker() {
   ctx.restore();
 }
 
-/**
- * Renders ground items as DOM elements for precise mouse detection and interaction. 
- * This function dynamically creates or updates HTML elements for each visible ground item, 
- * positioning them correctly on the screen and attaching necessary data attributes.
- * These DOM elements enable accurate mouse hover and click detection based on their visual bounds.
- */
-function renderGroundItemsAsDOM() {
-  const desktop = document.getElementById('desktop-screen');
-  // AI: Ensure the desktop screen exists before attempting to render elements.
-  if (!desktop) return;
 
-  // AI: Create a set of unique keys for current ground items to efficiently track additions/removals.
-  const existingItemsKeys = new Set(game.groundItems.map(item => `${item.x}_${item.y}_${item.type}`));
 
-  // AI: Remove any existing DOM elements for ground items that are no longer present in the game state,
-  // or those marked as 'pending' (e.g., in transition or about to be removed).
-  const existingElements = desktop.querySelectorAll('.ground-item');
-  existingElements.forEach(el => {
-    const itemKey = `${el.dataset.x}_${el.dataset.y}_${el.dataset.type}`;
-    if (!existingItemsKeys.has(itemKey) || el.classList.contains('pending')) {
-      el.remove();
-    }
-  });
 
-  // AI: Iterate through the game's current ground items to create or update their corresponding DOM elements.
-  game.groundItems.forEach(item => {
-    // AI: Skip items that have been marked as collected to prevent rendering them.
-    if (item._collected) return; 
-
-    // AI: Generate a unique key for the item to find existing DOM elements or create new ones.
-    const itemKey = `${item.x}_${item.y}_${item.type}`;
-    let element = desktop.querySelector(`[data-item-key="${itemKey}"]`);
-
-    // AI: If no existing DOM element is found for this item, create a new one.
-    if (!element) {
-      element = document.createElement('div');
-      element.className = 'ground-item'; // AI: Apply base styling class.
-      element.dataset.itemKey = itemKey; // AI: Store a unique key for lookup.
-      element.dataset.x = item.x; // AI: Store world X coordinate for bounds calculation.
-      element.dataset.y = item.y; // AI: Store world Y coordinate for bounds calculation.
-      element.dataset.type = item.type; // AI: Store item type for icon lookup and interaction logic.
-      element.dataset.itemId = item.type; // AI: Also store as itemId for consistency.
-      element.dataset.rightClickTarget = 'true'; // AI: Mark as right-click target for highlighting.
-      element.style.position = 'absolute'; // AI: Enable precise positioning.
-      // AI: 'pointerEvents: none' ensures mouse events pass through to the canvas below,
-      // allowing the canvas's mouse handlers to function for movement and other interactions.
-      element.style.pointerEvents = 'none'; 
-      element.style.zIndex = '10'; // AI: Position the element above the canvas but below main UI.
-
-      // AI: Create a container for the pixel icon within the ground item element.
-      const iconEl = document.createElement('div');
-      iconEl.style.width = '18px'; // AI: Set the visual size of the icon (1.5x scale).
-      iconEl.style.height = '18px';
-      iconEl.style.imageRendering = 'pixelated'; // AI: Maintain pixel art aesthetic.
-      element.appendChild(iconEl);
-
-      // AI: Add the newly created ground item element to the desktop screen.
-      desktop.appendChild(element);
-      console.log('InteractiveHighlight: Created ground item DOM element with data-right-click-target:', element.dataset.rightClickTarget);
-    }
-
-    // AI: Update the DOM element's position based on the item's world coordinates and the current camera view.
-    // This ensures the DOM element moves with the camera, staying aligned with the canvas rendering.
-    const screenCoords = worldToScreenCoords(item.x, item.y, camera);
-    if (screenCoords) {
-      // AI: Position the element centrally based on its 18x18 pixel size.
-      element.style.left = `${screenCoords.x - 9}px`; 
-      element.style.top = `${screenCoords.y - 9}px`;
-
-      // AI: Update the visual icon of the DOM element. 
-      // We clear backgroundImage here and rely on CSS to apply background-image from pixelIcons.js.
-      const iconEl = element.firstChild;
-      if (iconEl) {
-        iconEl.style.backgroundImage = '';
-        // AI: Note: The actual pixel icon rendering (using Canvas) is handled by drawGroundItems() (if still active),
-        // or by CSS if the item has a sprite sheet / data URI. The data attributes are used by bounds detection.
-      }
-    } else {
-      // AI: If the item is off-screen (screenCoords are null/undefined), hide its DOM element.
-      element.style.left = '-9999px';
-    }
-  });
-}
-
-/**
- * Renders resource nodes as DOM elements for precise mouse detection and interaction.
- * This function dynamically creates or updates HTML elements for each visible resource node,
- * positioning them correctly on the screen and attaching necessary data attributes.
- * These DOM elements enable accurate mouse hover and click detection based on their visual bounds,
- * aligning with the precise interaction system.
- */
-function renderResourceNodesAsDOM() {
-  const desktop = document.getElementById('desktop-screen');
-  // AI: Ensure the desktop screen exists before attempting to render elements.
-  if (!desktop) return;
-
-  // AI: Create a set of unique keys for current resource nodes to efficiently track additions/removals.
-  const existingNodesKeys = new Set(game.resourceNodes.map(node => `${node.x}_${node.y}_${node.type}`));
-
-  // AI: Remove any existing DOM elements for resource nodes that are no longer present in the game state.
-  const existingElements = desktop.querySelectorAll('.resource-node');
-  existingElements.forEach(el => {
-    const nodeKey = `${el.dataset.x}_${el.dataset.y}_${el.dataset.type}`;
-    if (!existingNodesKeys.has(nodeKey)) {
-      el.remove();
-    }
-  });
-
-  // AI: Iterate through the game's current resource nodes to create or update their corresponding DOM elements.
-  game.resourceNodes.forEach(node => {
-    // AI: Generate a unique key for the node to find existing DOM elements or create new ones.
-    const nodeKey = `${node.x}_${node.y}_${node.type}`;
-    let element = desktop.querySelector(`[data-node-key="${nodeKey}"]`);
-
-    // AI: If no existing DOM element is found for this node, create a new one.
-    if (!element) {
-      element = document.createElement('div');
-      element.className = 'resource-node'; // AI: Apply base styling class.
-      element.dataset.nodeKey = nodeKey; // AI: Store a unique key for lookup.
-      element.dataset.x = node.x; // AI: Store world X coordinate for bounds calculation.
-      element.dataset.y = node.y; // AI: Store world Y coordinate for bounds calculation.
-      element.dataset.type = node.type; // AI: Store node type for icon lookup and interaction logic.
-      element.dataset.rightClickTarget = 'true'; // AI: Mark as right-click target for highlighting.
-      element.style.position = 'absolute'; // AI: Enable precise positioning.
-      // AI: 'pointerEvents: none' ensures mouse events pass through to the canvas below,
-      // allowing the canvas's mouse handlers to function for movement and other interactions.
-      element.style.pointerEvents = 'none';
-      element.style.zIndex = '10'; // AI: Position the element above the canvas but below main UI.
-
-      // AI: Create a container for the pixel icon within the resource node element.
-      const iconEl = document.createElement('div');
-      iconEl.style.width = '18px'; // AI: Set the visual size of the icon (1.5x scale).
-      iconEl.style.height = '18px';
-      iconEl.style.imageRendering = 'pixelated'; // AI: Maintain pixel art aesthetic.
-      element.appendChild(iconEl);
-
-      // AI: Add the newly created resource node element to the desktop screen.
-      desktop.appendChild(element);
-      console.log('InteractiveHighlight: Created resource node DOM element with data-right-click-target:', element.dataset.rightClickTarget);
-    }
-
-    // AI: Update the DOM element's position based on the node's world coordinates and the current camera view.
-    // This ensures the DOM element moves with the camera, staying aligned with the canvas rendering.
-    const screenCoords = worldToScreenCoords(node.x, node.y, camera);
-    if (screenCoords) {
-      // AI: Position the element centrally based on its 18x18 pixel size.
-      element.style.left = `${screenCoords.x - 9}px`;
-      element.style.top = `${screenCoords.y - 9}px`;
-
-      // AI: Update the visual icon of the DOM element.
-      // We clear backgroundImage here and rely on CSS to apply background-image from pixelIcons.js.
-      const iconEl = element.firstChild;
-      if (iconEl) {
-        iconEl.style.backgroundImage = '';
-        // AI: Note: The actual pixel icon rendering (using Canvas) is handled by drawResourceNodes() (if still active),
-        // or by CSS if the node has a sprite sheet / data URI. The data attributes are used by bounds detection.
-      }
-    } else {
-      // AI: If the node is off-screen (screenCoords are null/undefined), hide its DOM element.
-      element.style.left = '-9999px';
-    }
-  });
-}
-
-/**
- * Renders enemies as DOM elements for precise mouse detection and interaction.
- * This function dynamically creates or updates HTML elements for each visible enemy,
- * positioning them correctly on the screen and attaching necessary data attributes.
- * These DOM elements enable accurate mouse hover and click detection based on their visual bounds.
- */
-function renderEnemiesAsDOM() {
-  const desktop = document.getElementById('desktop-screen');
-  // AI: Ensure the desktop screen exists before attempting to render elements.
-  if (!desktop) return;
-
-  // AI: Create a set of unique keys for current enemies to efficiently track additions/removals.
-  const existingEnemiesKeys = new Set(game.enemies.map(enemy => `${enemy.x}_${enemy.y}_${enemy.id}`));
-
-  // AI: Remove any existing DOM elements for enemies that are no longer present in the game state,
-  // or those marked as 'pending' (e.g., in transition or about to be removed).
-  const existingElements = desktop.querySelectorAll('.enemy-sprite');
-  existingElements.forEach(el => {
-    const enemyKey = `${el.dataset.x}_${el.dataset.y}_${el.dataset.enemyId}`;
-    if (!existingEnemiesKeys.has(enemyKey) || el.classList.contains('pending')) {
-      el.remove();
-    }
-  });
-
-  // AI: Iterate through the game's current enemies to create or update their corresponding DOM elements.
-  game.enemies.forEach(enemy => {
-    // AI: Skip enemies that have been marked as dead to prevent rendering them.
-    if (enemy.isDead || enemy.hp <= 0) return;
-
-    // AI: Generate a unique key for the enemy to find existing DOM elements or create new ones.
-    const enemyKey = `${enemy.x}_${enemy.y}_${enemy.id}`;
-    let element = desktop.querySelector(`[data-enemy-key="${enemyKey}"]`);
-
-    // AI: If no existing DOM element is found for this enemy, create a new one.
-    if (!element) {
-      element = document.createElement('div');
-      element.className = 'enemy-sprite'; // AI: Apply base styling class.
-      element.dataset.enemyKey = enemyKey; // AI: Store a unique key for lookup.
-      element.dataset.x = enemy.x; // AI: Store world X coordinate for bounds calculation.
-      element.dataset.y = enemy.y; // AI: Store world Y coordinate for bounds calculation.
-      element.dataset.enemyId = enemy.id; // AI: Store enemy ID for interaction logic.
-      element.dataset.rightClickTarget = 'true'; // AI: Mark as right-click target for highlighting.
-      element.style.position = 'absolute'; // AI: Enable precise positioning.
-      // AI: 'pointerEvents: none' ensures mouse events pass through to the canvas below,
-      // allowing the canvas's mouse handlers to function for movement and other interactions.
-      element.style.pointerEvents = 'none';
-      element.style.zIndex = '10'; // AI: Position the element above the canvas but below main UI.
-
-      // AI: Create a container for the enemy sprite within the enemy element.
-      const spriteEl = document.createElement('div');
-      spriteEl.style.width = '32px'; // AI: Set the visual size of the enemy sprite.
-      spriteEl.style.height = '32px';
-      spriteEl.style.imageRendering = 'pixelated'; // AI: Maintain pixel art aesthetic.
-      element.appendChild(spriteEl);
-
-      // AI: Add the newly created enemy element to the desktop screen.
-      desktop.appendChild(element);
-      console.log('InteractiveHighlight: Created enemy DOM element with data-right-click-target:', element.dataset.rightClickTarget);
-    }
-
-    // AI: Update the DOM element's position based on the enemy's world coordinates and the current camera view.
-    // This ensures the DOM element moves with the camera, staying aligned with the canvas rendering.
-    const screenCoords = worldToScreenCoords(enemy.x, enemy.y, camera);
-    if (screenCoords) {
-      // AI: Position the element centrally based on its 32x32 pixel size.
-      element.style.left = `${screenCoords.x - 16}px`;
-      element.style.top = `${screenCoords.y - 16}px`;
-
-      // AI: Update the visual sprite of the DOM element.
-      // We clear backgroundImage here and rely on CSS to apply background-image from pixelIcons.js.
-      const spriteEl = element.firstChild;
-      if (spriteEl) {
-        spriteEl.style.backgroundImage = '';
-        // AI: Note: The actual enemy sprite rendering (using Canvas) is handled by drawEnemies() (if still active),
-        // or by CSS if the enemy has a sprite sheet / data URI. The data attributes are used by bounds detection.
-      }
-    } else {
-      // AI: If the enemy is off-screen (screenCoords are null/undefined), hide its DOM element.
-      element.style.left = '-9999px';
-    }
-  });
-}
-
-/**
- * Renders world objects as DOM elements for precise mouse detection and interaction.
- * This function dynamically creates or updates HTML elements for each visible world object,
- * positioning them correctly on the screen and attaching necessary data attributes.
- * These DOM elements enable accurate mouse hover and click detection based on their visual bounds.
- */
-function renderWorldObjectsAsDOM() {
-  const desktop = document.getElementById('desktop-screen');
-  // AI: Ensure the desktop screen exists before attempting to render elements.
-  if (!desktop) return;
-
-  // AI: Create a set of unique keys for current world objects to efficiently track additions/removals.
-  const existingWorldObjectsKeys = new Set(game.worldObjects.map(obj => `${obj.x}_${obj.y}_${obj.id}`));
-
-  // AI: Remove any existing DOM elements for world objects that are no longer present in the game state.
-  const existingElements = desktop.querySelectorAll('.world-object-icon');
-  existingElements.forEach(el => {
-    const objectKey = `${el.dataset.x}_${el.dataset.y}_${el.dataset.objectId}`;
-    if (!existingWorldObjectsKeys.has(objectKey)) {
-      el.remove();
-    }
-  });
-
-  // AI: Iterate through the game's current world objects to create or update their corresponding DOM elements.
-  game.worldObjects.forEach(obj => {
-    // AI: Generate a unique key for the world object to find existing DOM elements or create new ones.
-    const objectKey = `${obj.x}_${obj.y}_${obj.id}`;
-    let element = desktop.querySelector(`[data-object-key="${objectKey}"]`);
-
-    // AI: If no existing DOM element is found for this world object, create a new one.
-    if (!element) {
-      element = document.createElement('div');
-      element.className = 'world-object-icon'; // AI: Apply base styling class.
-      element.dataset.objectKey = objectKey; // AI: Store a unique key for lookup.
-      element.dataset.x = obj.x; // AI: Store world X coordinate for bounds calculation.
-      element.dataset.y = obj.y; // AI: Store world Y coordinate for bounds calculation.
-      element.dataset.objectId = obj.id; // AI: Store object ID for interaction logic.
-      element.dataset.rightClickTarget = 'true'; // AI: Mark as right-click target for highlighting.
-      element.style.position = 'absolute'; // AI: Enable precise positioning.
-      // AI: 'pointerEvents: none' ensures mouse events pass through to the canvas below,
-      // allowing the canvas's mouse handlers to function for movement and other interactions.
-      element.style.pointerEvents = 'none';
-      element.style.zIndex = '10'; // AI: Position the element above the canvas but below main UI.
-
-      // AI: Create a container for the world object icon within the world object element.
-      const iconEl = document.createElement('div');
-      iconEl.style.width = '48px'; // AI: Set the visual size of the world object icon.
-      iconEl.style.height = '48px';
-      iconEl.style.imageRendering = 'pixelated'; // AI: Maintain pixel art aesthetic.
-      element.appendChild(iconEl);
-
-      // AI: Add the newly created world object element to the desktop screen.
-      desktop.appendChild(element);
-      console.log('InteractiveHighlight: Created world object DOM element with data-right-click-target:', element.dataset.rightClickTarget);
-    }
-
-    // AI: Update the DOM element's position based on the world object's world coordinates and the current camera view.
-    // This ensures the DOM element moves with the camera, staying aligned with the canvas rendering.
-    const screenCoords = worldToScreenCoords(obj.x, obj.y, camera);
-    if (screenCoords) {
-      // AI: Position the element centrally based on its 48x48 pixel size.
-      element.style.left = `${screenCoords.x - 24}px`;
-      element.style.top = `${screenCoords.y - 24}px`;
-
-      // AI: Update the visual icon of the DOM element.
-      // We clear backgroundImage here and rely on CSS to apply background-image from pixelIcons.js.
-      const iconEl = element.firstChild;
-      if (iconEl) {
-        iconEl.style.backgroundImage = '';
-        // AI: Note: The actual world object icon rendering (using Canvas) is handled by drawWorldObjects() (if still active),
-        // or by CSS if the object has a sprite sheet / data URI. The data attributes are used by bounds detection.
-      }
-    } else {
-      // AI: If the world object is off-screen (screenCoords are null/undefined), hide its DOM element.
-      element.style.left = '-9999px';
-    }
-  });
-}
 
 // Main game loop
 function loop(ts) {
@@ -887,6 +566,9 @@ function loop(ts) {
   drawSelfMarker(game.player, multiplayerManager.localPlayer.color);
   drawTargetMarker();
 
+  // Draw ground item UI (tooltips and floating messages)
+  drawGroundItemUI(ctx);
+
   // AI: Restore the context to draw UI elements at fixed screen positions.
   ctx.restore();
   // renderInteractionPromptDOM(); // Removed per user request to disable 'E' key interactions.
@@ -894,22 +576,6 @@ function loop(ts) {
   // Draw UI elements (keep these for now as they are UI related)
   // drawConnectionStatus(); // Removed as per edit hint
 
-  // AI: Render ground items as DOM elements for precise mouse detection
-  renderGroundItemsAsDOM();
-
-  // AI: Render resource nodes as DOM elements for precise mouse detection
-  renderResourceNodesAsDOM();
-
-  // AI: Render enemies as DOM elements for precise mouse detection and highlighting
-  // TODO: Consider canvas-based highlighting for better performance with many enemies
-  // Current DOM approach works but may have performance implications with 20+ enemies
-  renderEnemiesAsDOM();
-
-  // AI: Render world objects as DOM elements for precise mouse detection and highlighting
-  renderWorldObjectsAsDOM();
-
-  // AI: Render ground item highlights when hovering
-  renderDomGroundItemHint();
 
   // AI: Removed complex chat bubble updates - using multiplayerManager
 
@@ -939,12 +605,22 @@ export async function initAreaGame(initialPosition) {
     canvas.width = game.width;
     canvas.height = game.height;
 
+    // Initialize highlight manager with the canvas
+    highlightManager.init(canvas);
+
+    // Initialize highlight event listeners for UI synchronization
+    initHighlightEventListeners();
+
+    // Initialize ground item UI enhancements
+    initGroundItemUI(canvas);
+
     // AI: Load resource nodes from areaData.js for the current area
     const currentArea = 'beach'; // AI: Hardcoded for now, can be dynamic later
     if (areaData[currentArea] && areaData[currentArea].resourceNodes) {
       game.resourceNodes = areaData[currentArea].resourceNodes;
     }
     subscribeResourceNodes(currentArea);
+    subscribeGroundItems(currentArea);
 
     // AI: Set the player's starting position. If a valid saved position is provided, use it.
     // Otherwise, default to the center of the world. This ensures saved positions are respected.
@@ -977,24 +653,6 @@ export async function initAreaGame(initialPosition) {
     
     // AI: Initialize experience system
     experienceBar.init();
-
-    // AI: Initialize interactive highlighting system
-    const desktop = document.getElementById('desktop-screen');
-    if (desktop) {
-      initializeInteractiveHighlight(desktop);
-      console.log('InteractiveHighlight: Initialized successfully');
-
-      // AI: Debug - Check if any highlightable elements exist
-      setTimeout(() => {
-        const highlightableElements = desktop.querySelectorAll('[data-right-click-target="true"]');
-        console.log('InteractiveHighlight: Found', highlightableElements.length, 'highlightable elements:');
-        highlightableElements.forEach((el, index) => {
-          console.log(`  ${index + 1}. ${el.className} at (${el.style.left}, ${el.style.top})`);
-        });
-      }, 1000); // Wait 1 second for DOM elements to be created
-    } else {
-      console.error('InteractiveHighlight: Could not find desktop-screen element');
-    }
 
     // AI: Expose the game instance globally for desktop.js to access.
     window.gameInstance = game;
@@ -1089,8 +747,8 @@ export async function initAreaGame(initialPosition) {
       }
     });
 
-    // AI: Prevent the context menu from appearing on right-click.
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // AI: Context menu prevention is now handled in the mousedown event for right-clicks
+    // This provides more reliable right-click detection without browser interference
 
     // AI: Enhanced mousemove handler for both cursor tracking and continuous movement
     canvas.addEventListener('mousemove', (e) => {
@@ -1119,14 +777,22 @@ export async function initAreaGame(initialPosition) {
   
     // AI: Right-click interaction system (replaces 'E' key)
     // This allows manual interaction with resource nodes, ground items, and world objects.
-    canvas.addEventListener('contextmenu', (e) => {
-      // AI: Prevent the default browser context menu from appearing.
-      e.preventDefault();
+    canvas.addEventListener('mousedown', (e) => {
+      // AI: Only handle right-click (button 2)
+      if (e.button !== 2) return;
 
-      // AI: If the player is currently targeting an enemy, prioritize combat.
-      // The existing targeting system will handle movement and attacks, so interaction clicks are ignored.
-      if (game.player.target) {
-        return; 
+      // AI: Prevent default context menu
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log('[RIGHT_CLICK] Right-click detected at:', e.clientX, e.clientY);
+
+      // AI: Check if the player is currently targeting an enemy for combat
+      // If so, prioritize combat and ignore interaction clicks
+      const targetedEnemy = getTargetedEnemy();
+      if (targetedEnemy) {
+        console.log('[RIGHT_CLICK] Enemy targeted, ignoring interaction');
+        return;
       }
 
       // AI: Get precise mouse coordinates relative to the canvas, accounting for canvas scaling.
@@ -1136,58 +802,127 @@ export async function initAreaGame(initialPosition) {
       const mouseX = (e.clientX - rect.left) * scaleX;
       const mouseY = (e.clientY - rect.top) * scaleY;
 
+      // AI: Calculate world coordinates for the click
+      const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
+
       // AI: Check for interaction with world objects (e.g., market stalls, special NPCs).
       // If an interaction occurs, it takes precedence and no further checks are needed.
       const worldObjectInteracted = checkWorldObjectInteraction();
       if (worldObjectInteracted) {
-        return; 
+        return;
       }
 
       // AI: Initialize variables to track the nearest interactable object.
       // 'maxInteractionRadius' defines the maximum distance from the player where an interaction is possible.
-      const maxInteractionRadius = INTERACTION_RADIUS; 
+      const maxInteractionRadius = INTERACTION_RADIUS;
       let nearestInteractable = null;
       let nearestDist = Infinity;
       let interactionType = null;
 
-      // AI: Iterate through all available resource nodes to find if the mouse is over one.
-      // Resources are prioritized over ground items for interaction.
-      for (const node of game.resourceNodes) {
-        // AI: Skip nodes that are currently on cooldown, as they cannot be harvested.
-        const isOnCooldown = node.cooldownUntil && Date.now() < node.cooldownUntil;
-        if (isOnCooldown) continue;
+      // Debug: Log resource nodes and ground items
+      console.log('[DEBUG] Resource nodes count:', game.resourceNodes.length);
+      console.log('[DEBUG] Ground items count:', game.groundItems.length);
+      console.log('[DEBUG] Player position:', game.player.x, game.player.y);
+      if (worldCoords) {
+        console.log('[DEBUG] Click world coords:', worldCoords.x, worldCoords.y);
+      } else {
+        console.log('[DEBUG] No world coords available');
+      }
 
-        // AI: Use the precise 'isMouseOverItem' function to check if the mouse pointer is visually over the node's icon.
-        // The scale of 1.5 is used to match the rendered size of the resource node icons.
-        if (isMouseOverItem(mouseX, mouseY, node, camera, 1.5)) {
-          // AI: Calculate the distance from the player's current position to the center of the resource node.
-          const dist = Math.hypot(game.player.x - node.x, game.player.y - node.y);
+      // AI: First, check if there's a currently highlighted item that should be the primary interaction target.
+      // This allows users to click anywhere within the highlight outline for better UX.
+      const currentHighlight = highlightManager.getCurrentHighlight();
+      if (currentHighlight) {
+        const highlightedEntity = currentHighlight.entity;
+        const highlightType = currentHighlight.type;
 
-          // AI: If the node is within the player's interaction radius AND it's closer than any previously found interactable,
-          // mark it as the current nearest interactable. This ensures the player interacts with the closest valid object.
-          if (dist < maxInteractionRadius && dist < nearestDist) {
-            nearestDist = dist;
-            nearestInteractable = node;
-            interactionType = 'resourceNode';
-          }
+        // AI: Calculate distance from player to highlighted entity
+        const dist = Math.hypot(game.player.x - highlightedEntity.x, game.player.y - highlightedEntity.y);
+
+        // AI: If the highlighted entity is within interaction range, prioritize it
+        if (dist < maxInteractionRadius) {
+          nearestInteractable = highlightedEntity;
+          interactionType = highlightType;
+          nearestDist = dist;
         }
       }
 
-      // AI: If no resource node was found under the mouse, check for ground items.
+      // AI: If no highlighted item was found or it's out of range, fall back to precise mouse-over detection.
+      // This maintains the original behavior while adding the highlight-based interaction.
       if (!nearestInteractable) {
-        for (const item of game.groundItems) {
-          // AI: Use 'isMouseOverItem' to check if the mouse pointer is visually over the ground item's icon.
-          // The scale of 1.5 is consistent with how ground items are rendered.
-          if (isMouseOverItem(mouseX, mouseY, item, camera, 1.5)) {
-            // AI: Calculate the distance from the player's current position to the center of the ground item.
-            const dist = Math.hypot(game.player.x - item.x, game.player.y - item.y);
+        // AI: Iterate through all available resource nodes to find if the mouse is over one.
+        // Resources are prioritized over ground items for interaction.
+        for (const node of game.resourceNodes) {
+          console.log('[DEBUG] Checking node:', node.id, 'at:', node.x, node.y);
 
-            // AI: If the item is within the player's interaction radius AND it's closer than any previously found interactable,
-            // mark it as the current nearest interactable.
-            if (dist < maxInteractionRadius && dist < nearestDist) {
-              nearestDist = dist;
-              nearestInteractable = item;
-              interactionType = 'groundItem';
+          // AI: Skip nodes that are currently on cooldown, as they cannot be harvested.
+          const isOnCooldown = node.cooldownUntil && Date.now() < node.cooldownUntil;
+          if (isOnCooldown) {
+            console.log('[DEBUG] Node on cooldown:', node.id);
+            continue;
+          }
+
+          // AI: Calculate the world coordinates of the mouse click
+          const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
+          if (!worldCoords) {
+            console.log('[DEBUG] No world coords for click');
+            continue;
+          }
+
+          // AI: Calculate distance from mouse click to node center
+          const mouseDist = Math.hypot(worldCoords.x - node.x, worldCoords.y - node.y);
+          console.log('[DEBUG] Mouse distance to node:', mouseDist);
+
+          // AI: Use a balanced click radius that's generous but not too large to avoid accidental clicks
+          // Resource nodes have a highlight outline, so we use a moderate click area
+          const clickRadius = 20; // Balanced click radius for precise interaction
+          console.log('[DEBUG] Click radius:', clickRadius, 'Mouse dist <= radius:', mouseDist <= clickRadius);
+
+          if (mouseDist <= clickRadius) {
+                    // AI: Calculate the distance from the player's current position to the center of the resource node.
+        const dist = Math.hypot(game.player.x - node.x, game.player.y - node.y);
+        console.log('[DEBUG] Player distance to node:', dist, 'Max interaction radius:', maxInteractionRadius);
+
+        // AI: If the node is within the player's interaction radius AND it's closer than any previously found interactable,
+        // mark it as the current nearest interactable. This ensures the player interacts with the closest valid object.
+        if (dist < maxInteractionRadius && dist < nearestDist) {
+          console.log('[DEBUG] Node selected as nearest interactable:', node.id);
+          nearestDist = dist;
+          nearestInteractable = node;
+          interactionType = 'resourceNode';
+        } else {
+          console.log('[DEBUG] Node out of range or farther than current nearest');
+        }
+          }
+        }
+
+        // AI: If no resource node was found under the mouse, check for ground items.
+        if (!nearestInteractable) {
+          for (const item of game.groundItems) {
+            // AI: Use the world coordinates calculated above
+            if (!worldCoords) continue;
+
+            // AI: Calculate distance from mouse click to item center
+            const mouseDist = Math.hypot(worldCoords.x - item.x, worldCoords.y - item.y);
+
+            // AI: Use a balanced click radius for ground items
+            const clickRadius = 16; // Balanced click radius for ground items
+
+            if (mouseDist <= clickRadius) {
+              // AI: Calculate the distance from the player's current position to the center of the ground item.
+              const dist = Math.hypot(game.player.x - item.x, game.player.y - item.y);
+              console.log('[DEBUG] Player distance to ground item:', dist, 'Max interaction radius:', maxInteractionRadius);
+
+              // AI: If the item is within the player's interaction radius AND it's closer than any previously found interactable,
+              // mark it as the current nearest interactable.
+              if (dist < maxInteractionRadius && dist < nearestDist) {
+                console.log('[DEBUG] Ground item selected as nearest interactable:', item.type);
+                nearestDist = dist;
+                nearestInteractable = item;
+                interactionType = 'groundItem';
+              } else {
+                console.log('[DEBUG] Ground item out of range or farther than current nearest');
+              }
             }
           }
         }
@@ -1195,30 +930,52 @@ export async function initAreaGame(initialPosition) {
 
       // AI: If a valid interactable object was found, perform the corresponding action.
       if (nearestInteractable) {
+        console.log('[RIGHT_CLICK] Found interactable:', interactionType, nearestInteractable.id || nearestInteractable.type);
+
+        // AI: Clear any movement target when interacting with objects for better UX
+        game.player.target = null;
+        game.player.continuousMovement = false;
+
         if (interactionType === 'resourceNode') {
-          // AI: Toggle the active state of the resource node. If activated, start mining laser sound; if deactivated, stop it.
-          nearestInteractable.active = !nearestInteractable.active;
-          if (nearestInteractable.active) {
-            game.player.activeMiningNode = nearestInteractable;
-            startLaserSound();
-          } else {
+          console.log('[RIGHT_CLICK] Interacting with resource node:', nearestInteractable.id);
+
+          // AI: Always deactivate any currently active mining node first
+          if (game.player.activeMiningNode && game.player.activeMiningNode !== nearestInteractable) {
+            console.log('[RIGHT_CLICK] Deactivating previous node:', game.player.activeMiningNode.id);
+            game.player.activeMiningNode.active = false;
             game.player.activeMiningNode = null;
             stopLaserSound();
           }
+
+          // AI: Now activate the new resource node (always activate, don't toggle)
+          nearestInteractable.active = true;
+          game.player.activeMiningNode = nearestInteractable;
+          startLaserSound();
+          console.log('[RIGHT_CLICK] Activated resource node:', nearestInteractable.id);
         } else if (interactionType === 'groundItem') {
-          // AI: Process the collection of a ground item.
-          // Mark the item as collected (to be removed from the game's groundItems array).
-          nearestInteractable._collected = true;
-          const amt = nearestInteractable.count || 1;
+          console.log('[RIGHT_CLICK] Interacting with ground item:', nearestInteractable.type);
 
-          // AI: Attempt to add the item to the player's inventory.
-          // Play a pickup sound only if the item was successfully added (e.g., inventory not full).
-          const addedToInv = addItemToInventory(nearestInteractable.type, amt);
-          if (addedToInv) playPickupSound();
+          // AI: Use the new server-authoritative pickup system
+          // Get player ID from multiplayer manager for server transaction
+          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+            ? multiplayerManager.localPlayer.uid
+            : 'anonymous';
 
-          // AI: Grant experience to the player for collecting the resource.
-          experienceManager.addResourceExp(nearestInteractable.type);
+          // AI: Call the server transaction-based pickup function
+          pickupGroundItem(nearestInteractable.id, playerId, game.player.x, game.player.y)
+            .then(success => {
+              if (success) {
+                console.log('[RIGHT_CLICK] Successfully picked up ground item:', nearestInteractable.type);
+              } else {
+                console.log('[RIGHT_CLICK] Failed to pick up ground item:', nearestInteractable.type);
+              }
+            })
+            .catch(error => {
+              console.error('[RIGHT_CLICK] Error picking up ground item:', error);
+            });
         }
+      } else {
+        console.log('[RIGHT_CLICK] No interactable object found');
       }
     });
   
@@ -1425,11 +1182,11 @@ function initMultiplayerSystem() {
     multiplayerManager.disconnect();
     cleanupEnemies(); // AI: Clean up enemy subscriptions
 
-    // AI: Clean up interactive highlighting system
-    const desktop = document.getElementById('desktop-screen');
-    if (desktop) {
-      cleanupInteractiveHighlight(desktop);
-    }
+    // AI: Clean up highlight manager
+    highlightManager.cleanup();
+
+    // AI: Clean up ground item UI
+    cleanupGroundItemUI();
 
     // AI: Save experience data before page unload
     try {
@@ -1445,7 +1202,10 @@ function initMultiplayerSystem() {
       // User logged out, clean up multiplayer and save experience
       multiplayerManager.disconnect();
       cleanupEnemies(); // AI: Clean up enemy subscriptions
-      
+
+      // AI: Clean up highlight manager
+      highlightManager.cleanup();
+
       // AI: Try to save experience before cleanup (use stored uid if available)
       if (user && user.uid) {
         experienceManager.saveNow(user.uid).catch((error) => {

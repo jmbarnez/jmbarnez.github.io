@@ -1,6 +1,9 @@
 // Resource node management (spawn, subscribe, harvest)
+// DOM-based highlighting logic removed - now uses canvas-only highlighting via highlightManager
+// This ensures all game objects are rendered consistently on the canvas without DOM dependencies
 import { game } from './core.js';
-import { drawPixelIcon } from '../data/pixelIcons.js';
+import { drawPixelIcon, drawOutline } from '../data/pixelIcons.js';
+import { highlightManager } from './highlightManager.js';
 
 import { isInWater } from './world.js';
 // AI: Added 'onValue' to create a single, robust listener for resource node data.
@@ -55,10 +58,9 @@ export function drawResourceNodes() {
       shadow: false // we've drawn custom shadow/highlight
     });
 
-    // AI: Check if the DOM element for this resource node is marked as highlighted.
-    // If it is, draw a precise outline around the node using the mask.
-    const domElement = document.getElementById(`resource-node-${node.x}_${node.y}_${node.type}`);
-    if (domElement && domElement.dataset.highlighted === 'true') {
+    // Check if this resource node is currently highlighted using the highlight manager
+    // This provides canvas-based highlighting without DOM dependencies
+    if (highlightManager.isHighlighted(node)) {
       drawOutline(ctx, baseX, baseY, iconScale, mask);
     }
 
