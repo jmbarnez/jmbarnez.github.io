@@ -138,11 +138,14 @@ async function generateTerrain(seed) {
       const r = parseInt(dryColor.slice(1, 3), 16);
       const g = parseInt(dryColor.slice(3, 5), 16);
       const b = parseInt(dryColor.slice(5, 7), 16);
+      // Subtle grain/streak using low-frequency seeded noise. Lower amplitude
+      // and a small global darken give a moodier sand while staying cheap.
       const streak = seededNoise((wx + wy * 0.3) * 0.02, (wy - wx * 0.3) * 0.02, seed + 5000, 1, 0.5, 0.02);
-      const streakVariation = Math.floor((streak - 0.5) * 14);
-      sdata[pi] = Math.max(0, Math.min(255, r + streakVariation));
-      sdata[pi + 1] = Math.max(0, Math.min(255, g + streakVariation));
-      sdata[pi + 2] = Math.max(0, Math.min(255, b + streakVariation));
+      const darkenBase = -8; // small global darken in RGB space
+      const streakVariation = Math.floor((streak - 0.5) * 8); // lower amplitude
+      sdata[pi] = Math.max(0, Math.min(255, r + darkenBase + streakVariation));
+      sdata[pi + 1] = Math.max(0, Math.min(255, g + darkenBase + streakVariation));
+      sdata[pi + 2] = Math.max(0, Math.min(255, b + darkenBase + streakVariation));
       sdata[pi + 3] = 255;
       waterMaskLowRes[sy][sx] = (sy >= y0 && sy <= y1);
     }

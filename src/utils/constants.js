@@ -4,7 +4,7 @@
 // === Movement / Gameplay Constants ===
 export const ACCELERATION = 400000; // pixels/second^2 (10x faster)
 export const DECELERATION = 900000; // pixels/second^2 (10x faster)
-export const GRAVITY = 40; // pixels/second^2 - low gravity for drone hover feel
+export const GRAVITY = 12; // pixels/second^2 - reduced gravity for lighter drone feel
 export const DAMPING_FACTOR = 0.94; // drag multiplier
 export const MAX_SPEED = 80000; // pixels/second (10x faster)
 

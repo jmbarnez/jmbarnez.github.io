@@ -23,7 +23,8 @@ export const OASIS_CONFIG = {
 export const BIOMES = {
   DEEP_WATER: { threshold: 0.0, color: '#1e3a8a', name: 'deep_water' },
   WATER: { threshold: 0.2, color: '#3b82f6', name: 'water' },
-  WET_SAND: { threshold: 0.35, color: '#d4a574', name: 'wet_sand' },
-  DRY_SAND: { threshold: 0.6, color: '#e7d8b0', name: 'dry_sand' },
+  // Darkened sand tones for a more grounded, slightly desaturated beach look
+  WET_SAND: { threshold: 0.35, color: '#b88b5a', name: 'wet_sand' },
+  DRY_SAND: { threshold: 0.6, color: '#c9b98a', name: 'dry_sand' },
   VEGETATION: { threshold: 0.8, color: '#22c55e', name: 'vegetation' }
 };

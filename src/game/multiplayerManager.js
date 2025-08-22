@@ -5,6 +5,7 @@ import { worldToScreenCoords } from '../utils/math.js';
 import { showPlayerMessage, hidePlayerBubble, updatePlayerBubblePositions } from './character.js';
 import { sendChatMessage } from '../services/firestoreService.js';
 import { getColorFromUID } from '../utils/color.js';
+import { camera } from './world.js';
 import { POSITION_UPDATE_RATE, STALE_DATA_THRESHOLD, RECENT_ACTIVITY_THRESHOLD, BASE_STALE_THRESHOLD, MAX_STALE_THRESHOLD, LONG_SESSION_THRESHOLD, INTERPOLATION_DURATION, HEARTBEAT_INTERVAL } from '../utils/constants.js';
 
 /**
@@ -132,7 +133,7 @@ class MultiplayerManager {
     this.localPlayer.angle = angle; // AI: Update angle
     this.localPlayer.miningNodeId = miningNodeId; // AI: Update mining target
 
-    // AI: Realtime sync - send immediately if position or angle changed
+    // AI: Realtime sync - throttle position updates to prevent ping spikes
     const moved = Math.abs(x - this.lastPosition.x) > 1 ||
                   Math.abs(y - this.lastPosition.y) > 1;
     const angleChanged = Math.abs(angle - this.lastPosition.angle) > 0.01;
@@ -140,12 +141,33 @@ class MultiplayerManager {
     const miningChanged = miningNodeId !== this.lastPosition.miningNodeId;
 
     const now = Date.now();
-    // AI: Use shared constant for update frequency to ensure consistent sync
+    const timeSinceLastSync = now - this.lastUpdate;
+
+    // Compute quantized moveState based on local speed to save bandwidth.
+    // moveState: 0=idle,1=slow,2=medium,3=fast
+    try {
+      const dx = x - (this.lastPosition.x || x);
+      const dy = y - (this.lastPosition.y || y);
+      const dist = Math.hypot(dx, dy);
+      const secs = Math.max(0.001, timeSinceLastSync / 1000);
+      const speed = dist / secs; // px/s
+      const norm = Math.min(1, speed / Math.max(1, typeof MAX_SPEED !== 'undefined' ? MAX_SPEED : 200));
+      const moveState = Math.floor(norm * 3); // 0..3
+      this.localPlayer.moveState = moveState;
+    } catch (e) {
+      this.localPlayer.moveState = this.localPlayer.moveState || 0;
+    }
+
+    // AI: Only sync position changes if enough time has passed (throttle to 100ms minimum)
     if (moved || actionChanged || angleChanged || miningChanged) {
+      if (timeSinceLastSync >= 100) { // Minimum 100ms between position syncs
+        this.lastPosition = { x, y, action, angle, miningNodeId };
+        this.syncToServer();
+        this.lastUpdate = now;
+      }
+      // Update local position immediately for smooth client-side movement
       this.lastPosition = { x, y, action, angle, miningNodeId };
-      this.syncToServer();
-      this.lastUpdate = now;
-    } else if (now - this.lastUpdate > HEARTBEAT_INTERVAL) { // Use shared constant for heartbeat timing
+    } else if (timeSinceLastSync > HEARTBEAT_INTERVAL) { // Use shared constant for heartbeat timing
       this.sendHeartbeat();
       this.lastUpdate = now;
     }
@@ -170,6 +192,7 @@ class MultiplayerManager {
       angle, // AI: Send angle to other players
       color, // AI: Send color to other players
       miningNodeId: this.localPlayer.miningNodeId, // AI: Send mining target
+      moveState: this.localPlayer.moveState || 0, // Quantized local move state (0..3)
       lastUpdate: sendTime,
       // Add projectile event if one occurred
       projectileEvent: this.pendingProjectileEvent || null
@@ -383,6 +406,13 @@ class MultiplayerManager {
         player.angle = data.angle ?? player.angle;
         player.color = data.color || player.color;
         player.miningNodeId = data.miningNodeId || null; // AI: Update mining target
+        // Apply quantized moveState (if provided) to control remote body spin visually.
+        if (typeof data.moveState === 'number') {
+          const SPIN_TABLE = [0, 0.35, 0.75, 1.3]; // radians/sec per state
+          player.bodySpinRate = SPIN_TABLE[data.moveState] || 0;
+          // initialize bodyRotation if missing so rendering is consistent
+          player.bodyRotation = player.bodyRotation || 0;
+        }
         player.lastSeen = now;
         player.lastUpdate = data.lastUpdate || now;
 
@@ -526,7 +556,7 @@ class MultiplayerManager {
    * AI: Update remote player positions with smooth interpolation
    * Call this every frame to smoothly move remote players
    */
-  updateRemotePlayerPositions() {
+  updateRemotePlayerPositions(dt = 0) {
     const now = Date.now();
     const interpDuration = INTERPOLATION_DURATION; // Use shared constant for consistent timing
     
@@ -557,6 +587,11 @@ class MultiplayerManager {
           player.y = player.interpStartY + (player.targetY - player.interpStartY) * easeProgress;
         }
       }
+
+      // Advance remote bodyRotation based on bodySpinRate if available
+      if (typeof player.bodySpinRate === 'number') {
+        player.bodyRotation = (player.bodyRotation || 0) + player.bodySpinRate * (dt || 0);
+      }
     }
   }
 
@@ -576,9 +611,9 @@ class MultiplayerManager {
 
     try {
       // AI: Import required functions from separate modules
-      // AI: Convert world coordinates to screen coordinates using the statically imported function.
-      const screenCoords = worldToScreenCoords(worldX, worldY);
-      
+      // AI: Convert world coordinates to screen coordinates using the camera.
+      const screenCoords = worldToScreenCoords(worldX, worldY, camera);
+
       // AI: Use character.js showPlayerMessage with proper styling (8px font, dark background)
       showPlayerMessage(uid, message, screenCoords.x, screenCoords.y - 30, 4000);
     } catch (error) {
@@ -759,8 +794,8 @@ class MultiplayerManager {
    */
   updateChatPositions() {
     try {
-      // AI: Use character.js updatePlayerBubblePositions function and the statically imported worldToScreenCoords.
-      updatePlayerBubblePositions(this.remotePlayers, worldToScreenCoords);
+      // AI: Use character.js updatePlayerBubblePositions function and pass the camera for coordinate conversion.
+      updatePlayerBubblePositions(this.remotePlayers, (worldX, worldY) => worldToScreenCoords(worldX, worldY, camera));
     } catch (error) {
       console.warn('Error updating chat positions:', error);
     }

@@ -153,7 +153,8 @@ exports.handleDamageRequest = onValueWritten({ ref: "/actions/damageRequests/{ar
   }
 });
 
-// When an enemy becomes dead in the authoritative DB, create a respawn request.
+// DISABLED: Enemy respawning is disabled
+/*
 exports.enqueueRespawnOnDeath = onValueWritten({ ref: "/areas/{areaId}/enemies/{enemyId}" }, async (event) => {
   try {
     const before = event.data?.before?.val();
@@ -178,74 +179,76 @@ exports.enqueueRespawnOnDeath = onValueWritten({ ref: "/areas/{areaId}/enemies/{
     logger.error('enqueueRespawnOnDeath error', e?.message || e);
   }
 });
+// */
 
-// Scheduled processor that runs periodically to spawn enemies for due respawn requests.
-exports.processRespawns = onSchedule('every 15s', async (schedEvent) => {
-  try {
-    const db = getAdminApp().database();
-    const rootRef = db.ref('actions/respawns');
-    const now = Date.now();
-    const rootSnap = await rootRef.once('value');
-    if (!rootSnap.exists()) return;
+// DISABLED: Enemy spawning system is disabled
+// exports.processRespawns = onSchedule('// */15 * * * *', async (schedEvent) => {
+// //   try {
+//     const db = getAdminApp().database();
+//     const rootRef = db.ref('actions/respawns');
+//     const now = Date.now();
+//     const rootSnap = await rootRef.once('value');
+//     if (!rootSnap.exists()) return;
 
-    const WORLD_WIDTH = 800;
-    const WORLD_HEIGHT = 600;
-    const MAX_ENEMIES = 10;
-    const ENEMY_HP = 3;
+//     const WORLD_WIDTH = 800;
+//     const WORLD_HEIGHT = 600;
+//     const MAX_ENEMIES = 10;
+//     const ENEMY_HP = 3;
 
-    const areas = rootSnap.val() || {};
-    for (const areaId of Object.keys(areas)) {
-      const areaRespawns = areas[areaId] || {};
-      for (const key of Object.keys(areaRespawns)) {
-        const req = areaRespawns[key];
-        if (!req || typeof req.releaseAt !== 'number') continue;
-        if (req.releaseAt > now) continue; // not yet
+//     const areas = rootSnap.val() || {};
+//     for (const areaId of Object.keys(areas)) {
+//       const areaRespawns = areas[areaId] || {};
+//       for (const key of Object.keys(areaRespawns)) {
+//         const req = areaRespawns[key];
+//         if (!req || typeof req.releaseAt !== 'number') continue;
+//         if (req.releaseAt > now) continue; // not yet
 
-        const enemiesRef = db.ref(`areas/${areaId}/enemies`);
-        const enemiesSnap = await enemiesRef.once('value');
-        const currentCount = enemiesSnap.exists() ? Object.keys(enemiesSnap.val() || {}).length : 0;
+//         const enemiesRef = db.ref(`areas/${areaId}/enemies`);
+//         const enemiesSnap = await enemiesRef.once('value');
+//         const currentCount = enemiesSnap.exists() ? Object.keys(enemiesSnap.val() || {}).length : 0;
 
-        if (currentCount >= MAX_ENEMIES) {
-          // postpone by small amount
-          await db.ref(`actions/respawns/${areaId}/${key}/releaseAt`).set(now + 10000);
-          continue;
-        }
+//         if (currentCount >= MAX_ENEMIES) {
+//           // postpone by small amount
+//           await db.ref(`actions/respawns/${areaId}/${key}/releaseAt`).set(now + 10000);
+//           continue;
+//         }
 
-        // Spawn a new enemy using weighted templates if available
-        const id = `bug_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-        const x = 20 + Math.random() * (WORLD_WIDTH - 40);
-        const y = 20 + Math.random() * (WORLD_HEIGHT - 40);
+//         // Spawn a new enemy using weighted templates if available
+//         const id = `bug_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+//         const x = 20 + Math.random() * (WORLD_WIDTH - 40);
+//         const y = 20 + Math.random() * (WORLD_HEIGHT - 40);
 
-        // Choose template for this area
-        const areaTemplates = enemyTemplateList.filter(t => !t.areas || t.areas.length === 0 || t.areas.includes(areaId));
-        const chosen = chooseWeightedTemplate(areaTemplates) || null;
+//         // Choose template for this area
+//         const areaTemplates = enemyTemplateList.filter(t => !t.areas || t.areas.length === 0 || t.areas.includes(areaId));
+//         const chosen = chooseWeightedTemplate(areaTemplates) || null;
 
-        const enemyObj = {
-          id,
-          x,
-          y,
-          hp: (chosen && (chosen.hp || chosen.maxHp)) || ENEMY_HP,
-          maxHp: (chosen && (chosen.maxHp || chosen.hp)) || ENEMY_HP,
-          templateId: chosen ? chosen.id : null,
-          loot: (chosen && chosen.loot) || null,
-          xpValue: (chosen && chosen.xpValue) || 1,
-          angle: Math.random() * Math.PI * 2,
-          lastUpdate: Date.now(),
-          isDead: false,
-          damageContributors: {}
-        };
+//         const enemyObj = {
+//           id,
+//           x,
+//           y,
+//           hp: (chosen && (chosen.hp || chosen.maxHp)) || ENEMY_HP,
+//           maxHp: (chosen && (chosen.maxHp || chosen.hp)) || ENEMY_HP,
+//           templateId: chosen ? chosen.id : null,
+//           loot: (chosen && chosen.loot) || null,
+//           xpValue: (chosen && chosen.xpValue) || 1,
+//           angle: Math.random() * Math.PI * 2,
+//           lastUpdate: Date.now(),
+//           isDead: false,
+//           damageContributors: {}
+//         };
 
-        await enemiesRef.child(id).set(enemyObj);
+//         await enemiesRef.child(id).set(enemyObj);
 
-        // remove the respawn request
-        await db.ref(`actions/respawns/${areaId}/${key}`).remove();
-        logger.log(`Respawned enemy ${id} in area ${areaId}`);
-      }
-    }
-  } catch (e) {
-    logger.error('processRespawns error', e?.message || e);
-  }
-});
+//         // remove the respawn request
+//         await db.ref(`actions/respawns/${areaId}/${key}`).remove();
+//         logger.log(`Respawned enemy ${id} in area ${areaId}`);
+//       }
+//     }
+//   } catch (e) {
+//     logger.error('processRespawns error', e?.message || e);
+//   }
+// });
+// */
 
 // Pickup request handler: atomic pickup + grant to player inventory
 exports.handlePickupRequest = onValueWritten({ ref: "/actions/pickupRequests/{areaId}/{reqId}" }, async (event) => {
@@ -310,7 +313,8 @@ exports.handlePickupRequest = onValueWritten({ ref: "/actions/pickupRequests/{ar
   }
 });
 
-// Spawn initial enemies for an area (HTTP trigger, idempotent)
+// DISABLED: Initial enemy spawning is disabled
+/*
 exports.spawnInitialEnemies = onRequest({ cors: true }, async (req, res) => {
   try {
     const areaId = (req.query.areaId || req.body && req.body.areaId) || 'beach';
@@ -355,10 +359,10 @@ exports.spawnInitialEnemies = onRequest({ cors: true }, async (req, res) => {
     return res.status(500).json({ success: false, error: String(e?.message || e) });
   }
 });
+// */
 
 // Scheduled task: release visibility for ground items every minute
-const { onSchedule } = require('firebase-functions/v2/scheduler');
-exports.releaseGroundItemVisibility = onSchedule('every 1 minutes', async (event) => {
+exports.releaseGroundItemVisibility = onSchedule('0 */1 * * *', async (event) => {
   try {
     const db = getAdminApp().database();
     const areasRef = db.ref('areas');
@@ -386,7 +390,8 @@ exports.releaseGroundItemVisibility = onSchedule('every 1 minutes', async (event
   }
 });
 
-// Clean-up: when an enemy becomes dead and rewardsGranted flagged, remove it to keep DB small
+// DISABLED: Enemy cleanup is disabled
+/*
 exports.onEnemyChanged = onValueWritten({ ref: "/areas/{areaId}/enemies/{enemyId}" }, async (event) => {
   try {
     const after = event.data?.after?.val();
@@ -405,3 +410,4 @@ exports.onEnemyChanged = onValueWritten({ ref: "/areas/{areaId}/enemies/{enemyId
     logger.error('onEnemyChanged error', e?.message || e);
   }
 });
+// */

@@ -6,7 +6,8 @@ import { game } from './core.js';
 import { worldToScreenCoords, screenToWorldCoords } from '../utils/math.js';
 import { drawPixelIcon, drawOutline, getItemBounds, isPointInItemBounds } from '../data/pixelIcons.js';
 import { getNearestWorldObject, worldObjects } from './worldObjects.js';
-import { getEnemies } from './enemies.js'; // AI: Import getEnemies to access enemy list
+// DISABLED: Enemy system is disabled
+// import { getEnemies } from './enemies.js'; // AI: Import getEnemies to access enemy list
 import { INTERACTION_RADIUS } from '../utils/constants.js'; // AI: Import INTERACTION_RADIUS constant
 // DOM tooltip utilities removed - no longer needed with canvas-only highlighting
 // ensureTooltipOverlay, showInventoryTooltip, hideInventoryTooltip eliminated

@@ -1,5 +1,6 @@
 import { game } from './core.js';
-import { getEnemies } from './enemies.js';
+// DISABLED: Enemy system is disabled
+// import { getEnemies } from './enemies.js';
 import { playEnemyHitSound } from '../utils/sfx.js';
 import { sendGuaranteedHit } from '../services/projectileService.js';
 import { PROJECTILE_SPEED, PROJECTILE_LIFETIME, DAMAGE_PER_HIT, IMPACT_EXPLOSION_DURATION, IMPACT_EXPLOSION_SIZE } from '../utils/constants.js';
@@ -169,14 +170,21 @@ export function updateProjectiles(dt) {
             // AI: Mark as hit to prevent multiple triggers
             p.hasHit = true;
             
+            // DISABLED: Enemy system is disabled - no target enemy lookup
+            /*
             // AI: Find target enemy for guaranteed hit effects
             const targetEnemy = getEnemies().find(enemy => enemy.id === p.targetId);
-            
+
             if (targetEnemy && targetEnemy.hp > 0 && !targetEnemy.isDead) {
                 // AI: Create impact explosion at target's current position (not stored position)
                 const explosionY = targetEnemy.y - 6; // Adjust for enemy visual center
                 createImpactExplosion(targetEnemy.x, explosionY);
+            */
+                // DISABLED: No enemy targeting - just create generic impact effect
+                createImpactExplosion(p.x, p.y);
 
+                // DISABLED: No enemy damage system - projectiles just create visual effects
+                /*
                 // AI: Apply damage for local projectiles (shooter's projectiles)
                 if (p.isLocal) {
                     // Send authoritative guaranteed-hit to server
@@ -192,10 +200,14 @@ export function updateProjectiles(dt) {
                           try { window.console && window.console.warn('Applying local fallback damage'); } catch(_) {}
                       });
                 }
+                */
+            // DISABLED: Simplified - always create explosion at projectile position
+            /*
             } else {
                 // AI: Target no longer exists - create explosion at stored target position
                 createImpactExplosion(p.targetX, p.targetY);
             }
+            */
             
             // AI: Remove projectile after guaranteed hit
             projectiles.splice(i, 1);

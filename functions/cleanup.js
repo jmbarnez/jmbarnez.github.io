@@ -9,18 +9,14 @@ const admin = require("firebase-admin");
 
 // AI: Removed admin.initializeApp() from here as it's already initialized in functions/index.js.
 
-// AI: This function is scheduled to run frequently to enforce a short chat retention policy.
-// Be careful: running this every 2 minutes and deleting messages older than 2 minutes
-// is aggressive and will remove chat history quickly. Adjust RETENTION_MS as needed.
-// AI: Increased retention to 10 minutes to reduce the frequency of database write operations
-// and Cloud Function invocations, optimizing Firebase data usage.
-const RETENTION_MINUTES = 10; // retention window in minutes
+// AI: This function is scheduled to run every 15 minutes to enforce a short chat retention policy.
+// Messages older than 15 minutes will be permanently deleted to keep the global chat clean.
+const RETENTION_MINUTES = 15; // retention window in minutes
 const RETENTION_MS = RETENTION_MINUTES * 60 * 1000;
 
-// Schedule: run every 2 minutes. The scheduler supports human-readable intervals.
-// If your deployment environment requires a cron expression, replace the string
-// with the appropriate cron (e.g. '*/2 * * * *').
-exports.cleanupChat = onSchedule("every 10 minutes", async (event) => {
+// Schedule: run every 15 minutes to clean up old chat messages.
+// This ensures the global chat stays fresh and doesn't accumulate too much data.
+exports.cleanupChat = onSchedule("every 15 minutes", async (event) => {
   const now = Date.now();
   const cutoff = now - RETENTION_MS; // messages older than this will be removed
 
@@ -42,7 +38,7 @@ exports.cleanupChat = onSchedule("every 10 minutes", async (event) => {
       await messagesRef.update(updates);
     }
 
-    console.log(`Chat cleanup completed. Removed ${Object.keys(updates).length} messages older than ${RETENTION_MINUTES} minutes.`);
+    console.log(`Global chat cleanup completed. Permanently deleted ${Object.keys(updates).length} messages older than ${RETENTION_MINUTES} minutes.`);
     return null;
   } catch (error) {
     console.error("Error during chat cleanup:", error);

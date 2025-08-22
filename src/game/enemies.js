@@ -9,7 +9,7 @@ import { inventoryManager } from './inventoryManager.js';
 import { database } from '../utils/firebaseClient.js';
 import { ref, runTransaction } from 'firebase/database';
 import { highlightManager } from './highlightManager.js';
-import { trackDamage } from '../services/groundItemService.js';
+// trackDamage removed - now handled by sendDamageRequest in enemyService.js
 
 /**
  * Enemy Management System
@@ -777,10 +777,7 @@ export function damageEnemy(enemy, amount) {
     enemy.hp = newHp;
 
 
-    // Track damage for shared loot system
-    trackDamage(enemy.id, amount).catch(error => {
-        console.warn(`[ENEMY_DAMAGE] Failed to track damage for enemy ${enemy.id}:`, error);
-    });
+    // Damage tracking now handled by sendDamageRequest in enemyService.js via Firebase Cloud Functions
 
     // Trigger death if HP reaches 0
     if (newHp <= 0) {

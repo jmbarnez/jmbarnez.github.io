@@ -4,6 +4,17 @@ import { game } from './core.js';
 import { getTime } from '../utils/math.js';
 import { multiplayerManager } from './multiplayerManager.js';
 
+// DRONE DIMENSIONS (base values in pixels) and scale factor for realistic sizing
+const DRONE_SCALE = 0.25; // global scale applied to the model to make it smaller in-world (half of previous)
+// Use a square canopy to avoid appearing too wide from front view
+const BASE_CANOPY = 22;
+const DRONE_DIM = {
+  CANOPY_W: Math.round(BASE_CANOPY * DRONE_SCALE),
+  CANOPY_H: Math.round(BASE_CANOPY * DRONE_SCALE),
+  ROTOR_R: Math.round(9 * DRONE_SCALE),
+  SHADOW_OFFSET: Math.max(6, Math.round(12 * DRONE_SCALE))
+};
+
 /**
  * Draws the player character (robot) on the canvas.
  * The player's position is taken from `game.player.x` and `game.player.y`.
@@ -20,80 +31,166 @@ export function drawPlayer(player) {
   // AI: Draw enhanced shadow beneath the drone adjusted for hover bob
   drawDroneShadow(ctx, px, py + bob);
 
-  // Circular 2.5D drone at half the previous size with a tiny vertical thruster
-  const BODY_W = 9; // half width
-  const BODY_H = 6; // half height
-  const rx = BODY_W / 2;
-  const ry = BODY_H / 2;
+  // Quadcopter design (ducted propellers, canopy, skids) to match reference
+  const CANOPY_W = DRONE_DIM.CANOPY_W;
+  const CANOPY_H = DRONE_DIM.CANOPY_H;
+  const rotorR = DRONE_DIM.ROTOR_R; // rotor radius
 
-  // Draw centered in local space for cleaner transforms
+  // Apply body rotation first
   ctx.save();
   ctx.translate(px, py + bob);
   ctx.rotate(angle + Math.PI / 2);
-  ctx.transform(1, 0, 0, 0.7, 0, 0); // vertical squash for 2.5D look
 
-  // Body gradient
-  const body = color || '#3b82f6';
-  const accent = lightenColor(body, 0.35);
-  const glass = '#bfefff';
-  const metal = darkenColor(body, 0.25);
+  // Apply body tilt for quadcopter banking/pitching. These are small rotation/skew
+  // adjustments derived from `player.tiltRoll` and `player.tiltPitch` which are
+  // updated in `core.js` based on velocity. We convert tilt into a subtle shear
+  // and vertical offset to mimic real drone attitude changes.
+  const tiltRoll = (player.tiltRoll || 0);   // roll: rotate around forward axis
+  const tiltPitch = (player.tiltPitch || 0); // pitch: rotate around lateral axis
 
-  // Main circular body
-  const bodyGrad = ctx.createLinearGradient(-rx, -ry, rx, ry);
-  bodyGrad.addColorStop(0, lightenColor(body, 0.25));
-  bodyGrad.addColorStop(0.5, body);
-  bodyGrad.addColorStop(1, darkenColor(body, 0.2));
+  // Convert small-angle tilts into a lightweight 2D transform: apply a slight
+  // horizontal shear for roll and vertical shear for pitch. Values are clamped
+  // to keep transforms subtle and performant.
+  const rollShear = Math.tan(tiltRoll) * 0.35;   // reduce magnitude for 2D
+  const pitchShear = Math.tan(tiltPitch) * 0.45; // reduce magnitude for 2D
 
-  ctx.fillStyle = bodyGrad;
+  // Compose transforms: scale (global), shear (roll/pitch), then draw model
+  ctx.scale(0.94, 0.94);
+  // matrix: [a c e; b d f] -> ctx.transform(a, b, c, d, e, f)
+  ctx.transform(1, pitchShear, rollShear, 0.76, 0, 0);
+
+  // Apply bodyRotation computed in core.js (speed-driven spin) as a small rotation
+  // underneath the turret. This keeps turret independent while the body slowly
+  // rotates proportional to movement speed.
+  const bodyRotation = (player.bodyRotation || 0);
+  ctx.rotate(bodyRotation * 0.7); // scale down for visual subtlety
+
+  const body = color || '#2ea6ff';
+  const shell = darkenColor(body, 0.05);
+  const rim = darkenColor(body, 0.35);
+  const glass = 'rgba(230,245,255,0.98)';
+
+  // Draw four ducted rotors positions relative to center
+  const offsets = [
+    { x: -CANOPY_W * 0.45, y: -CANOPY_H * 0.45 }, // top-left
+    { x: CANOPY_W * 0.45, y: -CANOPY_H * 0.45 },  // top-right
+    { x: -CANOPY_W * 0.45, y: CANOPY_H * 0.45 },  // bottom-left
+    { x: CANOPY_W * 0.45, y: CANOPY_H * 0.45 }    // bottom-right
+  ];
+
+  // Draw ducts first (behind canopy)
+  offsets.forEach((off, i) => {
+    ctx.save();
+    ctx.translate(off.x, off.y);
+    // duct ring with highlight and shadow for depth
+    const ductOuter = rotorR + Math.max(2, Math.round(3 * DRONE_SCALE));
+    const ductInner = Math.max(2, rotorR - Math.round(2 * DRONE_SCALE));
+    // shadow underside
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(2, 3, ductOuter, ductOuter * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // duct outer shell
+    const ductGrad = ctx.createLinearGradient(-ductOuter, -ductOuter, ductOuter, ductOuter);
+    ductGrad.addColorStop(0, darkenColor(rim, 0.05));
+    ductGrad.addColorStop(1, darkenColor(rim, 0.35));
+    ctx.fillStyle = ductGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, ductOuter, ductOuter * 0.78, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // inner rotor hub cutout (darker center)
+    ctx.fillStyle = '#0b0b0b';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, ductInner, ductInner * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // propeller blades (3-blade representation with rotation and motion blur)
+    const spin = (time * 12 + i * Math.PI / 2) % (Math.PI * 2);
+    ctx.save();
+    ctx.rotate(spin);
+    // blurred blades for high spin
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    const blurCount = 3;
+    for (let blur = 0; blur < blurCount; blur++) {
+      ctx.globalAlpha = 0.18 * (1 - blur / blurCount);
+      for (let b = 0; b < 3; b++) {
+        ctx.rotate((b === 0) ? 0 : (Math.PI * 2 / 3));
+        ctx.beginPath();
+        ctx.ellipse(0, -rotorR * (0.45 + blur * 0.02), rotorR * (0.9 - blur * 0.15), rotorR * (0.22 + blur * 0.03), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    ctx.restore();
+  });
+
+  // Draw central canopy (smooth molded shell)
+  const canopyGrad = ctx.createLinearGradient(0, -CANOPY_H * 0.6, 0, CANOPY_H * 0.6);
+  canopyGrad.addColorStop(0, lightenColor(body, 0.28));
+  canopyGrad.addColorStop(0.5, body);
+  canopyGrad.addColorStop(1, darkenColor(body, 0.08));
+
+  ctx.fillStyle = canopyGrad;
   ctx.beginPath();
-  ctx.ellipse(0, 0, rx, ry, -0.25, 0, Math.PI * 2); // slight tilt via rotation param
+  ctx.ellipse(0, 0, CANOPY_W / 2, CANOPY_H / 2, -0.08, 0, Math.PI * 2);
   ctx.fill();
 
-  // Rim stroke
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = darkenColor(body, 0.45);
-  ctx.stroke();
-
-  // Glass dome / cockpit (slightly forward)
+  // glossy cockpit patch
+  ctx.save();
+  ctx.translate(-CANOPY_W * 0.08, -CANOPY_H * 0.08);
   ctx.fillStyle = glass;
-  ctx.globalAlpha = 0.9;
+  ctx.globalAlpha = 0.95;
   ctx.beginPath();
-  ctx.ellipse(-rx * 0.1, -ry * 0.25, rx * 0.5, ry * 0.45, -0.25, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, CANOPY_W * 0.32, CANOPY_H * 0.3, -0.08, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
-
-  // Tiny vertical thruster on top (small rectangular pod)
-  const thrusterW = 2;
-  const thrusterH = 3;
-  ctx.save();
-  ctx.translate(0, -ry - 1.5);
-  // thruster body
-  ctx.fillStyle = metal;
-  ctx.fillRect(-thrusterW / 2, -thrusterH, thrusterW, thrusterH);
-  // tiny nozzle glow
-  const thrusterPulse = 0.4 + 0.6 * Math.abs(Math.sin(time * 8));
-  ctx.fillStyle = `rgba(255,200,120,${0.5 * thrusterPulse})`;
-  ctx.beginPath();
-  ctx.ellipse(0, 0.5, 2, 1, 0, 0, Math.PI * 2);
-  ctx.fill();
   ctx.restore();
 
-  // Green blinker on the rim (front-right)
-  const blinkPhase = Math.sin(time * 6);
-  const blinkAlpha = 0.25 + 0.75 * Math.max(0, blinkPhase);
-  ctx.globalAlpha = blinkAlpha;
-  ctx.fillStyle = '#4ee44e';
+  // skids (scaled)
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = Math.max(1, Math.round(2 * DRONE_SCALE));
+  // left skid
   ctx.beginPath();
-  ctx.arc(rx * 0.6, -ry * 0.1, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // Small muzzle flare/front indicator (where projectiles spawn)
-  ctx.fillStyle = 'rgba(255,240,210,0.95)';
+  ctx.moveTo(-CANOPY_W * 0.6, CANOPY_H * 0.6);
+  ctx.lineTo(-CANOPY_W * 0.25, CANOPY_H * 0.6);
+  ctx.stroke();
+  // right skid
   ctx.beginPath();
-  ctx.arc(rx * 0.9, 0, 0.9, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(CANOPY_W * 0.25, CANOPY_H * 0.6);
+  ctx.lineTo(CANOPY_W * 0.6, CANOPY_H * 0.6);
+  ctx.stroke();
 
+  // small feet (scaled)
+  ctx.fillStyle = darkenColor(rim, 0.2);
+  const footR = Math.max(1, Math.round(2 * DRONE_SCALE));
+  ctx.beginPath(); ctx.ellipse(-CANOPY_W * 0.45, CANOPY_H * 0.68, footR, footR, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(CANOPY_W * 0.45, CANOPY_H * 0.68, footR, footR, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+
+  // --- Turret drawing: turret is independent from body rotation and follows mouse direction ---
+  // Compute turret direction from the global mouse/world position if available.
+  // The turret is drawn on top of the canopy and should rotate to face the cursor.
+  const turretAngle = (game && game.mouse && typeof game.mouse.x === 'number')
+    ? Math.atan2(game.mouse.y - player.y, game.mouse.x - player.x)
+    : player.angle;
+
+  // Draw turret — small rotating gun on top of canopy. This is purely visual: turretAngle
+  // controls the turret orientation. Actual firing uses getMuzzlePosition() which now
+  // references the canopy's visual front and turret orientation if needed.
+  ctx.save();
+  ctx.translate(px, py + bob);
+  ctx.rotate(turretAngle);
+  // Make turret visually black for a stark contrast with the canopy
+  ctx.fillStyle = '#0b0b0b';
+  // turret base (rounded)
+  roundRect(ctx, -4, -CANOPY_H * 0.4 - 4, 8, 4, 1);
+  ctx.fill();
+  // turret barrel (black metal)
+  ctx.fillStyle = '#0b0b0b';
+  ctx.fillRect(3, -2, 6, 2);
   ctx.restore();
 
   // --- Nametag for players that include a username (remote players) ---
@@ -125,27 +222,47 @@ export function drawPlayer(player) {
  * @param {object} player
  */
 export function getMuzzlePosition(player) {
-  const s = 8; // drone scale used in drawing
-  const ox = -s / 2;
-  const oy = -s / 2;
+  // Calculate muzzle position using the same local transforms applied in drawPlayer
+  // Sequence in drawPlayer: Transform(a,b,c,d,0,0) -> scale(0.95,0.95) -> rotate(theta2) -> translate(px, py + bob)
+  const canopyW = DRONE_DIM.CANOPY_W;
+  // Permanent muzzle offset in local drone coordinates (x forward, y up)
+  const MUZZLE_FORWARD = 0.42; // fraction of canopy width forward from center
+  // Visual front of the canopy is to the left in local drawing (negative X), so invert
+  const muzzleLocalX = -canopyW * MUZZLE_FORWARD; // negative X = forward in local drawing
+  const muzzleLocalY = 0; // centered vertically on canopy
+  const localY = 0;
 
-  // Local coordinates of the barrel origin - simplified for flat design
-  const localX = ox + 6; // Center of barrel (ox + 5 + 1 for barrel center)
-  const localY = oy + 1; // Front of drone where barrel is
+  // Recompute bob used in drawPlayer so muzzle aligns vertically
+  const time = Date.now() * 0.001;
+  const bob = Math.sin(time * 2 + (player.x + player.y) * 0.01) * 1.5;
 
-  // The drawing applies a simple tilt transform: ctx.transform(1,0,0.1,0.9,0,0)
-  // Apply the same transform to the muzzle position
-  const transformedX = localX;
-  const transformedY = localX * 0.1 + localY * 0.9; // Apply skew transform
+  // Simpler, robust approach: compute muzzle by rotating a forward vector by the drone's
+  // visible heading. This avoids coordinate transform mismatch and ensures muzzle aligns
+  // with what the player sees as the front.
+  // Muzzle should track turret direction rather than body angle. Use turretAngle computed
+  // from the current mouse/world position when available, otherwise fallback to body heading.
+  const turretAngle = (game && game.mouse && typeof game.mouse.x === 'number')
+    ? Math.atan2(game.mouse.y - player.y, game.mouse.x - player.x)
+    : player.angle + Math.PI / 2 - 0.12;
+  const theta = turretAngle;
+  const cosT = Math.cos(theta), sinT = Math.sin(theta);
 
-  // Rotation used in drawPlayer is (player.angle + PI/2)
-  const theta = player.angle + Math.PI / 2;
+  // Forward vector in world space
+  const forwardX = cosT * muzzleLocalX - sinT * muzzleLocalY;
+  const forwardY = sinT * muzzleLocalX + cosT * muzzleLocalY;
 
-  // Rotate local point and convert to world-space delta
-  const worldDx = Math.cos(theta) * transformedX - Math.sin(theta) * transformedY;
-  const worldDy = Math.sin(theta) * transformedX + Math.cos(theta) * transformedY;
+  // Compute right vector (perpendicular) so we can nudge laterally if needed
+  const rightTheta = theta + Math.PI / 2;
+  const rightX = Math.cos(rightTheta);
+  const rightY = Math.sin(rightTheta);
 
-  return { x: player.x + worldDx, y: player.y + worldDy };
+  // Lateral correction to move muzzle toward drone center if it appears offset
+  const lateralCorrection = DRONE_DIM.CANOPY_W * 0.08; // small nudge (pixels)
+
+  return {
+    x: player.x + forwardX + rightX * lateralCorrection,
+    y: player.y + bob + forwardY + rightY * lateralCorrection
+  };
 }
 
 // AI: Function to draw spinning propeller blades
@@ -176,26 +293,39 @@ function drawSpinningPropeller(ctx, centerX, centerY, spinAngle, blurAmount) {
 
 // AI: Simple function to draw drone shadow - tiny size for micro drone
 function drawDroneShadow(ctx, px, py) {
-  const shadowOffset = 12; // Distance below drone (tiny offset)
-  const shadowSize = 12; // Size of shadow ellipse (tiny shadow)
-  
+  // Dynamic shadow based on drone altitude (game.player.height used as altitude proxy)
+  const baseOffset = DRONE_DIM.SHADOW_OFFSET; // base offset at low altitude
+  const playerHeight = (game && game.player && Number(game.player.height)) ? Number(game.player.height) : 20;
+  // Normalize height to a reasonable range for visual scaling
+  const heightNorm = Math.min(1, Math.max(0, playerHeight / 100));
+
+  // As height increases: shadow moves further away, becomes smaller and more diffuse
+  const shadowOffset = baseOffset + Math.round(playerHeight * 0.7);
+  const baseWidth = Math.max(10, Math.round(24 * DRONE_SCALE));
+  const baseHeight = Math.max(6, Math.round(10 * DRONE_SCALE));
+
+  // Reduce size with altitude (up to 40% smaller)
+  const shadowWidth = Math.max(6, Math.round(baseWidth * (1 - 0.4 * heightNorm)));
+  const shadowHeight = Math.max(3, Math.round(baseHeight * (1 - 0.6 * heightNorm)));
+
+  // Alpha reduces (more diffuse) as height increases
+  const alpha = Math.max(0.12, 0.45 * (1 - 0.8 * heightNorm));
+
   ctx.save();
-  ctx.translate(px, py + shadowOffset);
-  
-  // Create elliptical shadow
-  ctx.scale(1, 0.5); // Flatten shadow
-  ctx.beginPath();
-  ctx.arc(0, 0, shadowSize / 2, 0, Math.PI * 2);
-  
-  // Gradient shadow for realistic effect
-  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, shadowSize / 2);
-  gradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
-  gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  
+  // offset the shadow slightly in front to match drone tilt
+  ctx.translate(px + Math.round(2 * DRONE_SCALE), py + shadowOffset);
+
+  // Elliptical shadow with radial gradient (soft edges)
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, shadowWidth / 2);
+  gradient.addColorStop(0, `rgba(0,0,0,${alpha})`);
+  gradient.addColorStop(0.45, `rgba(0,0,0,${Math.max(0, alpha * 0.6)})`);
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
   ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
   ctx.fill();
-  
+
   ctx.restore();
 }
 

@@ -173,35 +173,26 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
     activePickupAttempts.add(itemId);
 
     try {
-        // Try server API first for pickup processing
+        // Use Firebase Realtime Database actions (handled by Cloud Functions)
         let result;
         try {
-            // Use new /actions/pickupRequests/{areaId}/{reqId} pattern so Cloud Function performs the authoritative pickup
             const areaId = window.gameInstance?.areaId || 'beach';
-            const LOCAL_SERVER_URL = (import.meta.env && import.meta.env.VITE_LOCAL_SERVER_URL) ? String(import.meta.env.VITE_LOCAL_SERVER_URL).replace(/\/$/, '') : null;
-            if (LOCAL_SERVER_URL) {
-                // use local HTTP API for pickup in dev
-                const url = `${LOCAL_SERVER_URL}/pickup-item`;
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId, playerId: safePlayerId, playerX: worldX, playerY: worldY }) });
-                result = await response.json().catch(() => ({ success: false }));
-            } else {
-                const reqRef = push(ref(db, `actions/pickupRequests/${areaId}`));
-                const reqId = reqRef.key;
-                await set(reqRef, { itemId, uid: safePlayerId, playerX: worldX, playerY: worldY, ts: Date.now() });
+            const reqRef = push(ref(db, `actions/pickupRequests/${areaId}`));
+            const reqId = reqRef.key;
+            await set(reqRef, { itemId, uid: safePlayerId, playerX: worldX, playerY: worldY, ts: Date.now() });
 
-                // wait for the result written by Cloud Function to /actions/pickupResults/{areaId}/{reqId}
-                result = await new Promise((resolve, reject) => {
-                    const resRef = ref(db, `actions/pickupResults/${areaId}/${reqId}`);
-                    const off = onValue(resRef, (snap) => {
-                        if (snap.exists()) {
-                            off();
-                            resolve(snap.val());
-                        }
-                    }, { onlyOnce: false });
+            // wait for the result written by Cloud Function to /actions/pickupResults/{areaId}/{reqId}
+            result = await new Promise((resolve, reject) => {
+                const resRef = ref(db, `actions/pickupResults/${areaId}/${reqId}`);
+                const off = onValue(resRef, (snap) => {
+                    if (snap.exists()) {
+                        off();
+                        resolve(snap.val());
+                    }
+                }, { onlyOnce: false });
 
-                    setTimeout(() => { off(); reject(new Error('pickup_result_timeout')); }, 5000);
-                });
-            }
+                setTimeout(() => { off(); reject(new Error('pickup_result_timeout')); }, 5000);
+            });
         } catch (serverError) {
             console.warn('Pickup request failed or timed out, falling back to direct attempt', serverError?.message);
             // Fallback: try direct firebase attempt for local pickup only
@@ -369,72 +360,12 @@ export function getGroundItems() {
 }
 
 /**
- * Tracks damage dealt by a player to an enemy.
- * This is used to determine if ground items should be shared among multiple contributors.
+ * Note: Damage tracking is now handled through Firebase Cloud Functions
+ * via the sendDamageRequest function in enemyService.js
  *
- * @param {string} enemyId - ID of the enemy that was damaged
- * @param {number} damage - Amount of damage dealt
- * @returns {Promise<boolean>} Success status of damage tracking
+ * This function is kept for compatibility but should not be used directly.
+ * Use sendDamageRequest instead for proper damage handling.
  */
-export async function trackDamage(enemyId, damage) {
-    const playerId = auth.currentUser?.uid;
-    if (!playerId || !enemyId || typeof damage !== 'number' || damage < 0) {
-        return false;
-    }
-
-    // Resilient client tracking: retry transient failures, avoid retrying on 410/404
-    const maxAttempts = 3;
-    let attempt = 0;
-
-    while (attempt < maxAttempts) {
-        attempt += 1;
-        try {
-            const response = await fetch('http://localhost:8081/track-damage', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enemyId, playerId, damage })
-            });
-
-            let result;
-            try { result = await response.json(); } catch (e) { result = { success: false, error: 'invalid_json' }; }
-
-            if (response.status === 200 && result && result.success) {
-                return true;
-            }
-
-            // Non-retriable: enemy gone/processed
-            if (response.status === 410 || response.status === 404) {
-                return false;
-            }
-
-            // Transient server error: retry with exponential backoff
-            if (response.status === 503 || response.status === 500) {
-                const backoff = 50 * Math.pow(2, attempt);
-                await new Promise(r => setTimeout(r, backoff));
-                continue;
-            }
-
-            // Other responses: treat as rejection
-            return false;
-
-        } catch (err) {
-            console.warn(`Track damage attempt ${attempt} failed:`, err.message);
-
-            // Provide helpful feedback for connection issues
-            if (err.message?.includes('connection refused') || err.code === 'ECONNREFUSED') {
-                console.error('❌ Cannot connect to server. Is the server running on port 8081?');
-                console.error('💡 Start the server with: cd server && node server.js');
-            }
-
-            // Network/fetch error: retry
-            const backoff = 50 * Math.pow(2, attempt);
-            await new Promise(r => setTimeout(r, backoff));
-            continue;
-        }
-    }
-
-    return false;
-}
 
 /**
  * Checks if a ground item can be picked up by a player.

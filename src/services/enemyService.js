@@ -40,20 +40,7 @@ export function updateEnemy(areaId, enemyId, data) {
  * @param {number} damage
  */
 export function sendDamageRequest(areaId, enemyId, uid, damage) {
-    // If a local server URL is configured, POST to its /track-damage endpoint for local dev
-    if (LOCAL_SERVER_URL) {
-        const url = `${LOCAL_SERVER_URL}/track-damage`;
-        return fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enemyId, playerId: uid, damage })
-        }).then(async (res) => {
-            const json = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(json && json.error ? json.error : `status_${res.status}`);
-            return json;
-        });
-    }
-
+    // Use Firebase Realtime Database actions (handled by Cloud Functions)
     const reqRef = push(ref(db, `actions/damageRequests/${areaId}`));
     const reqId = reqRef.key;
     const payload = { enemyId, uid, damage, ts: Date.now() };

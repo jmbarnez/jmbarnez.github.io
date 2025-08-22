@@ -1,0 +1,5 @@
+Be concise and give brief summary before edit; no fluff. Make lots of detailed comments in code. Be consistent, modular, avoiding hardcoding things unless it is the data folder content. It is okay to not have anything that should patch because i can make silly mistakes as well. No "patches" or "quick fixes", only comprehensive solutions. Don't ever open and test in the browser or start the dev server I will cover that. Don't leave deprecated/legacy code unless i say so @/src/ @/server/  
+
+Please apply this code outline to our codebase.
+
+Get rid of ground item spawning for area completely, and just have ground items from resource collecting/enemy kill rewards... and make sure item label is rendered in-game. That would be better right? tell me if im wrong and i will decide what to do from there. 

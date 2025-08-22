@@ -25,7 +25,8 @@ import { auth } from '../utils/firebaseClient.js';
 import { gameState } from '../app/state.js';
 import { areaData } from '../data/areaData.js';
 import { initWorldObjects, drawWorldObjects, checkWorldObjectInteraction } from './worldObjects.js';
-import { initEnemies, updateEnemies, drawEnemies, drawEnemySprite, findNearestEnemy, setTargetedEnemy, getTargetedEnemy, getEnemies, cleanupEnemies } from './enemies.js';
+// DISABLED: Enemy system is disabled
+// import { initEnemies, updateEnemies, drawEnemies, drawEnemySprite, findNearestEnemy, setTargetedEnemy, getTargetedEnemy, getEnemies, cleanupEnemies } from './enemies.js';
 import { updateDrone, fireWeapon, updateBallisticProjectiles, initializeDronePhysics, PHYSICS_CONSTANTS } from './physics.js';
 import loadingScreen from '../utils/loadingScreen.js';
 import { createProjectile, updateProjectiles, drawProjectiles, initProjectiles } from './projectiles.js';
@@ -46,7 +47,26 @@ export const game = {
   height: 0,
   scale: 1, // Canvas scaling factor to fit screen
   // AI: Player's starting position is now set dynamically in the center of the world.
-  player: { x: 0, y: 0, vx: 0, vy: 0, target: null, action: null, angle: 0, activeMiningNode: null, fireCooldown: 0, autoAttackTimer: 0, height: 20 },
+  // Player state - add tilt fields for visual pitch/roll simulation
+  player: {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    target: null,
+    action: null,
+    angle: 0,
+    activeMiningNode: null,
+    fireCooldown: 0,
+    autoAttackTimer: 0,
+    height: 20,
+    usePhysics: false,
+    // Visual tilt values (skew amounts applied when drawing):
+    tiltRoll: 0,    // horizontal skew to simulate roll (left/right)
+    tiltPitch: 0    // vertical skew to simulate pitch (forward/back)
+    , bodyRotation: 0,
+    bodySpinRate: 0
+  },
   lastTs: 0,
   timeAccumulator: 0, // AI: Accumulator for fixed-step game loop to handle tab focus loss.
   groundItems: [], // {x,y,type,harvest:0-1} - individual pickup items
@@ -75,37 +95,136 @@ function update(dt) {
     backward: false,
     rotateLeft: false,
     rotateRight: false,
-    strafeLeft: false,
-    strafeRight: false,
     boost: false,
     fire: false
   };
 
   // Map keyboard input to physics input (simplified controls)
-  // W for forward, A/D for sideways movement, mouse for yaw
+  // W for forward, S for backward. Strafe (A/D) removed for quadcopter-style flight.
   if (camera.keysPressed.w || camera.keysPressed.up) input.forward = true;
   if (camera.keysPressed.s || camera.keysPressed.down) input.backward = true;
-  if (camera.keysPressed.a || camera.keysPressed.left) input.strafeLeft = true;
-  if (camera.keysPressed.d || camera.keysPressed.right) input.strafeRight = true;
   if (camera.keysPressed.shift) input.boost = true;
 
 
 
-  // Mouse-based instant turning (like FPS aiming)
-  if (game.mouse && typeof game.mouse.x === 'number' && typeof game.mouse.y === 'number') {
-    const dx = game.mouse.x - p.x;
-    const dy = game.mouse.y - p.y;
-    const distance = Math.hypot(dx, dy);
 
-    if (distance > 5) { // Avoid jitter when mouse is very close to player
-      const targetAngle = Math.atan2(dy, dx);
-      // Instantly set orientation to mouse direction (no physics rotation)
-      if (p.physics) {
-        p.physics.orientation = targetAngle;
-        p.physics.angularVelocity = 0; // Stop any ongoing rotation
-      }
-      p.angle = targetAngle; // Also update the entity angle directly
+
+  // Movement control: WASD mapped to world-relative directions (W=up, S=down, A=left, D=right).
+  // Use a velocity-target approach so movement speed is consistent in all directions.
+  {
+    // World-relative input vector (screen coordinates: +y down)
+    const inputX = (camera.keysPressed.d || camera.keysPressed.right ? 1 : 0) - (camera.keysPressed.a || camera.keysPressed.left ? 1 : 0);
+    const inputY = (camera.keysPressed.s || camera.keysPressed.down ? 1 : 0) - (camera.keysPressed.w || camera.keysPressed.up ? 1 : 0);
+
+    // Movement tuning constants (more mechanical feel)
+    const MAX_SPEED = 200;       // px/s target speed when input held
+    const ACCEL_SEC = 300;       // px/s^2 acceleration when input is applied (lower = less fluid)
+    const DECEL_SEC = 150;       // px/s^2 deceleration when input released (smaller = much longer to stop)
+
+    // Compute desired velocity per-axis (axis-aligned world-relative)
+    let desiredVx = inputX * MAX_SPEED;
+    let desiredVy = inputY * MAX_SPEED;
+    // Normalize diagonals to keep total speed consistent
+    if (inputX !== 0 && inputY !== 0) {
+      const diagScale = 1 / Math.SQRT2;
+      desiredVx *= diagScale;
+      desiredVy *= diagScale;
     }
+
+    // Ensure velocities exist
+    p.vx = p.vx || 0;
+    p.vy = p.vy || 0;
+
+    // Apply per-axis acceleration with explicit clamping to emulate thrust mechanics
+    const maxDv = ACCEL_SEC * dt;
+    const maxDecel = DECEL_SEC * dt;
+
+    // X axis
+    const deltaVx = desiredVx - p.vx;
+    if (Math.abs(deltaVx) > 1e-4) {
+      if (Math.sign(deltaVx) === Math.sign(desiredVx)) {
+        // Accelerating toward input direction
+        const change = Math.sign(deltaVx) * Math.min(Math.abs(deltaVx), maxDv);
+        p.vx += change;
+      } else {
+        // Braking / reversing
+        const change = Math.sign(deltaVx) * Math.min(Math.abs(deltaVx), maxDecel);
+        p.vx += change;
+      }
+    }
+
+    // Y axis
+    const deltaVy = desiredVy - p.vy;
+    if (Math.abs(deltaVy) > 1e-4) {
+      if (Math.sign(deltaVy) === Math.sign(desiredVy)) {
+        const change = Math.sign(deltaVy) * Math.min(Math.abs(deltaVy), maxDv);
+        p.vy += change;
+      } else {
+        const change = Math.sign(deltaVy) * Math.min(Math.abs(deltaVy), maxDecel);
+        p.vy += change;
+      }
+    }
+
+    // Increase inertia: reduce damping so velocity decays more slowly
+    const DAMPING = 0.9995; // very close to 1 => very strong inertia
+    p.vx *= DAMPING;
+    p.vy *= DAMPING;
+
+    // Tiny drift: add a subtle lateral drift when changing directions to emulate
+    // slight air currents and control imprecision. This is deterministic per-frame
+    // and small so it doesn't break controls.
+    const DRIFT_INTENSITY = 6; // pixels/sec max drift
+    // Use a low-frequency seeded noise based on position/time to compute drift sign
+    const t = Date.now() * 0.001;
+    // lightweight pseudo-random drift using sin/cos (cheap)
+    const driftX = Math.sin((p.x + t * 2) * 0.02) * DRIFT_INTENSITY * 0.15;
+    const driftY = Math.cos((p.y - t * 1.3) * 0.018) * DRIFT_INTENSITY * 0.12;
+    // Apply only a fraction scaled by velocity magnitude so drift is subtle when moving slowly
+    const speedFactor = Math.min(1, Math.hypot(p.vx, p.vy) / MAX_SPEED);
+    p.x += driftX * 0.02 * speedFactor;
+    p.y += driftY * 0.02 * speedFactor;
+
+    // Integrate position
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    // Clamp player to world bounds so WASD cannot fly outside the playable area.
+    // Keep a small padding from the edge to avoid sprite clipping.
+    const PAD = 8;
+    p.x = Math.max(PAD, Math.min(p.x, game.WORLD_WIDTH - PAD));
+    p.y = Math.max(PAD, Math.min(p.y, game.WORLD_HEIGHT - PAD));
+
+    // --- Visual tilt (pitch/roll) for quadcopter feel ---
+    // Compute target tilt angles based on current velocity. We map velocity
+    // to small rotation angles (radians) and smoothly interpolate for stability.
+    const MAX_ROLL_DEG = 10;   // degrees max roll when strafing or turning
+    const MAX_PITCH_DEG = 10;  // degrees max pitch when moving forward/back
+    const TILT_RESPONSE = 6.0; // how quickly the drone tilts toward target (higher = snappier)
+
+    // Desired roll: tilt proportional to lateral velocity (vx). Positive vx -> roll right
+    const desiredRoll = Math.max(-1, Math.min(1, p.vx / Math.max(1, MAX_SPEED))) * (MAX_ROLL_DEG * Math.PI / 180);
+    // Desired pitch: tilt proportional to forward/back velocity (vy). Negative vy (up) => pitch forward
+    const desiredPitch = Math.max(-1, Math.min(1, -p.vy / Math.max(1, MAX_SPEED))) * (MAX_PITCH_DEG * Math.PI / 180);
+
+    // Initialize tilt values if undefined
+    p.tiltRoll = p.tiltRoll || 0;
+    p.tiltPitch = p.tiltPitch || 0;
+
+    // Smoothly interpolate tilt angles (frame-rate independent)
+    const tiltFactor = Math.min(1, dt * TILT_RESPONSE);
+    p.tiltRoll += (desiredRoll - p.tiltRoll) * tiltFactor;
+    p.tiltPitch += (desiredPitch - p.tiltPitch) * tiltFactor;
+
+    // Body rotation driven by speed: faster movement => faster body rotation.
+    const speed = Math.hypot(p.vx, p.vy);
+    const speedFactorSpin = Math.min(1, speed / Math.max(1, MAX_SPEED));
+    const MAX_BODY_SPIN_DEG = 40; // degrees/sec at maximum speed
+    const desiredSpin = speedFactorSpin * (MAX_BODY_SPIN_DEG * Math.PI / 180);
+    p.bodySpinRate = (p.bodySpinRate || 0);
+    // Smooth spin response
+    const SPIN_RESPONSE = 2.0;
+    p.bodySpinRate += (desiredSpin - p.bodySpinRate) * Math.min(1, dt * SPIN_RESPONSE);
+    p.bodyRotation = (p.bodyRotation || 0) + p.bodySpinRate * dt;
   }
 
   // Handle target-based movement (mouse clicks) as fallback
@@ -302,8 +421,9 @@ function update(dt) {
     const miningNodeId = activeMiningNode ? activeMiningNode.id : null;
     multiplayerManager.updateLocalPlayer(x, y, action, angle, miningNodeId);
     
-    // AI: Update remote player positions with smooth interpolation
-    multiplayerManager.updateRemotePlayerPositions();
+    // AI: Update remote player positions with smooth interpolation (pass dt so
+    // remote spinning and other time-based visuals can advance consistently).
+    multiplayerManager.updateRemotePlayerPositions(dt);
     
     // AI: Update chat bubble positions for remote players
     multiplayerManager.updateChatPositions();
@@ -327,6 +447,8 @@ function update(dt) {
   // This section implements rotational damping for a more realistic drone feel.
   // Mouse-based instant turning handles rotation (no physics rotation needed)
 
+  // DISABLED: Enemy system is disabled - no enemy targeting or combat
+  /*
   // AI: League of Legends-style Combat Logic with Auto-Attack System
   const targetedEnemy = getTargetedEnemy();
   if (targetedEnemy) {
@@ -339,7 +461,7 @@ function update(dt) {
           const dx = targetedEnemy.x - p.x;
           const dy = (targetedEnemy.y - targetedEnemy.size) - (p.y - DRONE_HEIGHT_OFFSET); // Account for drone height
           const dist = Math.hypot(dx, dy);
-          
+
           // AI: Only reset auto-attack timer when first targeting, not every frame
           if (p.autoAttackTimer <= 0) {
               p.autoAttackTimer = AUTO_ATTACK_DURATION;
@@ -376,10 +498,10 @@ function update(dt) {
               // AI: In range, stop moving and attack with LoL-style timing
               p.target = null;
               p.continuousMovement = false;
-              
+
               // AI: While attacking we DO NOT force the drone to rotate to face the target.
               // Rotation remains controlled by mouse input so players can aim independently.
-              
+
               p.fireCooldown -= dt;
               if (p.fireCooldown <= 0) {
                   // AI: Compute muzzle position using shared helper so spawn matches rendering
@@ -389,7 +511,7 @@ function update(dt) {
                   const theta = p.angle + Math.PI / 2;
                   const startX = muzzle.x + Math.cos(theta) * extraForward;
                   const startY = muzzle.y + Math.sin(theta) * extraForward;
-                  
+
                   // AI: Create projectile targeting the original enemy (damage system needs the real enemy object)
                   createProjectile(startX, startY, targetedEnemy);
                   playGunshotSound();
@@ -410,7 +532,7 @@ function update(dt) {
       // AI: LoL-style auto-attack system - continue attacking for duration even without explicit targeting
       if (p.autoAttackTimer > 0) {
           p.autoAttackTimer -= dt; // Count down timer
-          
+
           // AI: Find nearest enemy within extended range for auto-attack acquisition
           const nearestEnemy = findNearestEnemy(p.x, p.y);
           if (nearestEnemy && !nearestEnemy.isDead && nearestEnemy.hp > 0) {
@@ -418,7 +540,7 @@ function update(dt) {
               const dx = nearestEnemy.x - p.x;
               const dy = (nearestEnemy.y - nearestEnemy.size) - (p.y - DRONE_HEIGHT_OFFSET);
               const dist = Math.hypot(dx, dy);
-              
+
               // AI: Enhanced auto-attack acquisition - more aggressive enemy following
               const acquisitionRange = ATTACK_RANGE * 1.5; // 50% larger acquisition range for better auto-pilot
               if (dist <= acquisitionRange) {
@@ -433,9 +555,10 @@ function update(dt) {
           p.autoAttackTimer = 0;
       }
   }
+  */
 
-  // Update enemies and projectiles
-  updateEnemies(dt);
+  // DISABLED: Enemy system is disabled
+  // updateEnemies(dt);
   // Update guaranteed-hit projectiles (visual + hit timing)
   updateProjectiles(dt);
   // Update ballistic projectiles with realistic physics
@@ -529,7 +652,7 @@ function loop(ts) {
 
   // AI: Enhanced protection against tab focus lag spikes
   // Much more aggressive capping to prevent lag on return from alt-tab
-  const MAX_FRAME_TIME = 0.016; // Cap at 16ms (60 FPS) to prevent catch-up lag
+  const MAX_FRAME_TIME = 0.1; // Cap at 100ms to prevent extreme lag spikes
   if (dt > MAX_FRAME_TIME) {
     dt = MAX_FRAME_TIME;
     // AI: Reset accumulator on large time gaps to prevent lag spiral
@@ -555,9 +678,16 @@ function loop(ts) {
   }
 
   // While there's enough accumulated time for one or more fixed steps, update the game logic.
-  while (game.timeAccumulator >= FIXED_DT) {
+  let updateCount = 0;
+  while (game.timeAccumulator >= FIXED_DT && updateCount < 10) { // Limit to 10 updates per frame
     update(FIXED_DT); // Update game state
     game.timeAccumulator -= FIXED_DT;
+    updateCount++;
+  }
+
+  // If we hit the update limit, reset accumulator to prevent spiral
+  if (updateCount >= 10) {
+    game.timeAccumulator = 0;
   }
 
   // AI: Update the camera once per frame, after all physics updates are complete.
@@ -592,8 +722,8 @@ function loop(ts) {
   for (const node of game.resourceNodes) drawList.push({ type: 'resourceNode', y: node.y, fn: () => drawResourceNodes() });
   // World objects
   for (const obj of game.worldObjects) drawList.push({ type: 'worldObject', y: obj.y, fn: () => drawWorldObjects() });
-  // Enemies (use game.enemies array)
-  for (const e of game.enemies) drawList.push({ type: 'enemy', y: e.y + (e.height || 0), fn: () => drawEnemySprite(e) });
+  // DISABLED: Enemy system is disabled
+  // for (const e of game.enemies) drawList.push({ type: 'enemy', y: e.y + (e.height || 0), fn: () => drawEnemySprite(e) });
   // Projectiles
   for (const p of [] ) drawList.push({ type: 'projectile', y: p.y, fn: () => drawProjectiles() });
 
@@ -610,47 +740,10 @@ function loop(ts) {
   drawWorldObjects();
   drawProjectiles();
 
-  // Draw enemies, remote players, and player with depth sorting
-  // Combine enemies and remote players and player into a sortable list
+  // Draw remote players and player with depth sorting
+  // DISABLED: Enemy system is disabled
   const dynamicEntities = [];
-  for (const e of game.enemies) dynamicEntities.push({
-    ent: e,
-    depth: calculateEntityDepth(e.x, e.y, e.height),
-    draw: () => {
-      drawEnemySprite(e);
-      // Also draw enemy UI (health bars, targeting indicators)
-      const { ctx } = game;
-      if (!ctx || e.isDead) return;
-
-      // Draw health bar for damaged enemies
-      if (e.hp < e.maxHp) {
-        const barWidth = e.size * 2;
-        const barHeight = 3;
-        const barX = e.x - barWidth / 2;
-        const barY = e.y - e.size * 2;
-
-        // Health bar background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-
-        // Health bar
-        ctx.fillStyle = 'red';
-        const healthRatio = Math.max(0, e.hp / e.maxHp);
-        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
-      }
-
-      // Draw targeting circle for selected enemy
-      if (game.targetedEnemy?.id === e.id) {
-        ctx.save();
-        ctx.strokeStyle = 'yellow';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.size + 3, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-  });
+  // for (const e of game.enemies) dynamicEntities.push({ ... });
   for (const rp of multiplayerManager.getRemotePlayers()) dynamicEntities.push({
     ent: rp,
     depth: calculateEntityDepth(rp.x, rp.y, rp.height),
@@ -665,9 +758,26 @@ function loop(ts) {
   // Sort by depth (lower values = more in front)
   dynamicEntities.sort((a, b) => a.depth - b.depth);
   for (const d of dynamicEntities) d.draw();
-
-  // Draw overlays related to player after main entities
+  // Draw overlays related to players after main entities
+  // Local player's mining laser
   drawMiningLaser(ctx, game.player, game.player.activeMiningNode);
+  // Remote players' mining lasers (ensure we render others' lasers locally)
+  try {
+    const remotes = multiplayerManager.getRemotePlayers();
+    if (remotes && remotes.length) {
+      for (const rp of remotes) {
+        if (!rp) continue;
+        // Remote players may report `miningNodeId` (id) or `activeMiningNode` (object).
+        const nodeId = rp.miningNodeId || (rp.activeMiningNode && rp.activeMiningNode.id);
+        if (!nodeId) continue;
+        const targetNode = game.resourceNodes.find(n => n.id === nodeId);
+        if (targetNode) drawMiningLaser(ctx, rp, targetNode);
+      }
+    }
+  } catch (e) {
+    // Defensive: if multiplayer manager missing or throws, continue without breaking render
+    console.warn('Failed to draw remote players mining lasers', e);
+  }
   drawSelfMarker(game.player, multiplayerManager.localPlayer.color);
   drawTargetMarker();
 
@@ -768,15 +878,19 @@ export async function initAreaGame(initialPosition) {
       game.player.y = game.WORLD_HEIGHT / 2;
     }
 
-    // Initialize physics for the player drone
-    initializeDronePhysics(game.player);
+    // Do not initialize full drone physics by default when using WASD control scheme.
+    // The physics subsystem can be enabled later by setting `game.player.usePhysics = true`
+    // and calling `initializeDronePhysics(game.player)` from a toggle or settings panel.
+    // Keep physics object undefined to avoid conflicting movement systems.
+    game.player.usePhysics = false;
 
     // AI: The player's state is already updated by playerService. No need to force a save here.
 
     // AI: Initialize world objects (market, etc.)
     initWorldObjects();
     game.areaData = areaData.beach;
-    initEnemies();
+    // DISABLED: Enemy system is disabled
+    // initEnemies();
 
     // AI: Initialize all multiplayer and combat systems in correct order
     initMultiplayerSystem();
@@ -808,67 +922,56 @@ export async function initAreaGame(initialPosition) {
       camera.targetZoom = allowed[idx];
     }, { passive: false });
 
-    // AI: Add keyboard event listeners for camera controls
-    document.addEventListener('keydown', (e) => {
-      const key = e.key.toLowerCase();
-      switch (key) {
-        case 'w':
-        case 'arrowup':
-          camera.keysPressed.w = true;
-          camera.keysPressed.up = true;
-          break;
-        case 'a':
-        case 'arrowleft':
-          // Strafe left
-          camera.keysPressed.a = true;
-          camera.keysPressed.left = true;
-          break;
-        case 's':
-        case 'arrowdown':
-          camera.keysPressed.s = true;
-          camera.keysPressed.down = true;
-          break;
-        case 'd':
-        case 'arrowright':
-          // Strafe right
-          camera.keysPressed.d = true;
-          camera.keysPressed.right = true;
-          break;
-        case ' ': // Space bar - center on player
-          e.preventDefault(); // Prevent page scroll
-          camera.centerOnPlayer();
-          break;
-        case 'f': // F key - toggle free camera mode
-          camera.toggleFreeCamera();
-          break;
-      }
-    });
+    // AI: Add keyboard event listeners for camera controls **on the canvas** to avoid
+    // conflicts with other global key handlers (UI, chat). We ensure canvas is focusable
+    // and only handle keys when not typing into inputs.
+    try {
+      canvas.tabIndex = canvas.tabIndex || 0; // make canvas focusable
+      canvas.style.outline = 'none';
 
-    document.addEventListener('keyup', (e) => {
+      // Clear movement keys when canvas loses focus to avoid stuck keys
+      canvas.addEventListener('blur', () => {
+        if (camera && camera.keysPressed) Object.keys(camera.keysPressed).forEach(k => camera.keysPressed[k] = false);
+      });
+
+      // Keydown on canvas
+      canvas.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        const isInputLike = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+        if (isInputLike(active)) return; // honor UI inputs
+
       const key = e.key.toLowerCase();
       switch (key) {
-        case 'w':
-        case 'arrowup':
-          camera.keysPressed.w = false;
-          camera.keysPressed.up = false;
-          break;
-        case 'a':
-        case 'arrowleft':
-          camera.keysPressed.a = false;
-          camera.keysPressed.left = false;
-          break;
-        case 's':
-        case 'arrowdown':
-          camera.keysPressed.s = false;
-          camera.keysPressed.down = false;
-          break;
-        case 'd':
-        case 'arrowright':
-          camera.keysPressed.d = false;
-          camera.keysPressed.right = false;
-          break;
-      }
-    });
+          case 'w': case 'arrowup': camera.keysPressed.w = true; camera.keysPressed.up = true; break;
+          case 'a': case 'arrowleft': camera.keysPressed.a = true; camera.keysPressed.left = true; break;
+          case 's': case 'arrowdown': camera.keysPressed.s = true; camera.keysPressed.down = true; break;
+          case 'd': case 'arrowright': camera.keysPressed.d = true; camera.keysPressed.right = true; break;
+          case ' ': {
+          const chatInput = document.getElementById('chat-input');
+            if (chatInput && chatInput === document.activeElement) return;
+            e.preventDefault(); camera.centerOnPlayer(); break;
+          }
+          case 'f': camera.toggleFreeCamera(); break;
+        }
+      });
+
+      // Keyup on canvas
+      canvas.addEventListener('keyup', (e) => {
+        const active = document.activeElement;
+        const isInputLike = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+        if (isInputLike(active)) return;
+      const key = e.key.toLowerCase();
+      switch (key) {
+          case 'w': case 'arrowup': camera.keysPressed.w = false; camera.keysPressed.up = false; break;
+          case 'a': case 'arrowleft': camera.keysPressed.a = false; camera.keysPressed.left = false; break;
+          case 's': case 'arrowdown': camera.keysPressed.s = false; camera.keysPressed.down = false; break;
+          case 'd': case 'arrowright': camera.keysPressed.d = false; camera.keysPressed.right = false; break;
+        }
+      });
+    } catch (e) {
+      // Fallback: if canvas focus cannot be set, keep document listeners (unlikely)
+      console.warn('Canvas key binding setup failed, falling back to document listeners', e);
+    }
 
     // AI: Simple right-click to move system
 
@@ -889,10 +992,12 @@ export async function initAreaGame(initialPosition) {
         game.mouse.x = worldCoords.x;
         game.mouse.y = worldCoords.y;
         
+        // DISABLED: Enemy system is disabled - no enemy targeting
+        /*
         // AI: League of Legends-style enemy targeting with improved click detection
         const clickedEnemy = findNearestEnemy(worldCoords.x, worldCoords.y);
         const enemyClickRadius = clickedEnemy ? Math.max(clickedEnemy.size * 2.5, 15) : 0; // Larger click area
-        
+
         if (clickedEnemy && Math.hypot(clickedEnemy.x - worldCoords.x, clickedEnemy.y - worldCoords.y) < enemyClickRadius) {
             // AI: Enhanced Auto-Pilot Targeting - Aggressive enemy following
             setTargetedEnemy(clickedEnemy);
@@ -905,19 +1010,21 @@ export async function initAreaGame(initialPosition) {
             // AI: Clear enemy targeting and move to location (LoL move command)
             setTargetedEnemy(null);
             game.player.autoAttackTimer = 0; // Clear auto-attack when moving
-            // Set initial target for immediate response
-            game.player.target = worldCoords;
-            game.player.continuousMovement = false; // Start as point-to-point
-            game.player.action = null; // Clear any active player action
-            
-            // AI: Create visual target marker - use original world coords since marker applies its own transform
+        */
+            // Mouse click updates the turret/aim only; disable mouse-driven movement.
+            // Update global mouse position so turret aims at clicked location.
+            game.mouse.x = worldCoords.x;
+            game.mouse.y = worldCoords.y;
+            // Optionally, show a visual marker but do not cause the drone to move.
             game.targetMarker = {
               x: worldCoords.x,
               y: worldCoords.y,
-              life: 2.0, // 2 seconds
-              maxLife: 2.0
+              life: 1.5,
+              maxLife: 1.5
             };
+        /*
         }
+        */
       }
     });
 
@@ -952,6 +1059,8 @@ export async function initAreaGame(initialPosition) {
 
       
 
+      // DISABLED: Enemy system is disabled - no enemy targeting check
+      /*
       // AI: Check if the player is currently targeting an enemy for combat
       // If so, prioritize combat and ignore interaction clicks
       const targetedEnemy = getTargetedEnemy();
@@ -959,6 +1068,7 @@ export async function initAreaGame(initialPosition) {
 
         return;
       }
+      */
 
       // AI: Get precise mouse coordinates relative to the canvas, accounting for canvas scaling.
       const rect = canvas.getBoundingClientRect();
@@ -1180,6 +1290,8 @@ export async function initAreaGame(initialPosition) {
         game.lastTs = performance.now();
         game.timeAccumulator = 0;
 
+        // DISABLED: Enemy system is disabled - no enemy angle snapping
+        /*
         // AI: Snap enemy angles to target angles to prevent rotation glitches after tab focus
         const enemies = getEnemies();
         if (enemies && enemies.length > 0) {
@@ -1190,6 +1302,7 @@ export async function initAreaGame(initialPosition) {
             }
           });
         }
+        */
 
         // AI: Fix resolution issues after alt-tab
         setTimeout(() => {
@@ -1235,6 +1348,8 @@ export async function initAreaGame(initialPosition) {
           }
         }
         
+        // DISABLED: Enemy system is disabled - no enemy interpolation reset
+        /*
         // AI: Reset enemy interpolations
         for (const enemy of getEnemies()) {
           if (enemy.targetX !== undefined && enemy.targetY !== undefined) {
@@ -1248,6 +1363,7 @@ export async function initAreaGame(initialPosition) {
             delete enemy.interpStartY;
           }
         }
+        */
       }
     });
 
@@ -1262,6 +1378,8 @@ export async function initAreaGame(initialPosition) {
       game.lastTs = performance.now();
       game.timeAccumulator = 0;
 
+      // DISABLED: Enemy system is disabled - no enemy angle snapping
+      /*
       // AI: Snap enemy angles to target angles to prevent rotation glitches after tab focus
       const enemies = getEnemies();
       if (enemies && enemies.length > 0) {
@@ -1272,6 +1390,7 @@ export async function initAreaGame(initialPosition) {
           }
         });
       }
+      */
     });
     
     // AI: Add resize handler to fix resolution issues
@@ -1315,17 +1434,9 @@ export async function initAreaGame(initialPosition) {
           }
         }
 
+        // DISABLED: Enemy system is disabled
         // Snap enemies to server-provided positions/angles
-        for (const enemy of getEnemies()) {
-          if (enemy.targetX !== undefined && enemy.targetY !== undefined) {
-            enemy.x = enemy.targetX;
-            enemy.y = enemy.targetY;
-            delete enemy.targetX; delete enemy.targetY; delete enemy.interpStartTime; delete enemy.interpStartX; delete enemy.interpStartY;
-          }
-          if (enemy.hasValidTarget && enemy.targetAngle !== undefined) {
-            enemy.angle = enemy.targetAngle;
-          }
-        }
+        // for (const enemy of getEnemies()) { ... }
       } catch (e) {
         console.warn('game:request-snap handler failed', e);
       }
@@ -1365,7 +1476,8 @@ function initMultiplayerSystem() {
   // AI: Setup cleanup on page unload/logout
   window.addEventListener('beforeunload', async () => {
     multiplayerManager.disconnect();
-    cleanupEnemies(); // AI: Clean up enemy subscriptions
+    // DISABLED: Enemy system is disabled
+    // cleanupEnemies(); // AI: Clean up enemy subscriptions
 
     // AI: Clean up highlight manager
     highlightManager.cleanup();
@@ -1386,7 +1498,8 @@ function initMultiplayerSystem() {
     if (!currentUser) {
       // User logged out, clean up multiplayer and save experience
       multiplayerManager.disconnect();
-      cleanupEnemies(); // AI: Clean up enemy subscriptions
+      // DISABLED: Enemy system is disabled
+      // cleanupEnemies(); // AI: Clean up enemy subscriptions
 
       // AI: Clean up highlight manager
       highlightManager.cleanup();

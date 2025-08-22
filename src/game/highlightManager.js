@@ -156,11 +156,14 @@ class HighlightManager {
    * @private
    */
   scanEntitiesAtPosition(worldX, worldY) {
+    // DISABLED: Enemy system is disabled - no enemy scanning
+    /*
     // Priority 1: Scan enemies first (combat interactions take precedence)
     const enemy = this.findNearestEnemy(worldX, worldY);
     if (enemy) {
       return { entity: enemy, type: 'enemy' };
     }
+    */
 
     // Priority 2: Scan resource nodes (harvesting interactions)
     const resourceNode = this.findNearestResourceNode(worldX, worldY);
@@ -185,14 +188,10 @@ class HighlightManager {
   }
 
   /**
-   * Find the nearest enemy within interaction range
-   * Uses enemy.size as radius for more accurate hit detection
-   *
-   * @param {number} worldX - World X coordinate
-   * @param {number} worldY - World Y coordinate
-   * @returns {Object|null} Nearest enemy or null if none in range
+   * DISABLED: Enemy system is disabled - findNearestEnemy method removed
    * @private
    */
+  /*
   findNearestEnemy(worldX, worldY) {
     if (!game.enemies || game.enemies.length === 0) {
       return null;
@@ -222,6 +221,7 @@ class HighlightManager {
 
     return nearestEnemy;
   }
+  */
 
   /**
    * Find the nearest resource node within interaction range

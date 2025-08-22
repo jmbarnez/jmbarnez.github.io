@@ -620,7 +620,7 @@ export async function setupUserListeners(user) {
         console.log('[CHAT] Found other player:', otherPlayer ? { uid: otherPlayer.uid, x: otherPlayer.x, y: otherPlayer.y } : null);
 
         if (otherPlayer && otherPlayer.x !== undefined && otherPlayer.y !== undefined) {
-          const screenCoords = worldToScreenCoords(otherPlayer.x, otherPlayer.y);
+          const screenCoords = worldToScreenCoords(otherPlayer.x, otherPlayer.y, window.gameInstance?.camera || window.camera);
           console.log('[CHAT] Showing chat bubble at:', screenCoords);
           showPlayerMessage(msg.uid, msg.text, screenCoords.x, screenCoords.y - 30, 5000);
         } else {
