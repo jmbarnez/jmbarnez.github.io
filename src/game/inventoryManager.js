@@ -1,7 +1,7 @@
 import { itemsById } from '../data/content.js';
 import { gameState } from '../app/state.js';
 import { auth } from '../utils/firebaseClient.js';
-import { setPlayerGold } from '../services/firestoreService.js';
+import { setPlayerGalacticTokens } from '../services/firestoreService.js';
 
 /**
  * AI: Centralized Inventory Management System
@@ -28,44 +28,45 @@ class InventoryManager {
   }
 
   /**
-   * AI: Adds gold to the player's currency.
-   * @param {number} amount - Amount of gold to add
+   * AI: Adds galactic tokens to the player's currency.
+   * @param {number} amount - Amount of galactic tokens to add
    */
-  async addGold(amount) {
+  async addGalacticTokens(amount) {
     if (amount <= 0) return;
     
-    const oldGold = gameState.gold || 0;
-    gameState.gold = oldGold + amount;
-    gameState.playerCoins = gameState.gold;
+    const oldTokens = gameState.galacticTokens || 0;
+    gameState.galacticTokens = oldTokens + amount;
+    gameState.playerCoins = gameState.galacticTokens;
     
     // Immediate coin display update
     const coinElement = document.getElementById('inventory-coin-amount');
     if (coinElement) {
-      coinElement.textContent = gameState.gold.toLocaleString();
+      coinElement.textContent = gameState.galacticTokens.toLocaleString();
     }
     
-    // Persist gold to server immediately to prevent conflicts
+    // Persist galactic tokens to server immediately to prevent conflicts
     try {
       const user = auth.currentUser;
       if (user && user.uid) {
-        await setPlayerGold(user.uid, gameState.gold);
+        await setPlayerGalacticTokens(user.uid, gameState.galacticTokens);
       }
     } catch (err) {
+      console.error('Failed to persist currency to server:', err);
       // Revert on failure
-      gameState.gold = oldGold;
-      if (coinElement) coinElement.textContent = gameState.gold.toLocaleString();
+      gameState.galacticTokens = oldTokens;
+      if (coinElement) coinElement.textContent = gameState.galacticTokens.toLocaleString();
     }
 
-    // Notify listeners of gold change
-    this._notifyChange('goldAdded', { amount, total: gameState.gold });
+    // Notify listeners of galactic token change
+    this._notifyChange('galacticTokensAdded', { amount, total: gameState.galacticTokens });
   }
 
   /**
-   * AI: Gets the current gold amount.
-   * @returns {number} Current gold amount
+   * AI: Gets the current galactic token amount.
+   * @returns {number} Current galactic token amount
    */
-  getGold() {
-    return gameState.gold || 0;
+  getGalacticTokens() {
+    return gameState.galacticTokens || 0;
   }
 
   /**
@@ -73,33 +74,33 @@ class InventoryManager {
    * @param {number} amount
    * @returns {{ success: boolean, message: string }}
    */
-  spendGold(amount) {
+  spendGalacticTokens(amount) {
     if (amount <= 0) return { success: false, message: 'Invalid amount' };
-    const current = gameState.gold || 0;
-    if (current < amount) return { success: false, message: 'Insufficient gold' };
+    const current = gameState.galacticTokens || 0;
+    if (current < amount) return { success: false, message: 'Insufficient galactic tokens' };
 
-    gameState.gold = current - amount;
-    gameState.playerCoins = gameState.gold;
+    gameState.galacticTokens = current - amount;
+    gameState.playerCoins = gameState.galacticTokens;
 
     try {
       const user = auth.currentUser;
       if (user && user.uid) {
-        setPlayerGold(user.uid, gameState.gold).catch((err) => {
-          console.warn('Failed to persist gold to server:', err);
+        setPlayerGalacticTokens(user.uid, gameState.galacticTokens).catch((err) => {
+          console.warn('Failed to persist galactic tokens to server:', err);
         });
       }
     } catch (_) {}
 
-    this._notifyChange('goldSpent', { amount, total: gameState.gold });
-    return { success: true, message: 'Gold spent' };
+    this._notifyChange('galacticTokensSpent', { amount, total: gameState.galacticTokens });
+    return { success: true, message: 'Galactic tokens spent' };
   }
 
   /**
-   * AI: Gets the current gold amount.
-   * @returns {number} Current gold amount
+   * AI: Gets the current galactic token amount.
+   * @returns {number} Current galactic token amount
    */
-  getGold() {
-    return gameState.gold || 0;
+  getGalacticTokens() {
+    return gameState.galacticTokens || 0;
   }
 
   /**

@@ -87,6 +87,26 @@ class MultiplayerManager {
   }
 
   /**
+   * AI: Update local player username
+   */
+  updateUsername(newUsername) {
+    if (!newUsername || typeof newUsername !== 'string') {
+      console.warn('Invalid username provided to updateUsername');
+      return;
+    }
+
+    const trimmedUsername = newUsername.trim();
+    if (!trimmedUsername) {
+      console.warn('Cannot update to empty username');
+      return;
+    }
+
+    // Update local player username
+    this.localPlayer.username = trimmedUsername;
+    console.log(`Username updated to: ${trimmedUsername}`);
+  }
+
+  /**
    * AI: Update local player position and sync in realtime
    */
   updateLocalPlayer(x, y, action = null, angle = 0, miningNodeId = null) {

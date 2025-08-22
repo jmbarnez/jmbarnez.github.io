@@ -333,6 +333,7 @@ function drawFloatingMessages(ctx) {
     const alpha = Math.min(1, message.life / 0.5); // Fade out in last 0.5 seconds
 
     // Convert world coordinates to screen coordinates
+    if (!game.camera) continue; // Skip if camera not initialized
     const screenCoords = worldToScreenCoords(message.worldX, currentY, game.camera);
     if (!screenCoords) continue;
 

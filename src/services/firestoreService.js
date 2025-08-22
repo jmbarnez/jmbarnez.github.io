@@ -127,9 +127,14 @@ export async function getPlayerGold(uid) {
  * @param {string} uid
  * @param {number} amount
  */
-export function setPlayerGold(uid, amount) {
+export function setPlayerGalacticTokens(uid, amount) {
   const playerRef = ref(database, `players/${uid}`);
-  return update(playerRef, { gold: amount, updatedAt: serverTimestamp() });
+  return update(playerRef, { galacticTokens: amount, updatedAt: serverTimestamp() });
+}
+
+// Legacy function for backward compatibility
+export function setPlayerGold(uid, amount) {
+  return setPlayerGalacticTokens(uid, amount);
 }
 
 /**

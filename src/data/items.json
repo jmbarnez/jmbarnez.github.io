@@ -118,6 +118,7 @@
     "spawnable": false,
     "stackable": true,
     "maxStack": 999,
-    "weight": 1
+    "weight": 1,
+    "currency": true
   }
 ]

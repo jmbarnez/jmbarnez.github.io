@@ -316,16 +316,51 @@ export function initDesktopScreen() {
   // --- Chat System ---
   const chatInput = document.getElementById('chat-input');
   const chatMessages = document.getElementById('chat-messages');
-  const chatButton = document.getElementById('chat-button');
+  const chatToggle = document.getElementById('chat-toggle');
   const chatPanelContainer = document.getElementById('chat-panel-container');
   const chatClose = document.getElementById('chat-close');
   const chatForm = document.getElementById('chat-form');
+  
+  // Initialize global chat elements
+  chatOnlineIndicator = document.getElementById('chat-online-indicator');
+  chatConnectionStatus = document.getElementById('chat-connection-status');
+  onlineCountSidebar = document.getElementById('online-count-sidebar');
+  onlineList = document.getElementById('online-list');
 
-  // Chat: minimal behavior — messages always visible, input enabled.
-  if (chatMessages) chatMessages.classList.remove('hidden');
-  if (chatInput) {
-    chatInput.disabled = false;
+  // Chat toggle functionality
+  let isChatOpen = false;
+  
+  function toggleChat() {
+    isChatOpen = !isChatOpen;
+    if (isChatOpen) {
+      chatPanelContainer?.classList.remove('hidden');
+      // Enable chat input when panel is opened
+      if (chatInput) chatInput.disabled = false;
+    } else {
+      chatPanelContainer?.classList.add('hidden');
+      // Disable chat input when panel is closed
+      if (chatInput) chatInput.disabled = true;
+    }
   }
+  
+  // Chat toggle button event
+  chatToggle?.addEventListener('click', toggleChat);
+  
+  // Close chat button
+  chatClose?.addEventListener('click', () => {
+    isChatOpen = false;
+    chatPanelContainer?.classList.add('hidden');
+    // Disable chat input when panel is closed
+    if (chatInput) chatInput.disabled = true;
+  });
+  
+  // Initialize chat as closed - disable input if panel is hidden
+  if (chatInput && chatPanelContainer && chatPanelContainer.classList.contains('hidden')) {
+    chatInput.disabled = true;
+  }
+  
+  // Initial status
+  updateOnlineStatus(false);
 
 
   // Clicking anywhere on the desktop (that isn't an input) restores gameplay key focus
@@ -357,6 +392,47 @@ let onlinePlayersUnsubscribe = null;
 let playerDataUnsubscribe = null;
 let currentOnlinePlayers = [];
 
+// Global chat elements and functions
+let chatOnlineIndicator, chatConnectionStatus, onlineCountSidebar, onlineList;
+let onlinePlayers = [];
+
+function updateOnlineStatus(isConnected) {
+  if (chatOnlineIndicator && chatConnectionStatus) {
+    if (isConnected) {
+      chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 transition-colors';
+      chatConnectionStatus.className = 'w-2 h-2 rounded-full bg-green-500 transition-colors';
+    } else {
+      chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-800 transition-colors';
+      chatConnectionStatus.className = 'w-2 h-2 rounded-full bg-red-500 transition-colors';
+    }
+  }
+}
+
+function updateOnlinePlayersList(players) {
+  onlinePlayers = players || [];
+  
+  // Update online count in sidebar only
+  if (onlineCountSidebar) {
+    onlineCountSidebar.textContent = `${onlinePlayers.length} online`;
+  }
+  
+  // Update online list
+  if (onlineList) {
+    onlineList.innerHTML = '';
+    onlinePlayers.forEach(player => {
+      const playerDiv = document.createElement('div');
+      playerDiv.className = 'flex items-center gap-2 p-2 rounded-lg hover:bg-slate-700/50 transition-colors cursor-pointer';
+      // Use multiple fallback options for display name
+      const displayName = player.username || player.displayName || `Player${player.uid?.slice(-4) || 'Unknown'}`;
+      playerDiv.innerHTML = `
+        <div class="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></div>
+        <span class="truncate font-medium" title="${displayName}">${displayName}</span>
+      `;
+      onlineList.appendChild(playerDiv);
+    });
+  }
+}
+
 export async function setupUserListeners(user) {
   // Clear all listeners when auth state changes
   if (messagesUnsubscribe) {
@@ -374,24 +450,64 @@ export async function setupUserListeners(user) {
 
   if (user) {
     gameState.user = user;
-    // Optimistically use auth profile name to avoid brief 'Anonymous'
-    if (user.displayName) gameState.username = user.displayName;
+    // Generate a proper username if displayName is not available
+    if (user.displayName) {
+      gameState.username = user.displayName;
+      // Update multiplayer manager with the display name
+      if (window.multiplayerManager) {
+        window.multiplayerManager.updateUsername(user.displayName);
+      }
+    } else if (user.email) {
+      gameState.username = user.email.split('@')[0];
+      // Update multiplayer manager with the generated username
+      if (window.multiplayerManager) {
+        window.multiplayerManager.updateUsername(gameState.username);
+      }
+    } else {
+      gameState.username = `Player${user.uid.slice(-4)}`;
+      // Update multiplayer manager with the generated username
+      if (window.multiplayerManager) {
+        window.multiplayerManager.updateUsername(gameState.username);
+      }
+    }
 
     // 1. Ensure player document exists and username is up-to-date
-    await ensurePlayerDoc(user.uid, user.displayName);
+    await ensurePlayerDoc(user.uid, gameState.username);
 
     // 2. Set up player data listener
     playerDataUnsubscribe = onPlayerDataChange(user.uid, (data) => {
       // AI: The renderPlayerBars function has been removed as the status bars are no longer in the UI.
       if (data.username) {
         gameState.username = data.username;
+        // Update multiplayer manager with the database username
+        if (window.multiplayerManager) {
+          window.multiplayerManager.updateUsername(data.username);
+        }
+      } else {
+        // If no username in database, create one from user data
+        gameState.username = user.displayName || user.email?.split('@')[0] || `Player${user.uid.slice(-4)}`;
+        // Update multiplayer manager with the generated username
+        if (window.multiplayerManager) {
+          window.multiplayerManager.updateUsername(gameState.username);
+        }
       }
       // AI: Update coin display in the inventory panel.
-      // New: sync gold field to local game state and update UI
-      if (data.gold !== undefined) {
-        gameState.gold = data.gold || 0;
-        gameState.playerCoins = gameState.gold;
-        try { updateCoinDisplay(gameState.gold); } catch (_) {}
+      // Sync galactic tokens field to local game state and update UI
+      if (data.galacticTokens !== undefined) {
+        gameState.galacticTokens = data.galacticTokens || 0;
+        gameState.playerCoins = gameState.galacticTokens;
+        try { updateCoinDisplay(gameState.galacticTokens); } catch (_) {}
+      }
+
+      // AI: Update multiplayer manager username when database username is loaded
+      if (data.username && window.multiplayerManager) {
+        window.multiplayerManager.updateUsername(data.username);
+      }
+      // Legacy support for old 'gold' field
+      else if (data.gold !== undefined) {
+        gameState.galacticTokens = data.gold || 0;
+        gameState.playerCoins = gameState.galacticTokens;
+        try { updateCoinDisplay(gameState.galacticTokens); } catch (_) {}
       }
       // Always accept latest snapshot for inventory to avoid getting stuck
       // in a loading state if a local write hangs.
@@ -411,10 +527,15 @@ export async function setupUserListeners(user) {
 
     // 3. Set up chat and presence listeners
     messagesUnsubscribe = onChatMessages(renderMessages);
-    onlinePlayersUnsubscribe = onOnlinePlayersChange(renderOnlinePlayers);
+    onlinePlayersUnsubscribe = onOnlinePlayersChange((players) => {
+      renderOnlinePlayers(players);
+      updateOnlinePlayersList(players);
+      updateOnlineStatus(true); // We're connected if we're getting updates
+    });
     
     // 4. Set online status
     updatePlayerOnlineStatus(user.uid, true);
+    updateOnlineStatus(true); // Mark as connected
 
     // 5. Enable chat input and form submit
     // 5. Enable chat input and form submit
@@ -527,7 +648,9 @@ export async function setupUserListeners(user) {
 
       const usernameSpan = document.createElement('span');
       usernameSpan.className = 'font-bold text-cyan-400';
-      usernameSpan.textContent = `${msg.username}: `;
+      // Ensure username is properly displayed, fallback to 'Unknown' if missing
+      const displayName = msg.username || msg.displayName || 'Unknown';
+      usernameSpan.textContent = `${displayName}: `;
 
       const textSpan = document.createElement('span');
       textSpan.textContent = msg.text;
@@ -605,8 +728,11 @@ export async function setupUserListeners(user) {
       const toRender = freshPlayers.length ? freshPlayers : players;
       toRender.forEach(p => {
         const playerEl = document.createElement('div');
-        playerEl.textContent = p.username || 'Unknown Player';
-        playerEl.className = 'text-slate-300 py-0.5';
+        // Use multiple fallback options for display name
+        const displayName = p.username || p.displayName || p.uid || 'Unknown Player';
+        playerEl.textContent = displayName;
+        playerEl.className = 'text-slate-300 py-0.5 truncate';
+        playerEl.title = displayName; // Show full name on hover
         onlineList.appendChild(playerEl);
       });
     }

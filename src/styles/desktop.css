@@ -131,12 +131,146 @@ html, body {
   max-height: none !important;
 }
 
-/* Ensure chat panel container sits bottom-left with fixed width and no internal scrolling */
+/* Ensure chat panel container sits bottom-left with proper positioning */
 #chat-panel-container {
-  bottom: 10px !important;
-  left: 10px !important;
+  bottom: 24px !important;
+  left: 16px !important;
   right: auto !important;
-  width: 220px !important;
+  max-width: 90vw; /* More conservative width */
+  min-width: 400px; /* Lower minimum width for smaller design */
+}
+
+/* Ensure chat panel content fits properly within the container */
+#chat-panel-container .flex.flex-col {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ensure messages area can scroll properly */
+#chat-messages {
+  flex: 1;
+  min-height: 0; /* Allow flex shrinking */
+}
+
+/* Ensure online players sidebar has proper width */
+#chat-panel-container .w-56 {
+  min-width: 140px;
+  max-width: 200px;
+  flex-shrink: 0;
+}
+
+/* Ensure messages area takes remaining space */
+#chat-panel-container .flex-1.flex.flex-col {
+  min-width: 0; /* Allow flex shrinking */
+}
+
+/* Ensure chat input area maintains proper layout */
+#chat-panel-container .p-4.border-t {
+  flex-shrink: 0;
+}
+
+/* Responsive chat panel for smaller screens */
+@media (max-width: 768px) {
+  #chat-panel-container {
+    width: calc(100vw - 32px) !important;
+    max-width: none !important;
+    min-width: 350px !important;
+    left: 16px !important;
+    right: 16px !important;
+  }
+
+  /* Reduce sidebar width on mobile */
+  #chat-panel-container .w-56 {
+    min-width: 80px;
+    max-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  #chat-panel-container {
+    height: 320px !important; /* Slightly shorter on very small screens */
+    min-width: 280px !important;
+  }
+
+  /* Make chat input more compact on mobile */
+  #chat-form {
+    gap: 8px;
+    min-height: 36px;
+  }
+
+  #chat-input {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+
+  #chat-send {
+    min-width: 44px;
+    height: 36px;
+    padding: 8px 12px;
+  }
+
+  #chat-send svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Ensure chat input is properly styled and interactive */
+#chat-input {
+  pointer-events: auto !important;
+  z-index: 10;
+  min-width: 0; /* Allow input to shrink */
+}
+
+#chat-input:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.5);
+  outline-offset: 1px;
+}
+
+/* Ensure chat form maintains proper spacing and layout */
+#chat-form {
+  pointer-events: auto !important;
+  align-items: stretch;
+  min-height: 40px;
+}
+
+/* Ensure send button is always visible and properly sized */
+#chat-send {
+  pointer-events: auto !important;
+  z-index: 10;
+  flex-shrink: 0;
+  min-width: 50px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure chat input area has proper padding and doesn't overflow */
+#chat-panel-container .p-3.border-t {
+  padding: 12px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Prevent chat messages from being too wide and pushing input off screen */
+#chat-messages {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Ensure chat message elements don't break layout */
+#chat-messages .chat-message {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Make sure usernames don't break the layout */
+#chat-messages .chat-message span {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 #chat-panel {

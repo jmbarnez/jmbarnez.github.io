@@ -1,5 +1,5 @@
 import { database as db } from '../utils/firebaseClient.js';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, remove, get } from 'firebase/database';
 import { game } from '../game/core.js';
 import { addItemToInventory } from '../ui/inventory.js';
 import { playPickupSound } from '../utils/sfx.js';
@@ -143,49 +143,58 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
     const worldX = typeof game?.player?.x === 'number' ? game.player.x : playerX;
     const worldY = typeof game?.player?.y === 'number' ? game.player.y : playerY;
     
+    // Store item details before server call since the item might be removed by Firebase sync
+    const pickedUpItem = game.groundItems.find(item => item.id === itemId);
+    
+    if (!pickedUpItem) {
+        return false;
+    }
+    
     // Mark pickup attempt as active
     activePickupAttempts.add(itemId);
 
     try {
-        // Call server API for pickup processing
-        const response = await fetch('http://localhost:8081/pickup-item', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                itemId,
-                playerId: safePlayerId,
-                playerX: worldX,
-                playerY: worldY
-            })
-        });
+        // Try server API first for pickup processing
+        let result;
+        try {
+            const response = await fetch('http://localhost:8081/pickup-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    itemId,
+                    playerId: safePlayerId,
+                    playerX: worldX,
+                    playerY: worldY
+                })
+            });
 
-        const result = await response.json();
+            result = await response.json();
+        } catch (serverError) {
+            // Server not available, try direct Firebase approach for local player
+            console.warn('Server unavailable, attempting direct pickup...');
+            result = await attemptDirectPickup(itemId, safePlayerId, worldX, worldY);
+        }
 
         if (result.success) {
-            // Find the item in local state to get its details
-            const pickedUpItem = game.groundItems.find(item => item.id === itemId);
+            // Grant item to player inventory (addItemToInventory now handles currency items automatically)
+            const added = await addItemToInventory(pickedUpItem.type, pickedUpItem.count || 1);
 
-            if (pickedUpItem) {
-                // Grant item to player inventory (addItemToInventory now handles galactic_token as currency)
-                const added = await addItemToInventory(pickedUpItem.type, pickedUpItem.count || 1);
+            if (added) {
+                // Play pickup sound for successful inventory addition
+                playPickupSound();
 
-                if (added) {
-                    // Play pickup sound for successful inventory addition
-                    playPickupSound();
-
-                    // Grant experience for collecting resources
-                    experienceManager.addResourceExp(pickedUpItem.type);
-                }
-
-                // Show floating pickup message for visual feedback
-                showItemPickupMessage(pickedUpItem.type, pickedUpItem.count || 1, pickedUpItem.x, pickedUpItem.y);
-
-                // Remove item from local state after successful server transaction
-                // The Firebase subscription will also remove it, but we do it immediately for responsive UX
-                game.groundItems = game.groundItems.filter(item => item.id !== itemId);
+                // Grant experience for collecting resources
+                experienceManager.addResourceExp(pickedUpItem.type);
             }
+
+            // Show floating pickup message for visual feedback
+            showItemPickupMessage(pickedUpItem.type, pickedUpItem.count || 1, pickedUpItem.x, pickedUpItem.y);
+
+            // Remove item from local state after successful server transaction
+            // The Firebase subscription will also remove it, but we do it immediately for responsive UX
+            game.groundItems = game.groundItems.filter(item => item.id !== itemId);
 
             return true;
         } else {
@@ -193,10 +202,72 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
         }
 
     } catch (error) {
+        console.error('Pickup failed:', {
+            itemId,
+            error: error.message,
+            type: error.name,
+            code: error.code
+        });
+
+        // Provide better error feedback
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+            console.error('❌ Server connection failed. Is the server running on port 8081?');
+            console.error('💡 Start the server with: cd server && node server.js');
+        } else if (error.message?.includes('connection refused') || error.code === 'ECONNREFUSED') {
+            console.error('❌ Connection refused. Server might not be running on port 8081');
+            console.error('💡 Start the server with: cd server && node server.js');
+        }
+
         return false;
     } finally {
         // Always remove from active attempts when done
         activePickupAttempts.delete(itemId);
+    }
+}
+
+/**
+ * Attempts direct pickup when server is unavailable.
+ * This is a fallback mechanism for local player pickups.
+ *
+ * @param {string} itemId - The ID of the ground item to pick up
+ * @param {string} playerId - The ID of the player attempting pickup
+ * @param {number} playerX - Player's current X position
+ * @param {number} playerY - Player's current Y position
+ * @returns {Promise<{success: boolean, error?: string}>} Result of pickup attempt
+ */
+async function attemptDirectPickup(itemId, playerId, playerX, playerY) {
+    try {
+        // Get current user to verify ownership
+        const currentUser = auth.currentUser;
+        if (!currentUser || currentUser.uid !== playerId) {
+            return { success: false, error: 'User not authenticated or not owner' };
+        }
+
+        // Find the item in game state to get area information
+        const pickedUpItem = game.groundItems.find(item => item.id === itemId);
+        if (!pickedUpItem) {
+            return { success: false, error: 'Item not found' };
+        }
+
+        // Check distance (basic client-side validation)
+        const distance = Math.hypot(pickedUpItem.x - playerX, pickedUpItem.y - playerY);
+        if (distance > 100) { // Allow slightly more distance for direct pickup
+            return { success: false, error: 'Too far from item' };
+        }
+
+        // Get area ID from game state (assuming beach for now, but this should be dynamic)
+        const areaId = window.gameInstance?.areaId || 'beach';
+
+        // Direct Firebase removal (no server transaction)
+        const itemRef = ref(db, `areas/${areaId}/groundItems/${itemId}`);
+        await remove(itemRef);
+
+        console.log('Direct pickup successful for item:', itemId);
+        return { success: true };
+
+    } catch (error) {
+        console.error('Direct pickup failed:', error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -260,6 +331,14 @@ export async function trackDamage(enemyId, damage) {
             return false;
 
         } catch (err) {
+            console.warn(`Track damage attempt ${attempt} failed:`, err.message);
+
+            // Provide helpful feedback for connection issues
+            if (err.message?.includes('connection refused') || err.code === 'ECONNREFUSED') {
+                console.error('❌ Cannot connect to server. Is the server running on port 8081?');
+                console.error('💡 Start the server with: cd server && node server.js');
+            }
+
             // Network/fetch error: retry
             const backoff = 50 * Math.pow(2, attempt);
             await new Promise(r => setTimeout(r, backoff));
