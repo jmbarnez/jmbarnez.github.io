@@ -17,16 +17,33 @@ export function drawGroundItems() {
   const { ctx } = game;
   const iconScale = 1.5; // Increased scale for better visibility
   const iconSize = 12 * iconScale; // 18px
-  const interactionRadius = 24;
+  const interactionRadius = 32;
 
   for (const item of game.groundItems) {
     const t = item.type || 'seashell';
-    // Center icon on item.x,item.y
+    
+    // Add floating animation to all ground items
+    const time = Date.now() * 0.002; // Slow floating speed
+    const floatOffset = Math.sin(time + item.x * 0.01 + item.y * 0.01) * 2; // 2px float amplitude
+    
+    // Center icon on item.x,item.y with floating animation
     const halfSize = iconSize / 2;
     const centerX = Math.round(item.x);
-    const centerY = Math.round(item.y);
+    const centerY = Math.round(item.y + floatOffset); // Apply floating
     const iconX = centerX - halfSize;
     const iconY = centerY - halfSize;
+
+    // Enhanced shadow system - larger, more realistic shadow
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    // Shadow is always on the ground (not floating) and slightly offset
+    const shadowY = Math.round(item.y) + halfSize * 0.8;
+    const shadowSize = halfSize * 1.2; // Larger shadow
+    ctx.ellipse(centerX + 1, shadowY, shadowSize, shadowSize * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+    ctx.restore();
 
     // AI: The drawPixelIcon function now returns a mask of the icon's pixels.
     // This mask is used to draw a precise outline around the icon.
@@ -34,16 +51,6 @@ export function drawGroundItems() {
       outline: false,
       scale: iconScale
     });
-
-    // Enhanced visual feedback for ground items
-    // 1. Subtle shadow/base for depth perception
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY + halfSize * 0.6, halfSize * 0.8, halfSize * 0.2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fill();
-    ctx.restore();
 
     // 2. Check if this ground item is currently highlighted using the highlight manager
     if (highlightManager.isHighlighted(item)) {

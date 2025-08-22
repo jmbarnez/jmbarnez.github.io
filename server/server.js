@@ -7,25 +7,12 @@ const admin = require('firebase-admin');
 
 // Initialize Firebase Admin SDK
 let serviceAccount;
-console.log('=== Firebase Credentials Setup ===');
-console.log('Environment variables available:', Object.keys(process.env).filter(key => key.includes('FIREBASE')));
-console.log('FIREBASE_SERVICE_ACCOUNT exists:', !!process.env.FIREBASE_SERVICE_ACCOUNT);
-
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  console.log('Using environment variable for Firebase credentials');
-  console.log('Environment variable length:', process.env.FIREBASE_SERVICE_ACCOUNT.length);
   try {
     // In production (like on Render), use the environment variable.
     // The variable should be a base64 encoded string of the JSON key file.
-    console.log('Attempting to decode Base64 string...');
     const serviceAccountString = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8');
-    console.log('Decoded string length:', serviceAccountString.length);
-    console.log('Decoded string preview:', serviceAccountString.substring(0, 100) + '...');
-
-    console.log('Attempting to parse JSON...');
     serviceAccount = JSON.parse(serviceAccountString);
-    console.log('Successfully decoded Firebase credentials from environment variable');
-    console.log('Project ID:', serviceAccount.project_id);
   } catch (error) {
     console.error('Error processing FIREBASE_SERVICE_ACCOUNT environment variable:');
     console.error('Error message:', error.message);
@@ -38,11 +25,9 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     process.exit(1);
   }
 } else {
-  console.log('Environment variable not found, falling back to local file');
   // In local development, fall back to the JSON file.
   try {
     serviceAccount = require('./google-credentials.json');
-    console.log('Successfully loaded Firebase credentials from local file');
   } catch (error) {
     console.error("Error: 'google-credentials.json' not found.");
     console.error("Please make sure the file exists for local development, or set the FIREBASE_SERVICE_ACCOUNT environment variable for production.");
@@ -117,9 +102,18 @@ const groundItemsRef = db.ref(`areas/${AREA_ID}/groundItems`);
 const app = express();
 const server = http.createServer(app);
 
-// CORS middleware to allow requests from Vite dev server
+// CORS middleware to allow requests from both dev and production
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'https://idlewebgame.web.app'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+    
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
@@ -140,8 +134,8 @@ const WORLD_WIDTH = 800;
 const WORLD_HEIGHT = 600;
 // Pickup configuration: base pickup distance and an additional tolerance in pixels.
 // We use squared-distance comparisons in hot paths to avoid unnecessary sqrt calls.
-const PICKUP_DISTANCE_PX = 50; // nominal pickup radius in pixels
-const PICKUP_DISTANCE_TOLERANCE_PX = 6; // extra tolerance to account for anchor offsets
+const PICKUP_DISTANCE_PX = 60; // nominal pickup radius in pixels (matches client maxPickupRange)
+const PICKUP_DISTANCE_TOLERANCE_PX = 10; // extra tolerance to account for anchor offsets and network delays
 const PICKUP_MAX_DISTANCE_SQ = Math.pow(PICKUP_DISTANCE_PX + PICKUP_DISTANCE_TOLERANCE_PX, 2);
 
 // Enemies are now static - removed all movement and fleeing configurations
@@ -274,14 +268,14 @@ ensureEnemiesHaveLoot();
 /**
  * Drops loot from a defeated enemy at the specified location.
  * Processes enemy loot table with random chance and quantity calculations.
- * Creates shared ground items only if multiple players contributed damage.
+ * Uses last-hit rule: only the player who dealt the killing blow can see the loot initially.
  *
  * @param {Object} enemy - The enemy that was defeated
  * @param {number} x - X coordinate where loot should drop
  * @param {number} y - Y coordinate where loot should drop
- * @param {string} playerId - ID of the player who defeated the enemy (optional)
+ * @param {string} lastHitBy - ID of the player who dealt the killing blow (last hitter)
  */
-function dropEnemyLoot(enemy, x, y, playerId = null) {
+function dropEnemyLoot(enemy, x, y, lastHitBy = null) {
     if (!enemy) {
         console.error(`[LOOT_DROP] Enemy object is null or undefined`);
         return;
@@ -306,12 +300,12 @@ function dropEnemyLoot(enemy, x, y, playerId = null) {
 
     console.log(`[LOOT_DROP] Processing loot for enemy ${enemy.id} at (${x}, ${y})`);
 
-    // Check if multiple players contributed damage
+    // Use last-hit rule for loot visibility
     const damageContributors = enemy.damageContributors || {};
     const contributorCount = Object.keys(damageContributors).length;
-    const hasMultipleContributors = contributorCount > 1;
-
-    console.log(`[LOOT_DROP] Enemy ${enemy.id} had ${contributorCount} damage contributors:`, Object.keys(damageContributors));
+    const lastHitter = lastHitBy || enemy.lastHitBy;
+    
+    console.log(`[LOOT_DROP] Enemy ${enemy.id} last hit by: ${lastHitter}, total contributors: ${contributorCount}`);
 
     const lootTable = enemy.loot;
     const droppedItems = [];
@@ -321,42 +315,42 @@ function dropEnemyLoot(enemy, x, y, playerId = null) {
         if (typeof lootTable.goldMin === 'number' && typeof lootTable.goldMax === 'number' && lootTable.goldMin >= 0 && lootTable.goldMax >= lootTable.goldMin) {
             const goldAmount = Math.floor(Math.random() * (lootTable.goldMax - lootTable.goldMin + 1)) + lootTable.goldMin;
             if (goldAmount > 0) {
-                // For now, we'll create a gold item that can be picked up
-                // In the future, this could be handled as currency directly
-                const goldItemId = `gold_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                // Create a galactic token item that can be picked up
+                const tokenItemId = `galactic_token_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-                // Determine visibility based on damage contributors
-                // All items are visible only to players who contributed damage
-                const visibleTo = Object.keys(damageContributors);
-                console.log(`[LOOT_DROP] Creating gold item ${goldItemId} visible to ${contributorCount} contributors: ${visibleTo.join(', ')}`);
+                // Determine visibility based on last-hit rule
+                // Only the last hitter can see the loot initially
+                const visibleTo = lastHitter ? [lastHitter] : [];
+                console.log(`[LOOT_DROP] Creating galactic token item ${tokenItemId} visible to last hitter: ${lastHitter}`);
 
                 const releaseAt = Date.now() + 30000; // Release visibility after 30s
-                const goldItem = {
-                    id: goldItemId,
-                    type: 'gold',
+                const tokenItem = {
+                    id: tokenItemId,
+                    type: 'galactic_token',
                     x: x + (Math.random() - 0.5) * 20, // Slight random offset
                     y: y + (Math.random() - 0.5) * 20,
                     count: goldAmount,
                     createdAt: Date.now(),
                     releaseAt: releaseAt,
                     visibleTo: visibleTo, // Array of player IDs who can see/access this item
-                    contributors: visibleTo // For backward compatibility, same as visibleTo
+                    contributors: visibleTo, // For backward compatibility, same as visibleTo
+                    lastHitBy: lastHitter // Track who gets the loot
                 };
 
-                groundItemsRef.child(goldItemId).set(goldItem, (error) => {
+                groundItemsRef.child(tokenItemId).set(tokenItem, (error) => {
                     if (error) {
-                        console.error(`[LOOT_DROP] Error dropping gold ${goldItemId}:`, error);
+                        console.error(`[LOOT_DROP] Error dropping galactic token ${tokenItemId}:`, error);
                     } else {
-                        console.log(`[LOOT_DROP] Dropped ${goldAmount} gold as item ${goldItemId} (${hasMultipleContributors ? 'shared' : 'private'})`);
-                        droppedItems.push(goldItem);
+                        console.log(`[LOOT_DROP] Dropped ${goldAmount} galactic token(s) as item ${tokenItemId} (last-hit loot for ${lastHitter})`);
+                        droppedItems.push(tokenItem);
                     }
                 });
             }
         } else if (lootTable.goldMin !== undefined || lootTable.goldMax !== undefined) {
-            console.warn(`[LOOT_DROP] Invalid gold drop configuration for enemy ${enemy.id}: goldMin=${lootTable.goldMin}, goldMax=${lootTable.goldMax}`);
+            console.warn(`[LOOT_DROP] Invalid galactic token drop configuration for enemy ${enemy.id}: goldMin=${lootTable.goldMin}, goldMax=${lootTable.goldMax}`);
         }
-    } catch (goldError) {
-        console.error(`[LOOT_DROP] Error processing gold drops for enemy ${enemy.id}:`, goldError);
+    } catch (tokenError) {
+        console.error(`[LOOT_DROP] Error processing galactic token drops for enemy ${enemy.id}:`, tokenError);
     }
 
     // Process item drops from loot table
@@ -378,10 +372,10 @@ function dropEnemyLoot(enemy, x, y, playerId = null) {
                         if (count > 0) {
                             const itemId = `${itemDrop.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-                            // Determine visibility based on damage contributors
-                            // All items are visible only to players who contributed damage
-                            const visibleTo = Object.keys(damageContributors);
-                            console.log(`[LOOT_DROP] Creating item ${itemId} visible to ${contributorCount} contributors: ${visibleTo.join(', ')}`);
+                            // Determine visibility based on last-hit rule
+                            // Only the last hitter can see the loot initially
+                            const visibleTo = lastHitter ? [lastHitter] : [];
+                            console.log(`[LOOT_DROP] Creating item ${itemId} visible to last hitter: ${lastHitter}`);
 
                             const releaseAt = Date.now() + 30000; // Release visibility after 30s
                             const groundItem = {
@@ -393,14 +387,15 @@ function dropEnemyLoot(enemy, x, y, playerId = null) {
                                 createdAt: Date.now(),
                                 releaseAt: releaseAt,
                                 visibleTo: visibleTo, // Array of player IDs who can see/access this item
-                                contributors: visibleTo // For backward compatibility, same as visibleTo
+                                contributors: visibleTo, // For backward compatibility, same as visibleTo
+                                lastHitBy: lastHitter // Track who gets the loot
                             };
 
                             groundItemsRef.child(itemId).set(groundItem, (error) => {
                                 if (error) {
                                     console.error(`[LOOT_DROP] Error dropping item ${itemId}:`, error);
                                 } else {
-                                    console.log(`[LOOT_DROP] Dropped ${count}x ${itemDrop.id} as item ${itemId} (${hasMultipleContributors ? 'shared' : 'private'})`);
+                                    console.log(`[LOOT_DROP] Dropped ${count}x ${itemDrop.id} as item ${itemId} (last-hit loot for ${lastHitter})`);
                                     droppedItems.push(groundItem);
                                 }
                             });
@@ -451,8 +446,10 @@ function dropEnemyLoot(enemy, x, y, playerId = null) {
  */
 async function pickupGroundItem(itemId, playerId, playerX, playerY, grantItemToPlayer) {
     console.log(`[ITEM_PICKUP] Player ${playerId} attempting to pick up item ${itemId}`);
+    console.log(`[ITEM_PICKUP] Ground items ref path: ${groundItemsRef.toString()}`);
 
     const itemRef = groundItemsRef.child(itemId);
+    console.log(`[ITEM_PICKUP] Item ref path: ${itemRef.toString()}`);
 
     try {
         // Early-read to validate visibility/distance before attempting transaction.
@@ -463,6 +460,15 @@ async function pickupGroundItem(itemId, playerId, playerX, playerY, grantItemToP
         if (!currentItem) {
             console.log(`[ITEM_PICKUP] Item ${itemId} not found or already picked up (pre-check)`);
             return false;
+        }
+        
+        // Check if item was created very recently (within last 500ms)
+        // If so, add a small delay to allow Firebase to propagate the write
+        const now = Date.now();
+        const itemAge = currentItem.createdAt ? (now - currentItem.createdAt) : 1000;
+        if (itemAge < 500) {
+            console.log(`[ITEM_PICKUP] Item ${itemId} is very new (${itemAge}ms old), waiting for Firebase propagation...`);
+            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
         }
 
         // Distance validation (use squared distance for efficiency and add tolerance)
@@ -486,51 +492,51 @@ async function pickupGroundItem(itemId, playerId, playerX, playerY, grantItemToP
             return false;
         }
 
-        // Run the transaction with retries to tolerate transient conflicts
-        const txResult = await runTransactionWithRetries(itemRef, (cur) => {
-            if (!cur) return undefined; // not found
-            // Re-validate basic structure
-            if (!cur.type || typeof cur.x !== 'number' || typeof cur.y !== 'number') return undefined;
-
-            // Distance check (squared)
-            const ddx = cur.x - playerX;
-            const ddy = cur.y - playerY;
-            const dSq = ddx * ddx + ddy * ddy;
-            if (dSq > PICKUP_MAX_DISTANCE_SQ) {
-                // Too far in transaction - abort pickup
-                return undefined;
-            }
-
-            // Visibility rules: allow pickup if ANY of the following is true:
-            // - Player is explicitly in visibleTo
-            // - Item has an ownerId equal to playerId
-            // - Item has a releaseAt timestamp that has passed (public)
-            // - Item has no visibleTo/ownerId restrictions (public)
-            const now = Date.now();
-            const isVisibleToPlayer = cur.visibleTo && Array.isArray(cur.visibleTo) && cur.visibleTo.includes(playerId);
-            const isOwner = cur.ownerId && cur.ownerId === playerId;
-            const isReleased = cur.releaseAt && typeof cur.releaseAt === 'number' && cur.releaseAt <= now;
-            const isUnrestricted = (!cur.visibleTo || !Array.isArray(cur.visibleTo)) && !cur.ownerId;
-
-            if (!(isVisibleToPlayer || isOwner || isReleased || isUnrestricted)) {
-                // Not allowed to pick up
-                return undefined;
-            }
-
-            // All checks passed; remove the item
-            return null;
-        }, 6);
-
-        if (txResult.committed && txResult.snapshot) {
-            const removedItem = txResult.snapshot.val();
-            console.log(`[ITEM_PICKUP] Successfully picked up ${removedItem.count}x ${removedItem.type} for player ${playerId}`);
-            await grantItemToPlayer(playerId, removedItem.type, removedItem.count);
-            return true;
+        console.log(`[ITEM_PICKUP] Starting transaction for item ${itemId} at path: areas/${AREA_ID}/groundItems/${itemId}`);
+        
+        // Try a simplified approach to avoid Firebase RTDB transaction consistency issues
+        // Check if we can pick up the item based on the pre-read, then use atomic remove
+        console.log(`[ITEM_PICKUP] Using pre-validated atomic remove approach`);
+        
+        // Validate all pickup conditions based on the pre-read data
+        // Reuse the 'now' variable from above
+        const isVisibleToPlayer = currentItem.visibleTo && Array.isArray(currentItem.visibleTo) && currentItem.visibleTo.includes(playerId);
+        const isOwner = currentItem.ownerId && currentItem.ownerId === playerId;
+        const isLastHitter = currentItem.lastHitBy && currentItem.lastHitBy === playerId;
+        const isReleased = currentItem.releaseAt && typeof currentItem.releaseAt === 'number' && currentItem.releaseAt <= now;
+        const isUnrestricted = (!currentItem.visibleTo || !Array.isArray(currentItem.visibleTo)) && !currentItem.ownerId && !currentItem.lastHitBy;
+        const isLegacyItem = currentItem.createdAt && typeof currentItem.createdAt === 'number' && (now - currentItem.createdAt) > 60000;
+        
+        console.log(`[ITEM_PICKUP] Pre-validation check for ${itemId}:`, {
+            playerId,
+            visibleTo: currentItem.visibleTo,
+            ownerId: currentItem.ownerId,
+            lastHitBy: currentItem.lastHitBy,
+            isVisibleToPlayer,
+            isOwner,
+            isLastHitter,
+            isReleased,
+            isUnrestricted,
+            isLegacyItem
+        });
+        
+        if (!(isVisibleToPlayer || isOwner || isLastHitter || isReleased || isUnrestricted || isLegacyItem)) {
+            console.log(`[ITEM_PICKUP] Pre-validation failed: Player ${playerId} not allowed to pick up item ${itemId}`);
+            return false;
         }
-
-        // If we reach here, the transaction did not commit. Log diagnostics.
-        console.warn(`[ITEM_PICKUP] Transaction did not commit for ${itemId}`, { attempt: txResult.attempt, snapshot: txResult.snapshot ? txResult.snapshot.val() : null });
-        return false;
+        
+        try {
+            // Use atomic remove - this either succeeds completely or fails completely
+            await itemRef.remove();
+            
+            console.log(`[ITEM_PICKUP] Successfully removed item ${itemId} using atomic operation`);
+            await grantItemToPlayer(playerId, currentItem.type, currentItem.count);
+            return true;
+            
+        } catch (removeError) {
+            console.log(`[ITEM_PICKUP] Atomic remove failed (item may have been picked up by someone else):`, removeError.message);
+            return false;
+        }
 
     } catch (error) {
         console.error(`[ITEM_PICKUP] Error picking up item ${itemId}:`, error);
@@ -591,12 +597,13 @@ enemiesRef.on('child_changed', async (snapshot) => {
                     // Continue; we still attempt to drop loot and remove the node
                 }
 
-                try {
-                    console.log(`[ENEMY_DEATH] Dropping loot for enemy ${enemyId} at (${enemy.x}, ${enemy.y})`);
-                    await Promise.resolve(dropEnemyLoot(enemy, enemy.x, enemy.y, enemy.lastDamagedBy));
-                } catch (lootErr) {
-                    console.error(`[ENEMY_DEATH] Error while dropping loot for ${enemyId}:`, lootErr);
-                }
+                // Loot dropping is now handled by damage tracking system to avoid duplicates
+                // try {
+                //     console.log(`[ENEMY_DEATH] Dropping loot for enemy ${enemyId} at (${enemy.x}, ${enemy.y})`);
+                //     await Promise.resolve(dropEnemyLoot(enemy, enemy.x, enemy.y, enemy.lastDamagedBy));
+                // } catch (lootErr) {
+                //     console.error(`[ENEMY_DEATH] Error while dropping loot for ${enemyId}:`, lootErr);
+                // }
 
                 try {
                     await enemiesRef.child(enemyId).remove();
@@ -816,6 +823,9 @@ app.post('/track-damage', express.json(), async (req, res) => {
             if (damage > 0) {
                 const currentDamage = currentEnemy.damageContributors[playerId] || 0;
                 currentEnemy.damageContributors[playerId] = currentDamage + damage;
+                
+                // Track last hitter for last-hit loot rule
+                currentEnemy.lastHitBy = playerId;
             } else if (damage === 0) {
                 // death-processing marker: ensure player present
                 if (!currentEnemy.damageContributors[playerId]) currentEnemy.damageContributors[playerId] = 0;
@@ -846,7 +856,9 @@ app.post('/track-damage', express.json(), async (req, res) => {
             // If enemy died, trigger loot drops (best-effort)
             if (enemy && enemy.isDead && enemy.deathProcessed) {
                 try {
-                    dropEnemyLoot(enemy, enemy.x || 0, enemy.y || 0, playerId);
+                    // Use lastHitBy for loot drops, fallback to current playerId
+                    const lastHitter = enemy.lastHitBy || playerId;
+                    dropEnemyLoot(enemy, enemy.x || 0, enemy.y || 0, lastHitter);
                 } catch (lootError) {
                     console.error(`[DAMAGE_TRACK] Error creating loot drops for enemy ${enemyId}:`, lootError);
                 }
@@ -918,11 +930,18 @@ app.post('/pickup-item', express.json(), async (req, res) => {
                 groundItemsRef.child(itemId).once('value', (snap) => {
                     const itemState = snap.val();
                     console.warn(`[PICKUP_API] Pickup failed for ${itemId}; current item state:`, itemState);
-                    return res.status(404).json({ success: false, error: 'Item not found or cannot be picked up', item: itemState });
+                    
+                    if (!itemState) {
+                        // Item doesn't exist - someone else picked it up
+                        return res.status(404).json({ success: false, error: 'Item not found or already picked up', item: null });
+                    } else {
+                        // Item exists but pickup failed (distance, visibility, race condition)
+                        return res.status(400).json({ success: false, error: 'Cannot pick up item - check distance and permissions', transient: true, item: itemState });
+                    }
                 });
             } catch (readErr) {
                 console.error('[PICKUP_API] Failed to read item state after pickup failure:', readErr);
-                res.status(404).json({ success: false, error: 'Item not found or cannot be picked up' });
+                res.status(500).json({ success: false, error: 'Server error checking item state', transient: true });
             }
         }
     } catch (error) {

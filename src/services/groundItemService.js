@@ -40,6 +40,7 @@ import { auth } from '../utils/firebaseClient.js';
  * - Server-side distance validation prevents exploits
  * - Optimistic locking ensures atomic operations
  * - Failed transactions are automatically retried
+ * - Client-side guards prevent multiple simultaneous pickup attempts
  *
  * LOCAL STATE MANAGEMENT:
  * - game.groundItems is the single source of truth for rendering
@@ -47,6 +48,9 @@ import { auth } from '../utils/firebaseClient.js';
  * - Local pickup attempts are validated by server before state changes
  * - Death animations and visual effects are handled locally
  */
+
+// Track pickup attempts to prevent spamming
+const activePickupAttempts = new Set();
 
 /**
  * Subscribes to ground items for the current area.
@@ -62,20 +66,15 @@ import { auth } from '../utils/firebaseClient.js';
  * @returns {function} The unsubscribe function to stop listening
  */
 export function subscribeGroundItems(areaId) {
-    console.log(`[GROUND_ITEMS] Subscribing to ground items for area: ${areaId}`);
-
     const groundItemsRef = ref(db, `areas/${areaId}/groundItems`);
 
     return onValue(groundItemsRef, (snapshot) => {
         const groundItemsData = snapshot.val() || {};
 
-        console.log(`[GROUND_ITEMS] Received ${Object.keys(groundItemsData).length} ground items from server`);
-
         // Get current player ID for visibility filtering
         const currentPlayerId = auth.currentUser?.uid;
 
         if (!currentPlayerId) {
-            console.warn('[GROUND_ITEMS] No authenticated user, cannot filter items by visibility');
             game.groundItems = [];
             return;
         }
@@ -91,20 +90,12 @@ export function subscribeGroundItems(areaId) {
         const visibleItems = allGroundItems.filter(item => {
             // If item has visibleTo array, check if current player is included
             if (item.visibleTo && Array.isArray(item.visibleTo)) {
-                const isVisible = item.visibleTo.includes(currentPlayerId);
-                if (!isVisible) {
-                    console.log(`[GROUND_ITEMS] Filtering out item ${item.id} - not visible to player ${currentPlayerId}`);
-                }
-                return isVisible;
+                return item.visibleTo.includes(currentPlayerId);
             }
 
             // Fallback to old ownership system for backward compatibility
             if (item.ownerId) {
-                const isVisible = item.ownerId === currentPlayerId;
-                if (!isVisible) {
-                    console.log(`[GROUND_ITEMS] Filtering out item ${item.id} - owned by ${item.ownerId}, player is ${currentPlayerId}`);
-                }
-                return isVisible;
+                return item.ownerId === currentPlayerId;
             }
 
             // If no ownership/visibility restrictions, item is visible to everyone
@@ -113,8 +104,6 @@ export function subscribeGroundItems(areaId) {
 
         // Update game state with filtered visible items
         game.groundItems = visibleItems;
-
-        console.log(`[GROUND_ITEMS] Updated local game.groundItems: ${game.groundItems.length} visible items (filtered from ${allGroundItems.length} total)`);
     });
 }
 
@@ -139,15 +128,23 @@ export function subscribeGroundItems(areaId) {
 export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
     // Ensure playerId is never undefined
     const safePlayerId = playerId || 'anonymous';
-
-    console.log(`[PICKUP] Attempting to pick up item ${itemId} for player ${safePlayerId}`);
-    console.log(`[PICKUP] Request data:`, { itemId, safePlayerId, playerX, playerY });
-
-    // Validate required fields before sending
-    if (!itemId || !safePlayerId || typeof playerX !== 'number' || typeof playerY !== 'number') {
-        console.error(`[PICKUP] Invalid parameters:`, { itemId, safePlayerId, playerX, playerY });
+    
+    // Prevent multiple simultaneous pickup attempts for the same item
+    if (activePickupAttempts.has(itemId)) {
         return false;
     }
+    
+    // Validate required fields before sending
+    if (!itemId || !safePlayerId || typeof playerX !== 'number' || typeof playerY !== 'number') {
+        return false;
+    }
+    
+    // Ensure coordinates are from game world state (not camera or scaled coordinates)
+    const worldX = typeof game?.player?.x === 'number' ? game.player.x : playerX;
+    const worldY = typeof game?.player?.y === 'number' ? game.player.y : playerY;
+    
+    // Mark pickup attempt as active
+    activePickupAttempts.add(itemId);
 
     try {
         // Call server API for pickup processing
@@ -159,24 +156,20 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
             body: JSON.stringify({
                 itemId,
                 playerId: safePlayerId,
-                playerX,
-                playerY
+                playerX: worldX,
+                playerY: worldY
             })
         });
-
-        console.log(`[PICKUP] Server response status: ${response.status}`);
 
         const result = await response.json();
 
         if (result.success) {
-            console.log(`[PICKUP] Server confirmed pickup of item ${itemId}`);
-
             // Find the item in local state to get its details
             const pickedUpItem = game.groundItems.find(item => item.id === itemId);
 
             if (pickedUpItem) {
-                // Grant item to player inventory
-                const added = addItemToInventory(pickedUpItem.type, pickedUpItem.count || 1);
+                // Grant item to player inventory (addItemToInventory now handles galactic_token as currency)
+                const added = await addItemToInventory(pickedUpItem.type, pickedUpItem.count || 1);
 
                 if (added) {
                     // Play pickup sound for successful inventory addition
@@ -184,10 +177,6 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
 
                     // Grant experience for collecting resources
                     experienceManager.addResourceExp(pickedUpItem.type);
-
-                    console.log(`[PICKUP] Successfully granted ${pickedUpItem.count || 1}x ${pickedUpItem.type} to player ${safePlayerId}`);
-                } else {
-                    console.warn(`[PICKUP] Failed to add ${pickedUpItem.type} to inventory - may be full`);
                 }
 
                 // Show floating pickup message for visual feedback
@@ -196,18 +185,18 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
                 // Remove item from local state after successful server transaction
                 // The Firebase subscription will also remove it, but we do it immediately for responsive UX
                 game.groundItems = game.groundItems.filter(item => item.id !== itemId);
-                console.log(`[PICKUP] Removed item ${itemId} from local game state`);
             }
 
             return true;
         } else {
-            console.log(`[PICKUP] Server rejected pickup of item ${itemId}: ${result.error}`);
             return false;
         }
 
     } catch (error) {
-        console.error(`[PICKUP] Error picking up item ${itemId}:`, error);
         return false;
+    } finally {
+        // Always remove from active attempts when done
+        activePickupAttempts.delete(itemId);
     }
 }
 
@@ -231,13 +220,7 @@ export function getGroundItems() {
  */
 export async function trackDamage(enemyId, damage) {
     const playerId = auth.currentUser?.uid;
-    if (!playerId) {
-        console.warn('[DAMAGE_TRACK] No authenticated user, skipping damage tracking');
-        return false;
-    }
-
-    if (!enemyId || typeof damage !== 'number' || damage < 0) {
-        console.error('[DAMAGE_TRACK] Invalid parameters:', { enemyId, damage });
+    if (!playerId || !enemyId || typeof damage !== 'number' || damage < 0) {
         return false;
     }
 
@@ -248,51 +231,42 @@ export async function trackDamage(enemyId, damage) {
     while (attempt < maxAttempts) {
         attempt += 1;
         try {
-            console.log(`[DAMAGE_TRACK] Attempt ${attempt}: tracking ${damage} damage from player ${playerId} to enemy ${enemyId}`);
-
             const response = await fetch('http://localhost:8081/track-damage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enemyId, playerId, damage })
             });
 
-            // parse JSON safely
             let result;
             try { result = await response.json(); } catch (e) { result = { success: false, error: 'invalid_json' }; }
 
             if (response.status === 200 && result && result.success) {
-                console.log(`[DAMAGE_TRACK] Successfully tracked damage for enemy ${enemyId} (attempt ${attempt})`);
                 return true;
             }
 
             // Non-retriable: enemy gone/processed
             if (response.status === 410 || response.status === 404) {
-                console.warn(`[DAMAGE_TRACK] Enemy ${enemyId} gone/processed (status ${response.status}):`, result.error || '');
                 return false;
             }
 
             // Transient server error: retry with exponential backoff
             if (response.status === 503 || response.status === 500) {
                 const backoff = 50 * Math.pow(2, attempt);
-                console.warn(`[DAMAGE_TRACK] Transient server error (status ${response.status}), backing off ${backoff}ms`);
                 await new Promise(r => setTimeout(r, backoff));
                 continue;
             }
 
             // Other responses: treat as rejection
-            console.warn(`[DAMAGE_TRACK] Server rejected damage tracking for enemy ${enemyId}:`, result.error || response.status);
             return false;
 
         } catch (err) {
             // Network/fetch error: retry
             const backoff = 50 * Math.pow(2, attempt);
-            console.error(`[DAMAGE_TRACK] Network error on attempt ${attempt}:`, err, `backing off ${backoff}ms`);
             await new Promise(r => setTimeout(r, backoff));
             continue;
         }
     }
 
-    console.error(`[DAMAGE_TRACK] Exhausted ${maxAttempts} attempts to track damage for enemy ${enemyId}`);
     return false;
 }
 

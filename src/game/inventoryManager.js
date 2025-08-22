@@ -31,28 +31,41 @@ class InventoryManager {
    * AI: Adds gold to the player's currency.
    * @param {number} amount - Amount of gold to add
    */
-  addGold(amount) {
+  async addGold(amount) {
     if (amount <= 0) return;
     
-    gameState.gold = (gameState.gold || 0) + amount;
-    gameState.playerCoins = gameState.gold; // Sync with coin display system
-    console.log(`Added ${amount} gold. Total: ${gameState.gold}`);
+    const oldGold = gameState.gold || 0;
+    gameState.gold = oldGold + amount;
+    gameState.playerCoins = gameState.gold;
     
-    // AI: UI consumers should subscribe to inventoryManager events to update coin display.
-    // We emit a 'goldAdded' event below so the UI can react without creating circular imports.
+    // Immediate coin display update
+    const coinElement = document.getElementById('inventory-coin-amount');
+    if (coinElement) {
+      coinElement.textContent = gameState.gold.toLocaleString();
+    }
     
-    // AI: Persist gold to server if we have an authenticated user
+    // Persist gold to server immediately to prevent conflicts
     try {
       const user = auth.currentUser;
       if (user && user.uid) {
-        setPlayerGold(user.uid, gameState.gold).catch((err) => {
-          console.warn('Failed to persist gold to server:', err);
-        });
+        await setPlayerGold(user.uid, gameState.gold);
       }
-    } catch (_) {}
+    } catch (err) {
+      // Revert on failure
+      gameState.gold = oldGold;
+      if (coinElement) coinElement.textContent = gameState.gold.toLocaleString();
+    }
 
-    // AI: Notify listeners of gold change
+    // Notify listeners of gold change
     this._notifyChange('goldAdded', { amount, total: gameState.gold });
+  }
+
+  /**
+   * AI: Gets the current gold amount.
+   * @returns {number} Current gold amount
+   */
+  getGold() {
+    return gameState.gold || 0;
   }
 
   /**

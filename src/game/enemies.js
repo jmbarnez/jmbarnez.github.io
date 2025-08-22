@@ -118,7 +118,6 @@ export function initEnemies() {
     
     const currentArea = 'beach';
     currentAreaId = currentArea; // persist for template lookups when server entries lack templateId
-    console.log(`Initializing enemy system for area: ${currentArea}`);
 
     enemyUnsubscribe = subscribeToEnemies(currentArea, handleEnemySync);
 }
@@ -139,11 +138,9 @@ function updateGameEnemies() {
  * @param {Object|null} enemyData - Enemy data from Firebase RTDB
  */
 function handleEnemySync(enemyData) {
-    console.log(`[ENEMY_SYNC] Received sync data with ${enemyData ? Object.keys(enemyData).length : 0} enemies`);
 
     if (!enemyData) {
         // No enemies on server - clear all local enemies
-        console.log('[ENEMY_SYNC] No enemies on server, clearing all local enemies');
         enemies.clear();
         if (targetedEnemy) {
             targetedEnemy = null;
@@ -162,7 +159,6 @@ function handleEnemySync(enemyData) {
         // If enemy doesn't exist on server OR server reports it as dead
         if (!serverEntry || serverEntry.hp <= 0 || serverEntry.isDead === true) {
             if (!localEnemy.isDead) { // Only log if we're marking it dead now
-                console.log(`[ENEMY_SYNC] Enemy ${enemyId} is dead on server or missing, triggering local death.`);
                 triggerEnemyDeath(localEnemy); // Ensure local death processing and rewards
             }
             // Mark for removal if its fade animation is complete OR it's been explicitly removed from server.
@@ -179,7 +175,6 @@ function handleEnemySync(enemyData) {
             targetedEnemy = null;
         }
         enemies.delete(enemyId);
-        console.log(`[ENEMY_SYNC] Removed locally faded/missing enemy: ${enemyId}`);
     }
     
     // Add/update enemies from server data
@@ -196,7 +191,6 @@ function handleEnemySync(enemyData) {
             if (!localEnemy.isDead) {
                 updateLocalEnemyFromServer(localEnemy, serverEnemy);
             } else {
-                console.log(`[ENEMY_SYNC] Ignoring update for locally dead enemy ${enemyId}.`);
             }
         } else {
             // Add new enemy by merging server state with a template.
@@ -208,7 +202,6 @@ function handleEnemySync(enemyData) {
                 const areaTemplates = enemyTemplates.getTemplatesForArea(currentAreaId || 'beach');
                 template = enemyTemplates.chooseWeightedTemplate(areaTemplates) || null;
                 if (!template) {
-                    console.warn(`[ENEMY_SYNC] No template found for enemy ${enemyId}, falling back to default.`);
                 }
             }
 
@@ -217,9 +210,7 @@ function handleEnemySync(enemyData) {
             // Ensure health is valid and enemy is not already "dead" upon creation
             if (newEnemy.hp > 0) {
                 enemies.set(enemyId, newEnemy);
-                console.log(`[ENEMY_SYNC] Added new enemy: ${enemyId} (HP: ${newEnemy.hp}/${newEnemy.maxHp}, template=${template?.id || serverEnemy.templateId || 'none'})`);
             } else {
-                console.log(`[ENEMY_SYNC] Not adding enemy ${enemyId} - it's already dead on server (HP: ${newEnemy.hp}).`);
             }
         }
     }
@@ -235,7 +226,6 @@ function handleEnemySync(enemyData) {
 function updateLocalEnemyFromServer(localEnemy, serverEnemy) {
     // Once dead locally, ignore all server updates (prevents resurrection)
     if (localEnemy.isDead) {
-        console.log(`[ENEMY_UPDATE] Ignoring server update for dead enemy ${localEnemy.id}`);
         return;
     }
 
@@ -254,15 +244,12 @@ function updateLocalEnemyFromServer(localEnemy, serverEnemy) {
     if (newHp < localEnemy.hp) {
         const previousHp = localEnemy.hp;
         localEnemy.hp = newHp;
-        console.log(`[ENEMY_UPDATE] Enemy ${localEnemy.id} HP: ${previousHp} -> ${newHp}`);
 
         // Trigger death if HP reaches 0
         if (localEnemy.hp <= 0) {
-            console.log(`[ENEMY_UPDATE] Triggering death for enemy ${localEnemy.id}`);
             triggerEnemyDeath(localEnemy);
         }
     } else if (newHp > localEnemy.hp) {
-        console.log(`[ENEMY_UPDATE] Ignoring HP increase for enemy ${localEnemy.id}: ${localEnemy.hp} -> ${newHp} (would be resurrection)`);
     } else {
         // HP is the same, no change needed.
     }
@@ -346,7 +333,6 @@ function createLocalEnemyFromTemplate(serverEnemy = {}, templateOrId = null, ove
  */
 function triggerEnemyDeath(enemy) {
     if (enemy.isDead && enemy.deathProcessed) {
-        console.log(`[ENEMY_DEATH] Death already fully processed for enemy ${enemy.id}.`);
         return; // Already processed and awards given
     }
 
@@ -357,14 +343,11 @@ function triggerEnemyDeath(enemy) {
     // Set death start time only once to ensure fade animation starts consistently
     if (!enemy.deathStartTime) {
         enemy.deathStartTime = Date.now();
-        console.log(`[ENEMY_DEATH] Starting death animation for enemy ${enemy.id}.`);
     } else {
-        console.log(`[ENEMY_DEATH] Enemy ${enemy.id} already started death animation.`);
     }
 
     // Clear targeting if this enemy was targeted
     if (targetedEnemy?.id === enemy.id) {
-        console.log(`[ENEMY_DEATH] Clearing target for dead enemy ${enemy.id}.`);
         targetedEnemy = null;
     }
 
@@ -373,7 +356,6 @@ function triggerEnemyDeath(enemy) {
         const goldAmount = Math.floor(Math.random() * (enemy.loot.goldMax - enemy.loot.goldMin + 1)) + enemy.loot.goldMin;
         const xpAmount = enemy.xpValue || 10;
 
-        console.log(`[ENEMY_DEATH] Granting immediate rewards for enemy ${enemy.id}: ${xpAmount} XP, ${goldAmount} gold.`);
 
         // Immediate XP reward for responsive feedback
         if (xpAmount > 0) {
@@ -396,14 +378,12 @@ function triggerEnemyDeath(enemy) {
         // (we still rely on the server to create actual dropped items).
         enemy.rewardsGranted = true;
     } else {
-        console.log(`[ENEMY_DEATH] Rewards already granted for enemy ${enemy.id}.`);
     }
 
     // Enemy drops are handled server-side through the damage tracking system
     // The server will create ground items based on loot tables when damage is tracked
     // This ensures proper synchronization and prevents desync issues
     if (!enemy.dropsProcessed) {
-        console.log(`[ENEMY_DEATH] Enemy ${enemy.id} drops will be handled server-side via damage tracking`);
 
         // Permanent fix: Do NOT call `trackDamage(..., 0)` here. The server is
         // authoritative and will create drops after processing positive damage
@@ -414,7 +394,6 @@ function triggerEnemyDeath(enemy) {
         // Mark as processed locally so we don't attempt client-side finalization
         enemy.dropsProcessed = true;
     } else {
-        console.log(`[ENEMY_DEATH] Drops already processed for enemy ${enemy.id}.`);
     }
 
     enemy.deathProcessed = true; // Mark as processed after rewards are granted
@@ -447,7 +426,6 @@ function updateEnemyAnimations(dt) {
                     targetedEnemy = null;
                 }
                 enemies.delete(enemy.id);
-                console.log(`[ENEMY_ANIMATION] Removed completely faded enemy: ${enemy.id}`);
             }
         } else if (enemy.isDead && !enemy.deathStartTime) {
             // If enemy is dead but deathStartTime wasn't set (e.g., received already dead from server)
@@ -456,7 +434,6 @@ function updateEnemyAnimations(dt) {
                 targetedEnemy = null;
             }
             enemies.delete(enemy.id);
-            console.log(`[ENEMY_ANIMATION] Immediately removed server-dead enemy without animation: ${enemy.id}`);
         }
     }
     // AI: Update the game object's enemies array after sync
@@ -777,15 +754,12 @@ export function getEnemies() {
  */
 export function damageEnemy(enemy, amount) {
     if (!enemy?.id || amount <= 0 || enemy.isDead) { // Check enemy.isDead here
-        console.log(`[ENEMY_DAMAGE] Skipping damage to ${enemy?.id || 'unknown'} (dead/invalid: ${enemy?.isDead}, hp: ${enemy?.hp})`);
         return;
     }
 
-    console.log(`[ENEMY_DAMAGE] Attempting to damage enemy ${enemy.id}: ${enemy.hp} HP - ${amount} damage`);
 
     // Prevent multiple simultaneous damage to same enemy
     if (enemy.damageInProgress) {
-        console.log(`[ENEMY_DAMAGE] Damage already in progress for enemy ${enemy.id}`);
         return;
     }
 
@@ -798,7 +772,6 @@ export function damageEnemy(enemy, amount) {
     const previousHp = enemy.hp;
     enemy.hp = newHp;
 
-    console.log(`[ENEMY_DAMAGE] Applied immediate damage to enemy ${enemy.id}: ${previousHp} -> ${newHp}`);
 
     // Track damage for shared loot system
     trackDamage(enemy.id, amount).catch(error => {
@@ -807,7 +780,6 @@ export function damageEnemy(enemy, amount) {
 
     // Trigger death if HP reaches 0
     if (newHp <= 0) {
-        console.log(`[ENEMY_DAMAGE] Enemy ${enemy.id} died from damage`);
         triggerEnemyDeath(enemy);
         enemy.damageInProgress = false; // Allow further damage attempts if needed (though enemy is dead)
         return;
@@ -819,12 +791,10 @@ export function damageEnemy(enemy, amount) {
 
     runTransaction(enemyRef, (serverEnemy) => {
         if (!serverEnemy) {
-            console.log(`[ENEMY_DAMAGE] Enemy ${enemy.id} doesn't exist on server during transaction.`);
             return; // Enemy doesn't exist on server
         }
         
         if (serverEnemy.hp <= 0 || serverEnemy.isDead === true) {
-            console.log(`[ENEMY_DAMAGE] Server enemy ${enemy.id} already dead, aborting transaction.`);
             return; // Already dead on server, abort transaction
         }
 
@@ -836,23 +806,19 @@ export function damageEnemy(enemy, amount) {
         if (serverEnemy.hp <= 0) {
             serverEnemy.isDead = true;
             serverEnemy.despawnTime = Date.now() + DEATH_FADE_DURATION; // Server will remove after client fades
-            console.log(`[ENEMY_DAMAGE] Server enemy ${enemy.id} marked as dead. Despawn scheduled.`);
         }
 
-        console.log(`[ENEMY_DAMAGE] Server transaction for ${enemy.id}: ${serverHp} -> ${serverEnemy.hp}`);
 
         return serverEnemy;
     }).then((result) => {
         enemy.damageInProgress = false;
 
         if (result.committed) {
-            console.log(`[ENEMY_DAMAGE] Server confirmed damage to enemy ${enemy.id}. New HP: ${result.snapshot.val().hp}.`);
             // If the server confirms death, ensure local state is consistent
             if (result.snapshot.val().hp <= 0 || result.snapshot.val().isDead) {
                 triggerEnemyDeath(enemy);
             }
         } else {
-            console.log(`[ENEMY_DAMAGE] Server rejected damage transaction for enemy ${enemy.id}. Current local HP: ${enemy.hp}.`);
             // If transaction fails (e.g., concurrent update), re-sync local health from server next update cycle.
         }
     }).catch(error => {
@@ -866,7 +832,6 @@ export function damageEnemy(enemy, amount) {
  * Should be called when leaving game area or shutting down.
  */
 export function cleanupEnemies() {
-    console.log('Cleaning up enemy system');
     
     // Unsubscribe from Firebase updates
     if (enemyUnsubscribe) {
@@ -878,5 +843,4 @@ export function cleanupEnemies() {
     enemies.clear();
     targetedEnemy = null;
     
-    console.log('Enemy system cleanup complete');
 }

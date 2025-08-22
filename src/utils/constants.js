@@ -10,7 +10,7 @@ export const MAX_SPEED = 160; // pixels/second
 
 export const DEAD_ZONE = 3; // pixels
 export const DECEL_ZONE = 20; // pixels
-export const INTERACTION_RADIUS = 80; // pixels - increased for better gameplay
+export const INTERACTION_RADIUS = 32; // pixels - precise interaction range
 export const ATTACK_RANGE = 55; // pixels
 export const MUZZLE_OFFSET = 12; // pixels
 export const DRONE_HEIGHT_OFFSET = 12; // pixels

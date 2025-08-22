@@ -13,21 +13,8 @@
       "xpValue": 8,
       "loot": {
         "goldMin": 1,
-        "goldMax": 2,
-        "items": [
-          {
-            "id": "seashell",
-            "minCount": 1,
-            "maxCount": 2,
-            "chance": 0.4
-          },
-          {
-            "id": "sand",
-            "minCount": 1,
-            "maxCount": 3,
-            "chance": 0.6
-          }
-        ]
+        "goldMax": 1,
+        "items": []
       },
       "behavior": "melee_wander",
       "spawnWeight": 6,
@@ -45,34 +32,9 @@
       "shadowColor": "rgba(26, 188, 156, 0.3)",
       "xpValue": 20,
       "loot": {
-        "goldMin": 2,
-        "goldMax": 5,
-        "items": [
-          {
-            "id": "seashell",
-            "minCount": 2,
-            "maxCount": 4,
-            "chance": 0.5
-          },
-          {
-            "id": "driftwood",
-            "minCount": 1,
-            "maxCount": 2,
-            "chance": 0.3
-          },
-          {
-            "id": "seaweed",
-            "minCount": 1,
-            "maxCount": 3,
-            "chance": 0.4
-          },
-          {
-            "id": "message_in_bottle",
-            "minCount": 1,
-            "maxCount": 1,
-            "chance": 0.1
-          }
-        ]
+        "goldMin": 1,
+        "goldMax": 1,
+        "items": []
       },
       "behavior": "charge",
       "spawnWeight": 2,

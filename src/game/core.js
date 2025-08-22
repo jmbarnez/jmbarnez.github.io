@@ -117,7 +117,59 @@ function update(dt) {
         p.y = p.target.y;
         p.vx = 0;
         p.vy = 0;
+        // Check if this was a ground item target and attempt pickup
+        if (p.target.type === 'groundItem' && p.target.item) {
+          const targetItem = p.target.item; // Store reference before clearing target
+          console.log('[AUTO_PICKUP] Reached ground item, attempting pickup:', targetItem.type);
+          
+          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+            ? multiplayerManager.localPlayer.uid
+            : 'anonymous';
+
+          pickupGroundItem(targetItem.id, playerId, p.x, p.y)
+            .then(success => {
+              if (success) {
+                console.log('[AUTO_PICKUP] Successfully picked up ground item:', targetItem.type);
+              } else {
+                console.log('[AUTO_PICKUP] Failed to pick up ground item:', targetItem.type);
+              }
+            })
+            .catch(error => {
+              console.error('[AUTO_PICKUP] Error picking up ground item:', error);
+            });
+        }
+        
         p.target = null;
+      }
+      
+      // Also check for auto-pickup during continuous movement when close enough
+      if (p.continuousMovement && p.target && p.target.type === 'groundItem' && p.target.item) {
+        const pickupRange = 32;
+        const targetItem = p.target.item; // Store reference to avoid null access issues
+        const distanceToItem = Math.hypot(p.x - targetItem.x, p.y - targetItem.y);
+        
+        if (distanceToItem <= pickupRange) {
+          console.log('[AUTO_PICKUP] Close enough during movement, attempting pickup:', targetItem.type);
+          
+          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+            ? multiplayerManager.localPlayer.uid
+            : 'anonymous';
+
+          pickupGroundItem(targetItem.id, playerId, p.x, p.y)
+            .then(success => {
+              if (success) {
+                console.log('[AUTO_PICKUP] Successfully picked up ground item during movement:', targetItem.type);
+                // Stop movement after successful pickup
+                p.target = null;
+                p.continuousMovement = false;
+              } else {
+                console.log('[AUTO_PICKUP] Failed to pick up ground item during movement:', targetItem.type);
+              }
+            })
+            .catch(error => {
+              console.error('[AUTO_PICKUP] Error picking up ground item during movement:', error);
+            });
+        }
       }
     }
   }
@@ -905,24 +957,24 @@ export async function initAreaGame(initialPosition) {
             // AI: Calculate distance from mouse click to item center
             const mouseDist = Math.hypot(worldCoords.x - item.x, worldCoords.y - item.y);
 
-            // AI: Use a balanced click radius for ground items
-            const clickRadius = 16; // Balanced click radius for ground items
+            // AI: Use a very precise click radius for ground items - must click directly on sprite
+            const clickRadius = 8; // Very small radius - must click precisely on the item sprite
+            
+            console.log('[DEBUG] Mouse distance to ground item:', mouseDist, 'Click radius:', clickRadius);
 
             if (mouseDist <= clickRadius) {
-              // AI: Calculate the distance from the player's current position to the center of the ground item.
-              const dist = Math.hypot(game.player.x - item.x, game.player.y - item.y);
-              console.log('[DEBUG] Player distance to ground item:', dist, 'Max interaction radius:', maxInteractionRadius);
-
-              // AI: If the item is within the player's interaction radius AND it's closer than any previously found interactable,
-              // mark it as the current nearest interactable.
-              if (dist < maxInteractionRadius && dist < nearestDist) {
-                console.log('[DEBUG] Ground item selected as nearest interactable:', item.type);
-                nearestDist = dist;
+              // AI: If clicked on item sprite, always select it regardless of player distance
+              // Player will automatically move to it if too far away
+              console.log('[DEBUG] Ground item clicked precisely, selecting for interaction:', item.type);
+              
+              // Use click distance for priority, not player distance
+              if (mouseDist < nearestDist) {
+                nearestDist = mouseDist;
                 nearestInteractable = item;
                 interactionType = 'groundItem';
-              } else {
-                console.log('[DEBUG] Ground item out of range or farther than current nearest');
               }
+            } else {
+              console.log('[DEBUG] Click not precise enough for ground item - clicked outside sprite');
             }
           }
         }
@@ -955,24 +1007,46 @@ export async function initAreaGame(initialPosition) {
         } else if (interactionType === 'groundItem') {
           console.log('[RIGHT_CLICK] Interacting with ground item:', nearestInteractable.type);
 
-          // AI: Use the new server-authoritative pickup system
-          // Get player ID from multiplayer manager for server transaction
-          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
-            ? multiplayerManager.localPlayer.uid
-            : 'anonymous';
+          // Calculate distance to the ground item
+          const distanceToItem = Math.hypot(game.player.x - nearestInteractable.x, game.player.y - nearestInteractable.y);
+          const pickupRange = 32; // Must be within 32px to pick up
+          
+          console.log('[RIGHT_CLICK] Distance to item:', distanceToItem, 'Pickup range:', pickupRange);
 
-          // AI: Call the server transaction-based pickup function
-          pickupGroundItem(nearestInteractable.id, playerId, game.player.x, game.player.y)
-            .then(success => {
-              if (success) {
-                console.log('[RIGHT_CLICK] Successfully picked up ground item:', nearestInteractable.type);
-              } else {
-                console.log('[RIGHT_CLICK] Failed to pick up ground item:', nearestInteractable.type);
-              }
-            })
-            .catch(error => {
-              console.error('[RIGHT_CLICK] Error picking up ground item:', error);
-            });
+          if (distanceToItem <= pickupRange) {
+            // Close enough - pick up immediately
+            console.log('[RIGHT_CLICK] Close enough, picking up immediately');
+            
+            const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+              ? multiplayerManager.localPlayer.uid
+              : 'anonymous';
+
+            pickupGroundItem(nearestInteractable.id, playerId, game.player.x, game.player.y)
+              .then(success => {
+                if (success) {
+                  console.log('[RIGHT_CLICK] Successfully picked up ground item:', nearestInteractable.type);
+                } else {
+                  console.log('[RIGHT_CLICK] Failed to pick up ground item:', nearestInteractable.type);
+                }
+              })
+              .catch(error => {
+                console.error('[RIGHT_CLICK] Error picking up ground item:', error);
+              });
+          } else {
+            // Too far - move to the item
+            console.log('[RIGHT_CLICK] Too far, moving to ground item first');
+            
+            // Set movement target to the ground item
+            game.player.target = {
+              x: nearestInteractable.x,
+              y: nearestInteractable.y,
+              type: 'groundItem',
+              item: nearestInteractable // Store reference to the item
+            };
+            game.player.continuousMovement = true;
+            
+            console.log('[RIGHT_CLICK] Set movement target to ground item at:', nearestInteractable.x, nearestInteractable.y);
+          }
         }
       } else {
         console.log('[RIGHT_CLICK] No interactable object found');

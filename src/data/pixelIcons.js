@@ -342,7 +342,8 @@ function drawIconInternal(ctx, id, x, y, scale, outline, colorOverride, withShad
       plot(4, 6, 4, 2, BD);
       break;
     }
-    case 'coin': {
+    case 'coin':
+    case 'galactic_token': {
       const CYAN = '#00FFFF', BLUE = '#0080FF', WHITE = '#FFFFFF', DARK_BLUE = '#003366';
       plot(5, 3, 2, 1, CYAN);
       plot(4, 4, 1, 1, CYAN);

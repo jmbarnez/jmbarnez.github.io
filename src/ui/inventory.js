@@ -23,9 +23,15 @@ let inventoryCoinIconContainer; // AI: The container for the coin icon.
  * @param {number} amount - The new coin amount to display.
  */
 export function updateCoinDisplay(amount) {
+  // Always re-query the element to ensure we have the latest reference
+  inventoryCoinAmount = document.getElementById('inventory-coin-amount');
+  
   if (inventoryCoinAmount) {
-    // AI: Format the number with commas for readability (e.g., 1,000,000).
     inventoryCoinAmount.textContent = amount.toLocaleString();
+    
+    // Also update gameState to ensure consistency
+    gameState.gold = amount;
+    gameState.playerCoins = amount;
   }
 }
 
@@ -289,7 +295,8 @@ export function initInventory(gridElement, desktopElement) {
   // Subscribe to gold changes so desktop/other UI can call updateCoinDisplay
   inventoryManager.subscribe((event) => {
     if (event.type === 'goldAdded' && typeof event.data?.amount === 'number') {
-      updateCoinDisplay(inventoryManager.getGold ? inventoryManager.getGold() : gameState.gold || 0);
+      const currentGold = inventoryManager.getGold ? inventoryManager.getGold() : gameState.gold || 0;
+      updateCoinDisplay(currentGold);
     }
   });
 
@@ -332,6 +339,10 @@ export function initInventory(gridElement, desktopElement) {
   inventoryCoinAmount = document.getElementById('inventory-coin-amount');
   inventoryCoinIconContainer = document.getElementById('inventory-coin-icon-container');
   // AI: The coin icon itself is initialized in desktop.js, just need to reference the container here.
+  
+  // AI: Initialize coin display with current gold amount
+  const initialGold = inventoryManager.getGold ? inventoryManager.getGold() : gameState.gold || 0;
+  updateCoinDisplay(initialGold);
 }
 
 // Utility to get item definition from items.json
@@ -340,7 +351,18 @@ function getItemDefinition(itemId) {
 }
 
 // AI: Add item to player inventory using centralized manager
-export function addItemToInventory(itemId, quantity = 1) {
+export async function addItemToInventory(itemId, quantity = 1) {
+  // Handle galactic tokens as currency instead of inventory items
+  if (itemId === 'galactic_token') {
+    try {
+      await inventoryManager.addGold(quantity);
+      return true;
+    } catch (err) {
+      console.warn('Failed to add galactic token as gold:', err);
+      return false;
+    }
+  }
+  
   const result = inventoryManager.addItem(itemId, quantity);
   
   if (result.success && result.addedAmount > 0) {

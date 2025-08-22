@@ -213,8 +213,8 @@ export function initDesktopScreen() {
   // --- AI: Consolidated Tabbed Panel Logic ---
   const mainPanelContainer = document.getElementById('main-panel-container');
   if (mainPanelContainer) {
-    // Dragging disabled for desktop UI panels
-    // makeDraggable(mainPanelContainer, document.getElementById('main-panel-header'));
+    // Re-enable dragging for inventory panel
+    makeDraggable(mainPanelContainer, document.getElementById('main-panel-header'));
   }
   const mainPanelToggle = document.getElementById('main-panel-toggle');
   const mainPanelClose = document.getElementById('main-panel-close');

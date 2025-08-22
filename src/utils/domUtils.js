@@ -86,8 +86,9 @@ export function hideInventoryTooltip() {
  * @param {number} clientY - The clientY coordinate of the mouse event.
  */
 export function showInventoryTooltip(item, clientX, clientY) {
-  const overlay = ensureTooltipOverlay(document.getElementById('desktop-screen')); // Ensure desktopScreen is passed or accessible
-  if (!overlay) return;
+  const desktopScreen = document.getElementById('desktop-screen');
+  const overlay = ensureTooltipOverlay(desktopScreen);
+  if (!overlay || !desktopScreen) return;
 
   let tooltip = overlay.querySelector('.inventory-tooltip');
   if (!tooltip) {
@@ -108,12 +109,18 @@ export function showInventoryTooltip(item, clientX, clientY) {
   }
   tooltip.innerHTML = content;
 
+  // Convert global coordinates to desktop-screen relative coordinates
+  const desktopRect = desktopScreen.getBoundingClientRect();
+  const relativeX = clientX - desktopRect.left;
+  const relativeY = clientY - desktopRect.top;
+  
   // Position tooltip relative to mouse, with offset
   const xOffset = 15;
   const yOffset = 15;
-  tooltip.style.left = `${clientX + xOffset}px`;
-  tooltip.style.top = `${clientY + yOffset}px`;
+  tooltip.style.left = `${relativeX + xOffset}px`;
+  tooltip.style.top = `${relativeY + yOffset}px`;
   tooltip.style.display = 'block';
+  overlay.style.display = 'block';
 }
 
 /**

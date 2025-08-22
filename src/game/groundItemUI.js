@@ -108,16 +108,16 @@ const MAX_FLOATING_MESSAGES = 10; // Limit concurrent messages
  * @private
  */
 const TOOLTIP_CONFIG = {
-  backgroundColor: 'rgba(0, 0, 0, 0.9)',
-  borderColor: 'rgba(255, 255, 255, 0.8)',
+  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  borderColor: 'rgba(255, 255, 255, 0.6)',
   textColor: '#ffffff',
-  padding: 8,
-  borderRadius: 4,
-  fontSize: 12,
+  padding: 3,
+  borderRadius: 2,
+  fontSize: 8,
   fontFamily: 'monospace',
-  maxWidth: 200,
-  shadowColor: 'rgba(0, 0, 0, 0.5)',
-  shadowOffset: 2,
+  maxWidth: 120,
+  shadowColor: 'rgba(0, 0, 0, 0.4)',
+  shadowOffset: 1,
   // Accessibility enhancements
   highContrastMode: false, // Can be toggled for accessibility
   largeTextMode: false     // Can be toggled for accessibility
@@ -149,7 +149,6 @@ export function initGroundItemUI(canvas) {
     return;
   }
 
-  console.log('GroundItemUI: Initializing ground item UI enhancements');
 
   // Listen for highlight changes to show/hide tooltips
   canvas.addEventListener('highlight-changed', handleHighlightChanged);
@@ -158,7 +157,6 @@ export function initGroundItemUI(canvas) {
   // Listen for successful item pickups to show floating messages
   canvas.addEventListener('item-picked-up', handleItemPickedUp);
 
-  console.log('GroundItemUI: Event listeners initialized');
 }
 
 /**
@@ -178,7 +176,6 @@ export function cleanupGroundItemUI() {
   // Clear floating messages
   floatingMessages.length = 0;
 
-  console.log('GroundItemUI: Cleanup completed');
 }
 
 /**
@@ -189,32 +186,10 @@ export function cleanupGroundItemUI() {
  * @private
  */
 function handleHighlightChanged(event) {
-  const { entity, type } = event.detail;
-
-  // Only show tooltips for ground items
-  if (type === 'groundItem' && entity) {
-    // Get item definition for display name
-    const itemDef = itemDefs.find(item => item.id === entity.type);
-    const itemName = itemDef ? itemDef.name : entity.type;
-    const itemCount = entity.count || 1;
-
-    // Calculate tooltip position near the mouse cursor
-    const mousePos = getMousePosition();
-    if (mousePos) {
-      currentTooltip = {
-        entity,
-        type,
-        screenX: mousePos.x + 15, // Offset from cursor
-        screenY: mousePos.y - 20, // Above cursor
-        itemName,
-        itemCount
-      };
-    }
-  } else {
-    // Clear tooltip for non-ground items
-    currentTooltip.entity = null;
-    currentTooltip.type = null;
-  }
+  // Tooltips disabled for ground items
+  // Only keep the state clear
+  currentTooltip.entity = null;
+  currentTooltip.type = null;
 }
 
 /**
@@ -320,80 +295,21 @@ export function updateFloatingMessages(dt) {
 export function drawGroundItemUI(ctx) {
   if (!ctx) return;
 
-  // Draw tooltip if active
-  if (currentTooltip.entity && currentTooltip.type === 'groundItem') {
-    drawTooltip(ctx);
-  }
-
-  // Draw floating messages
+  // Tooltips disabled for ground items
+  // Only draw floating messages
   drawFloatingMessages(ctx);
 }
 
 /**
- * Draw the current tooltip
+ * Draw the current tooltip - DISABLED
+ * Tooltips for ground items are now disabled
  *
  * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
  * @private
  */
 function drawTooltip(ctx) {
-  const tooltip = currentTooltip;
-  const config = TOOLTIP_CONFIG;
-
-  // Prepare tooltip text
-  const displayText = tooltip.itemCount > 1
-    ? `${tooltip.itemName} (x${tooltip.itemCount})`
-    : tooltip.itemName;
-
-  // Measure text for sizing
-  ctx.font = `${config.fontSize}px ${config.fontFamily}`;
-  const textMetrics = ctx.measureText(displayText);
-  const textWidth = Math.min(textMetrics.width, config.maxWidth);
-  const textHeight = config.fontSize;
-
-  // Calculate tooltip dimensions
-  const tooltipWidth = textWidth + (config.padding * 2);
-  const tooltipHeight = textHeight + (config.padding * 2);
-
-  // Smart positioning to keep tooltip on screen
-  let tooltipX = tooltip.screenX;
-  let tooltipY = tooltip.screenY;
-
-  // Adjust horizontal position if tooltip would go off-screen
-  if (tooltipX + tooltipWidth > game.width) {
-    tooltipX = tooltip.screenX - tooltipWidth - 15; // Position to the left of cursor
-  }
-
-  // Adjust vertical position if tooltip would go off-screen
-  if (tooltipY - tooltipHeight < 0) {
-    tooltipY = tooltip.screenY + tooltipHeight + 15; // Position below cursor
-  }
-
-  // Draw tooltip shadow
-  ctx.save();
-  ctx.fillStyle = config.shadowColor;
-  ctx.fillRect(
-    tooltipX + config.shadowOffset,
-    tooltipY + config.shadowOffset,
-    tooltipWidth,
-    tooltipHeight
-  );
-
-  // Draw tooltip background
-  ctx.fillStyle = config.backgroundColor;
-  ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-
-  // Draw tooltip border
-  ctx.strokeStyle = config.borderColor;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-
-  // Draw tooltip text
-  ctx.fillStyle = config.textColor;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText(displayText, tooltipX + config.padding, tooltipY + config.padding);
-
-  ctx.restore();
+  // Tooltips disabled for ground items
+  return;
 }
 
 /**
@@ -513,7 +429,6 @@ export function setHighContrastMode(enabled) {
     TOOLTIP_CONFIG.shadowColor = 'rgba(0, 0, 0, 0.5)';
   }
 
-  console.log(`GroundItemUI: High contrast mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 /**
@@ -532,7 +447,6 @@ export function setLargeTextMode(enabled) {
     TOOLTIP_CONFIG.padding = 8;
   }
 
-  console.log(`GroundItemUI: Large text mode ${enabled ? 'enabled' : 'disabled'}`);
 }
 
 /**
