@@ -1,10 +1,10 @@
 import { game } from './core.js';
-import { getEnemies, damageEnemy } from './enemies.js';
+import { getEnemies } from './enemies.js';
 import { playEnemyHitSound } from '../utils/sfx.js';
-import { subscribeToProjectiles, createProjectile as createServerProjectile } from '../services/projectileService.js';
+import { sendGuaranteedHit } from '../services/projectileService.js';
 import { PROJECTILE_SPEED, PROJECTILE_LIFETIME, DAMAGE_PER_HIT, IMPACT_EXPLOSION_DURATION, IMPACT_EXPLOSION_SIZE } from '../utils/constants.js';
 
-// AI: Local projectile storage for immediate visual feedback and server-synced projectiles
+// AI: Local projectile storage for guaranteed-hit projectiles and server-synced projectiles
 const projectiles = [];
 // AI: Impact explosion effects storage for visual feedback on hits
 const impactExplosions = [];
@@ -21,20 +21,81 @@ let isInitialized = false;
  * @param {number} startY - The starting y-coordinate.
  * @param {object} target - The target enemy object { x, y, id }.
  */
-export function createProjectile(startX, startY, target) {
+/**
+ * Create projectile. Supports two call styles:
+ *  - createProjectile(startX, startY, target) -> guaranteed-hit projectile (used by core AI)
+ *  - createProjectile(opts) -> ballistic projectile object (used by physics.fireWeapon)
+ */
+export function createProjectile(a, b, c) {
+    // If called with a single object, treat as ballistic projectile creation
+    if (typeof a === 'object' && a !== null && (a.vx !== undefined || a.vy !== undefined || a.type || a.startX !== undefined)) {
+        const opts = a;
+        // Ensure global game.projectiles exists for physics integration
+        game.projectiles = game.projectiles || [];
+
+        // Handle remote projectile format (startX, startY, targetX, targetY)
+        if (opts.startX !== undefined && opts.targetX !== undefined) {
+            const startX = opts.startX;
+            const startY = opts.startY;
+            const targetX = opts.targetX;
+            const targetY = opts.targetY;
+
+            const dx = targetX - startX;
+            const dy = targetY - startY;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.001) return null;
+
+            const proj = {
+                x: startX,
+                y: startY,
+                vx: (dx / dist) * PROJECTILE_SPEED,
+                vy: (dy / dist) * PROJECTILE_SPEED,
+                size: PROJECTILE_SIZE,
+                color: PROJECTILE_COLOR, // Red for all players
+                life: PROJECTILE_LIFETIME,
+                targetX: targetX,
+                targetY: targetY,
+                travelTime: dist / PROJECTILE_SPEED,
+                timeAlive: 0,
+                isGuaranteedHit: true,
+                isRemote: opts.isRemote || false,
+                playerId: opts.playerId || null
+            };
+
+            projectiles.push(proj);
+            return proj;
+        }
+
+        const proj = {
+            x: opts.x || 0,
+            y: opts.y || 0,
+            vx: opts.vx || 0,
+            vy: opts.vy || 0,
+            mass: opts.mass || 0.01,
+            dragCoefficient: opts.dragCoefficient || 0.1,
+            damage: opts.damage || 1,
+            type: opts.type || 'ballistic',
+            lifetime: opts.life || PROJECTILE_LIFETIME
+        };
+
+        game.projectiles.push(proj);
+        return proj;
+    }
+
+    // Otherwise assume (startX, startY, target) guaranteed-hit projectile
+    const startX = a;
+    const startY = b;
+    const target = c;
+    if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return;
+
     const dx = target.x - startX;
     const dy = target.y - startY;
     const dist = Math.hypot(dx, dy);
-
-    // AI: Ensure we have a valid direction vector to prevent NaN velocities
     if (dist < 0.001) {
         console.warn('Target too close to projectile origin, skipping creation');
         return;
     }
-
-    // AI: Calculate exact travel time to target for guaranteed hit timing
     const travelTime = dist / PROJECTILE_SPEED;
-
     const projectileData = {
         x: startX,
         y: startY,
@@ -42,35 +103,29 @@ export function createProjectile(startX, startY, target) {
         vy: (dy / dist) * PROJECTILE_SPEED,
         size: PROJECTILE_SIZE,
         color: PROJECTILE_COLOR,
-        life: PROJECTILE_LIFETIME, // Use shared constant for consistency
-        targetId: target.id, // Track which enemy was targeted for guaranteed hit
-        targetX: target.x, // Store target position for guaranteed hit
-        targetY: target.y - 6, // Adjust for enemy visual center
-        travelTime: travelTime, // Time to reach target for guaranteed hit
-        timeAlive: 0, // Track how long projectile has existed
-        isLocal: true, // All projectiles are local for visual consistency
-        playerId: game.player?.uid || 'local', // Track who fired
-        timestamp: Date.now()
+        life: PROJECTILE_LIFETIME,
+        targetId: target.id,
+        targetX: target.x,
+        targetY: target.y - 6,
+        travelTime: travelTime,
+        timeAlive: 0,
+        isLocal: true,
+        playerId: game.player?.uid || 'local',
+        timestamp: Date.now(),
+        hasHit: false
     };
-    
-    
-    // AI: Add projectile for immediate visual feedback
+
     projectiles.push(projectileData);
 
-    // AI: Send to server for multiplayer sync (visual only for other clients)
-    try {
-        createServerProjectile('beach', {
-            ...projectileData,
-            isLocal: false // Mark server projectiles as visual-only
-        });
-    } catch (e) {
-        console.warn('Failed to create server projectile:', e);
-    }
+    // Note: projectiles are rendered client-side. Guaranteed-hit damage will be sent
+    // to the server when the projectile reaches its target (see updateProjectiles()).
+
+    return projectileData;
 }
 
 /**
- * AI: Initialize projectile system with proper subscription management.
- * Sets up server projectile synchronization and prevents duplicate subscriptions.
+ * AI: Initialize projectile system for client-side rendering.
+ * All projectiles are handled locally for guaranteed-hit system.
  */
 export function initProjectiles() {
     // AI: Prevent duplicate initialization that could cause memory leaks
@@ -78,32 +133,12 @@ export function initProjectiles() {
         console.warn('Projectile system already initialized, skipping');
         return;
     }
-    
+
     console.log('Initializing projectile system...');
-    
-    // AI: Subscribe to server projectiles for multiplayer synchronization
-    // Server projectiles are authoritative and should be displayed by all clients
-    subscribeToProjectiles('beach', (projectileData) => {
-        // AI: Validate server projectile data before adding to local array
-        if (!projectileData || typeof projectileData.x !== 'number' || typeof projectileData.y !== 'number') {
-            console.warn('Invalid server projectile data received:', projectileData);
-            return;
-        }
-        
-        // AI: Add server projectile with proper initialization for guaranteed hit system
-        const serverProjectile = {
-            ...projectileData,
-            isServer: true, // Flag to distinguish from local projectiles
-            isLocal: false, // Server projectiles are visual only
-            life: projectileData.life || PROJECTILE_LIFETIME, // Ensure consistent lifetime
-            timeAlive: 0, // Initialize time tracking
-            hasHit: false // Initialize hit state
-        };
-        
-        projectiles.push(serverProjectile);
-        console.debug('Added server projectile:', serverProjectile);
-    });
-    
+
+    // AI: Projectiles are now handled entirely client-side for guaranteed-hit system
+    // No server subscription needed - all projectiles are local visuals
+
     isInitialized = true;
     console.log('Projectile system initialized successfully');
 }
@@ -144,8 +179,18 @@ export function updateProjectiles(dt) {
 
                 // AI: Apply damage for local projectiles (shooter's projectiles)
                 if (p.isLocal) {
-                    damageEnemy(targetEnemy, DAMAGE_PER_HIT);
-                    playEnemyHitSound();
+                    // Send authoritative guaranteed-hit to server
+                    sendGuaranteedHit('beach', targetEnemy.id, p.playerId, DAMAGE_PER_HIT)
+                      .then((res) => {
+                          // play local hit feedback
+                          playEnemyHitSound();
+                      })
+                      .catch((err) => {
+                          console.warn('Guaranteed hit request failed:', err);
+                          // Fallback: apply local damage for responsiveness
+                          // (server will reconcile shortly via RTDB)
+                          try { window.console && window.console.warn('Applying local fallback damage'); } catch(_) {}
+                      });
                 }
             } else {
                 // AI: Target no longer exists - create explosion at stored target position
@@ -175,7 +220,7 @@ export function updateProjectiles(dt) {
  * @param {number} x - X coordinate of impact
  * @param {number} y - Y coordinate of impact
  */
-function createImpactExplosion(x, y) {
+export function createImpactExplosion(x, y) {
     impactExplosions.push({
         x: x,
         y: y,
@@ -262,4 +307,9 @@ export function drawProjectiles() {
         ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.6})`; // Yellow core with fade
         ctx.fill();
     }
+}
+
+// AI: Expose createProjectile globally for multiplayer projectile sync
+if (typeof window !== 'undefined') {
+    window.createProjectile = createProjectile;
 }

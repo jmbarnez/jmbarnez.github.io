@@ -5,7 +5,7 @@ import { ENEMY_HP, DAMAGE_PER_HIT } from '../utils/constants.js';
 import enemyTemplates from '../data/enemies.js';
 import { playCoinSound, playBugDeathSound } from '../utils/sfx.js';
 import { inventoryManager } from './inventoryManager.js';
-import { createGoldDrop, updateGoldDrops, drawGoldDrops } from './goldDrops.js';
+
 import { database } from '../utils/firebaseClient.js';
 import { ref, runTransaction } from 'firebase/database';
 import { highlightManager } from './highlightManager.js';
@@ -296,7 +296,7 @@ function createLocalEnemyFromTemplate(serverEnemy = {}, templateOrId = null, ove
     const shadowColor = template?.shadowColor || 'rgba(0,0,0,0.25)';
     const xpValue = serverEnemy.xpValue ?? template?.xpValue ?? 0;
     const behavior = serverEnemy.behavior ?? template?.behavior ?? 'passive';
-    const loot = serverEnemy.loot ?? template?.loot ?? { goldMin: 0, goldMax: 0 };
+    const loot = serverEnemy.loot ?? template?.loot ?? { };
 
     return {
         id,
@@ -353,7 +353,7 @@ function triggerEnemyDeath(enemy) {
 
     // Award immediate rewards only if not already granted
     if (!enemy.rewardsGranted) {
-        const goldAmount = Math.floor(Math.random() * (enemy.loot.goldMax - enemy.loot.goldMin + 1)) + enemy.loot.goldMin;
+
         const xpAmount = enemy.xpValue || 10;
 
 
@@ -370,6 +370,8 @@ function triggerEnemyDeath(enemy) {
         if (xpAmount > 0) {
             experienceManager.addXenohuntingExp(xpAmount);
         }
+
+
 
         // Play death sound for responsive feedback only
         playBugDeathSound();
@@ -458,8 +460,7 @@ export function updateEnemies(dt) {
     // Update visual animations and effects (static enemies still animate)
     updateEnemyAnimations(dt);
 
-    // Update gold drop animations
-    updateGoldDrops(dt);
+
 }
 
 /**
@@ -500,9 +501,12 @@ export function drawEnemies() {
         ctx.restore();
     }
     
-    // Draw gold drop effects
-    drawGoldDrops();
+
 }
+
+// Export lower-level drawing helpers so other modules (e.g. core) can
+// perform depth-sorted rendering by invoking these per-entity draw calls.
+export { drawEnemySprite, drawEnemyUI, drawEnemyHighlight };
 
 /**
  * Draws the visual representation of an enemy as a tiny pixel critter alien.

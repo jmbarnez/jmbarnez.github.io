@@ -323,7 +323,7 @@ function dropEnemyLoot(enemy, x, y, lastHitBy = null) {
                 const visibleTo = lastHitter ? [lastHitter] : [];
                 console.log(`[LOOT_DROP] Creating galactic token item ${tokenItemId} visible to last hitter: ${lastHitter}`);
 
-                const releaseAt = Date.now() + 30000; // Release visibility after 30s
+                const releaseAt = Date.now() + 5000; // Release visibility after 5s
                 const tokenItem = {
                     id: tokenItemId,
                     type: 'galactic_token',
@@ -377,7 +377,7 @@ function dropEnemyLoot(enemy, x, y, lastHitBy = null) {
                             const visibleTo = lastHitter ? [lastHitter] : [];
                             console.log(`[LOOT_DROP] Creating item ${itemId} visible to last hitter: ${lastHitter}`);
 
-                            const releaseAt = Date.now() + 30000; // Release visibility after 30s
+                            const releaseAt = Date.now() + 5000; // Release visibility after 5s
                             const groundItem = {
                                 id: itemId,
                                 type: itemDrop.id,

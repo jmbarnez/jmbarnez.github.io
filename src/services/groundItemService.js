@@ -1,11 +1,26 @@
 import { database as db } from '../utils/firebaseClient.js';
-import { ref, onValue, remove, get } from 'firebase/database';
+import { ref, onValue, remove, get, push, set } from 'firebase/database';
 import { game } from '../game/core.js';
 import { addItemToInventory } from '../ui/inventory.js';
 import { playPickupSound } from '../utils/sfx.js';
 import { experienceManager } from '../game/experienceManager.js';
 import { showItemPickupMessage } from '../game/groundItemUI.js';
 import { auth } from '../utils/firebaseClient.js';
+import { itemsById } from '../data/content.js';
+
+/**
+ * Get item definition from items.json
+ * @param {string} itemId - The item ID to look up
+ * @returns {object|null} The item definition or null if not found
+ */
+function getItemDefinition(itemId) {
+  try {
+    return itemsById && itemsById[itemId];
+  } catch (error) {
+    console.warn('[PICKUP] Error getting item definition:', error, { itemId });
+    return null;
+  }
+}
 
 /**
  * Ground Items Service
@@ -145,8 +160,12 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
     
     // Store item details before server call since the item might be removed by Firebase sync
     const pickedUpItem = game.groundItems.find(item => item.id === itemId);
-    
+
     if (!pickedUpItem) {
+        console.error('[PICKUP] Item not found in game.groundItems:', {
+            itemId,
+            availableItems: game.groundItems.map(item => ({ id: item.id, type: item.type, count: item.count }))
+        });
         return false;
     }
     
@@ -157,40 +176,108 @@ export async function pickupGroundItem(itemId, playerId, playerX, playerY) {
         // Try server API first for pickup processing
         let result;
         try {
-            const response = await fetch('http://localhost:8081/pickup-item', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    itemId,
-                    playerId: safePlayerId,
-                    playerX: worldX,
-                    playerY: worldY
-                })
-            });
+            // Use new /actions/pickupRequests/{areaId}/{reqId} pattern so Cloud Function performs the authoritative pickup
+            const areaId = window.gameInstance?.areaId || 'beach';
+            const LOCAL_SERVER_URL = (import.meta.env && import.meta.env.VITE_LOCAL_SERVER_URL) ? String(import.meta.env.VITE_LOCAL_SERVER_URL).replace(/\/$/, '') : null;
+            if (LOCAL_SERVER_URL) {
+                // use local HTTP API for pickup in dev
+                const url = `${LOCAL_SERVER_URL}/pickup-item`;
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId, playerId: safePlayerId, playerX: worldX, playerY: worldY }) });
+                result = await response.json().catch(() => ({ success: false }));
+            } else {
+                const reqRef = push(ref(db, `actions/pickupRequests/${areaId}`));
+                const reqId = reqRef.key;
+                await set(reqRef, { itemId, uid: safePlayerId, playerX: worldX, playerY: worldY, ts: Date.now() });
 
-            result = await response.json();
+                // wait for the result written by Cloud Function to /actions/pickupResults/{areaId}/{reqId}
+                result = await new Promise((resolve, reject) => {
+                    const resRef = ref(db, `actions/pickupResults/${areaId}/${reqId}`);
+                    const off = onValue(resRef, (snap) => {
+                        if (snap.exists()) {
+                            off();
+                            resolve(snap.val());
+                        }
+                    }, { onlyOnce: false });
+
+                    setTimeout(() => { off(); reject(new Error('pickup_result_timeout')); }, 5000);
+                });
+            }
         } catch (serverError) {
-            // Server not available, try direct Firebase approach for local player
-            console.warn('Server unavailable, attempting direct pickup...');
+            console.warn('Pickup request failed or timed out, falling back to direct attempt', serverError?.message);
+            // Fallback: try direct firebase attempt for local pickup only
             result = await attemptDirectPickup(itemId, safePlayerId, worldX, worldY);
         }
 
         if (result.success) {
             // Grant item to player inventory (addItemToInventory now handles currency items automatically)
-            const added = await addItemToInventory(pickedUpItem.type, pickedUpItem.count || 1);
+            try {
+                // Validate item data before adding to inventory
+                if (!pickedUpItem.type || typeof pickedUpItem.type !== 'string') {
+                    console.error('[PICKUP] Invalid item type:', pickedUpItem.type);
+                    return false;
+                }
 
-            if (added) {
-                // Play pickup sound for successful inventory addition
-                playPickupSound();
+                const itemCount = pickedUpItem.count || 1;
+                if (typeof itemCount !== 'number' || itemCount <= 0) {
+                    console.error('[PICKUP] Invalid item count:', itemCount);
+                    return false;
+                }
 
-                // Grant experience for collecting resources
-                experienceManager.addResourceExp(pickedUpItem.type);
+                // Normalize legacy types (e.g. 'gold') to canonical types and check
+                const canonicalType = normalizeItemType(pickedUpItem.type);
+                if (canonicalType !== pickedUpItem.type) {
+                  console.log('[PICKUP] Normalized item type', pickedUpItem.type, '->', canonicalType);
+                }
+                // Check if item type is valid
+                const itemDefinition = getItemDefinition(canonicalType);
+                console.log('[PICKUP] Attempting to add item to inventory:', {
+                    type: pickedUpItem.type,
+                    count: itemCount,
+                    itemId: pickedUpItem.id,
+                    itemExists: !!itemDefinition,
+                    itemDefinition: itemDefinition,
+                    validItems: ['seashell', 'driftwood', 'seaweed', 'stone', 'galactic_token']
+                });
+
+                // Use canonical type when adding to inventory
+                const added = await addItemToInventory(canonicalType, itemCount);
+
+                if (added === true || (typeof added === 'object' && added.success)) {
+                    // Play pickup sound for successful inventory addition
+                    try {
+                        playPickupSound();
+                    } catch (soundError) {
+                        console.warn('[PICKUP] Failed to play pickup sound:', soundError);
+                    }
+
+                    // Grant experience for collecting resources
+                    try {
+                        experienceManager.addResourceExp(pickedUpItem.type);
+                    } catch (expError) {
+                        console.warn('[PICKUP] Failed to grant experience:', expError);
+                    }
+                } else {
+                    console.error('[PICKUP] FAILED to add item to inventory:', {
+                        itemType: pickedUpItem.type,
+                        itemCount: itemCount,
+                        itemId: pickedUpItem.id,
+                        result: added,
+                        errorMessage: typeof added === 'object' ? added.message : 'Unknown error'
+                    });
+                }
+            } catch (inventoryError) {
+                console.error('[PICKUP] Error adding item to inventory:', inventoryError, {
+                    itemType: pickedUpItem.type,
+                    itemCount: pickedUpItem.count
+                });
             }
 
             // Show floating pickup message for visual feedback
-            showItemPickupMessage(pickedUpItem.type, pickedUpItem.count || 1, pickedUpItem.x, pickedUpItem.y);
+            try {
+                showItemPickupMessage(pickedUpItem.type, pickedUpItem.count || 1, pickedUpItem.x, pickedUpItem.y);
+            } catch (uiError) {
+                console.warn('[PICKUP] Failed to show pickup message:', uiError);
+            }
 
             // Remove item from local state after successful server transaction
             // The Firebase subscription will also remove it, but we do it immediately for responsive UX

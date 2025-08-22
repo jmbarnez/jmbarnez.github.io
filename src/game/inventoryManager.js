@@ -70,7 +70,7 @@ class InventoryManager {
   }
 
   /**
-   * Spend gold from the player's balance and persist the change.
+   * Spend galactic tokens from the player's balance and persist the change.
    * @param {number} amount
    * @returns {{ success: boolean, message: string }}
    */

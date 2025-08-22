@@ -23,6 +23,8 @@ class LoadingScreen {
 
     // Initially show loading screen
     this.show('Initializing game...');
+    // Optional progress bar element (visual progress for terrain/asset loading)
+    this.progressElement = document.getElementById('loading-progress');
 
     // Setup tab focus/blur handlers
     this.setupTabHandlers();
@@ -37,6 +39,9 @@ class LoadingScreen {
     this.isVisible = true;
     this.screen.classList.remove('hidden');
     this.updateMessage(message);
+
+    // Reset progress bar when showing
+    if (this.progressElement) this.progressElement.style.width = '0%';
 
     // Debug: console.log(`Loading screen shown: ${message}`);
   }

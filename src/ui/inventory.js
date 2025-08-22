@@ -347,17 +347,38 @@ export function initInventory(gridElement, desktopElement) {
 
 // Utility to get item definition from items.json
 function getItemDefinition(itemId) {
-  return itemsById[itemId];
+  try {
+    return itemsById && itemsById[itemId];
+  } catch (error) {
+    console.warn('[INVENTORY] Error getting item definition:', error, { itemId });
+    return null;
+  }
 }
 
 // Utility to check if an item is currency
 function isCurrency(itemId) {
-  const item = getItemDefinition(itemId);
-  return item && item.currency === true;
+  try {
+    const item = getItemDefinition(itemId);
+    return item && item.currency === true;
+  } catch (error) {
+    console.warn('[INVENTORY] Error checking if item is currency:', error, { itemId });
+    return false;
+  }
 }
 
 // AI: Add item to player inventory using centralized manager
 export async function addItemToInventory(itemId, quantity = 1) {
+  // Validate input parameters
+  if (!itemId || typeof itemId !== 'string') {
+    console.error('[INVENTORY] Invalid itemId:', itemId);
+    return false;
+  }
+
+  if (typeof quantity !== 'number' || quantity <= 0) {
+    console.error('[INVENTORY] Invalid quantity:', quantity);
+    return false;
+  }
+
   // Handle currency items - they go to the currency pouch instead of inventory
   if (isCurrency(itemId)) {
     try {
@@ -370,8 +391,14 @@ export async function addItemToInventory(itemId, quantity = 1) {
   }
   
   // Continue with regular item processing for non-currency items
-  
-  const result = inventoryManager.addItem(itemId, quantity);
+
+  let result;
+  try {
+    result = inventoryManager.addItem(itemId, quantity);
+  } catch (managerError) {
+    console.error('[INVENTORY] Error in inventoryManager.addItem:', managerError, { itemId, quantity });
+    return false;
+  }
   
   if (result.success && result.addedAmount > 0) {
     // Render UI changes
@@ -386,9 +413,18 @@ export async function addItemToInventory(itemId, quantity = 1) {
       });
     }
   } else if (!result.success) {
-    console.warn(result.message);
+    console.error('[INVENTORY] FAILED to add item to inventory:', {
+      itemId,
+      quantity,
+      result,
+      itemExists: !!getItemDefinition(itemId),
+      itemDefinition: getItemDefinition(itemId),
+      inventorySlots: inventoryManager.getInventory().filter(slot => slot !== null).length,
+      maxSlots: inventoryManager.MAX_SLOTS || 24
+    });
+    return result; // Return the full result object for debugging
   }
-  
+
   return result.success;
 }
 
@@ -551,3 +587,30 @@ export function sortInventory() {
     console.warn(result.message);
   }
 }
+
+// AI: Global API for debugging inventory
+window.debugInventory = function() {
+  console.log('Inventory Debug:', {
+    inventory: inventoryManager.getInventory(),
+    occupiedSlots: inventoryManager.getInventory().filter(slot => slot !== null).length,
+    maxSlots: inventoryManager.MAX_SLOTS || 24
+  });
+};
+
+// AI: Global API for testing item pickup
+window.testItemPickup = function(itemType = 'seashell', count = 1) {
+  console.log('Testing item pickup:', { itemType, count });
+  return addItemToInventory(itemType, count);
+};
+
+// AI: Test all available items
+window.testAllItems = function() {
+  const testItems = ['seashell', 'driftwood', 'seaweed', 'stone', 'galactic_token'];
+  console.log('Testing all available items...');
+
+  testItems.forEach(itemType => {
+    console.log(`\n--- Testing ${itemType} ---`);
+    const result = addItemToInventory(itemType, 1);
+    console.log('Result:', result);
+  });
+};

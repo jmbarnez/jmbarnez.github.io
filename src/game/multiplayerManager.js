@@ -1,7 +1,6 @@
 import { auth, database as db } from '../utils/firebaseClient.js';
 import { ref, remove } from 'firebase/database';
 import { updateAreaPlayer, subscribeAreaPlayers, joinArea as joinAreaRT, clearAreaChatIfMatches } from '../services/realtimePosition.js';
-import { playerService } from '../services/playerService.js';
 import { worldToScreenCoords } from '../utils/math.js';
 import { showPlayerMessage, hidePlayerBubble, updatePlayerBubblePositions } from './character.js';
 import { sendChatMessage } from '../services/firestoreService.js';
@@ -51,6 +50,7 @@ class MultiplayerManager {
     // AI: Chat state
     this.chatBubbles = new Map(); // uid -> {element, timeout}
     this.sessionStartTime = Date.now(); // AI: Track when multiplayer session started
+    this.pendingProjectileEvent = null; // AI: Queue projectile events for sync
 
     // AI: Message deduplication tracking
     this._lastMessageTime = 0;
@@ -84,6 +84,19 @@ class MultiplayerManager {
     // available (startCleanupInterval) for debugging but it is not invoked here.
 
     console.log(`Multiplayer initialized for ${username} (${uid})`);
+  }
+
+  /**
+   * AI: Queue projectile event for next sync to server
+   */
+  queueProjectileEvent(eventData) {
+    this.pendingProjectileEvent = {
+      type: 'projectile',
+      timestamp: Date.now(),
+      data: eventData
+    };
+    // Trigger immediate sync if not already pending
+    this.syncToServer();
   }
 
   /**
@@ -157,8 +170,13 @@ class MultiplayerManager {
       angle, // AI: Send angle to other players
       color, // AI: Send color to other players
       miningNodeId: this.localPlayer.miningNodeId, // AI: Send mining target
-      lastUpdate: sendTime
+      lastUpdate: sendTime,
+      // Add projectile event if one occurred
+      projectileEvent: this.pendingProjectileEvent || null
     };
+
+    // Clear pending projectile event after sending
+    this.pendingProjectileEvent = null;
 
     // AI: Send to server and measure ping
     updateAreaPlayer(areaId, uid, playerData)
@@ -280,6 +298,37 @@ class MultiplayerManager {
     if (uid === this.localPlayer.uid) return;
 
     if (type === 'added' || type === 'changed') {
+      // If the update contains projectileEvent but not position, handle the
+      // projectile immediately using the existing remote player's last-known
+      // coordinates. This covers the case where clients only write a
+      // projectileEvent field in their presence updates.
+      if (data && data.projectileEvent && !(typeof data.ax === 'number' && typeof data.ay === 'number')) {
+        const existingPlayer = this.remotePlayers.get(uid);
+        if (existingPlayer) {
+          const projectileData = data.projectileEvent.data;
+          console.log(`[MULTIPLAYER] Received projectile-only update for ${uid}; creating projectile at last-known pos`, { x: existingPlayer.x, y: existingPlayer.y, projectileData });
+          if (window.createProjectile && typeof window.createProjectile === 'function') {
+            try {
+              window.createProjectile({
+                startX: existingPlayer.x,
+                startY: existingPlayer.y,
+                targetX: projectileData.targetX,
+                targetY: projectileData.targetY,
+                isRemote: true,
+                playerId: uid
+              });
+            } catch (err) {
+              console.warn('[MULTIPLAYER] Failed to create projectile from projectile-only update:', err);
+            }
+          }
+        } else {
+          // No known position for this player yet; skip - the next position update
+          // or combined update will include ax/ay and the projectile will be handled then.
+          console.debug(`[MULTIPLAYER] Ignoring projectile-only update for unknown player ${uid}`);
+        }
+        return;
+      }
+
       if (data && typeof data.ax === 'number' && typeof data.ay === 'number') {
         // AI: Improved session validation - be more lenient with data age for stable connections
         const now = Date.now();
@@ -305,6 +354,7 @@ class MultiplayerManager {
           action: data.action || null,
           angle: data.angle || 0, // AI: Use angle from data or default to 0
           color: data.color || getColorFromUID(uid), // AI: Use color from data or generate it
+          height: 20, // Player height for depth sorting
           sessionStart: data.sessionStart || data.lastUpdate || now,
           messageHistory: new Set(), // Track message IDs to prevent duplicates
           lastSeen: now,
@@ -342,9 +392,17 @@ class MultiplayerManager {
         }
 
         this.remotePlayers.set(uid, player);
+        this._invalidatePlayerCache(); // Invalidate cache when player list changes
+        console.log(`[MULTIPLAYER] ${existingPlayer ? 'Updated' : 'Added'} player ${uid}:`, {
+          username: player.username,
+          x: player.x,
+          y: player.y,
+          totalPlayers: this.remotePlayers.size
+        });
 
         // AI: Handle chat with improved deduplication
         if (data.chat && data.lastUpdate) {
+          console.log(`[MULTIPLAYER] Processing chat message from ${uid}: "${data.chat}"`);
           // AI: Use stable messageId without changing timestamp to prevent duplicates
           const stableMessageId = `${uid}_${data.chat}`;
 
@@ -395,6 +453,7 @@ class MultiplayerManager {
             }
 
             // AI: Use character.js bubble system for display
+            console.log(`[MULTIPLAYER] Showing chat bubble for ${uid} at (${player.x}, ${player.y}): "${data.chat}"`);
             this.showPlayerChatUsingCharacterSystem(uid, data.chat, player.x, player.y);
 
             console.debug(`Processed chat message from ${player.username}: ${data.chat.substring(0, 50)}...`);
@@ -411,19 +470,56 @@ class MultiplayerManager {
             this.hidePlayerChat(uid);
           }
         }
+
+        // AI: Handle projectile events from other players
+        if (data.projectileEvent && data.projectileEvent.type === 'projectile') {
+          const projectileData = data.projectileEvent.data;
+          console.log(`[MULTIPLAYER] Processing projectile event from ${uid}:`, projectileData);
+
+          // Create projectile for remote player
+          if (window.createProjectile && typeof window.createProjectile === 'function') {
+            try {
+              // Create projectile with remote player's position and target
+              window.createProjectile({
+                startX: player.x,
+                startY: player.y,
+                targetX: projectileData.targetX,
+                targetY: projectileData.targetY,
+                isRemote: true,
+                playerId: uid
+              });
+            } catch (error) {
+              console.warn('[MULTIPLAYER] Failed to create remote projectile:', error);
+            }
+          }
+        }
       }
     } else if (type === 'removed') {
       console.log(`Player removed: ${uid}`);
       this.remotePlayers.delete(uid);
+      this._invalidatePlayerCache(); // Invalidate cache when player is removed
       this.hidePlayerChat(uid);
     }
   }
 
   /**
-   * AI: Get all remote players
+   * AI: Get all remote players (cached for performance)
    */
   getRemotePlayers() {
-    return Array.from(this.remotePlayers.values());
+    // Cache the result to avoid repeated Array.from() calls
+    if (!this._cachedRemotePlayers || this._lastPlayerCount !== this.remotePlayers.size) {
+      this._cachedRemotePlayers = Array.from(this.remotePlayers.values());
+      this._lastPlayerCount = this.remotePlayers.size;
+    }
+    return this._cachedRemotePlayers;
+  }
+
+  /**
+   * AI: Invalidate remote players cache when players change
+   */
+  _invalidatePlayerCache() {
+    this._cachedRemotePlayers = null;
+    this._lastPlayerCount = -1;
   }
 
   /**

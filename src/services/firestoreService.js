@@ -32,7 +32,7 @@ export async function ensurePlayerDoc(uid, username) {
       sta: 100, staMax: 100,
       muted: false,
       inventory: Array(24).fill(null),
-      gold: 0,
+
       isOnline: false,
       lastSeen: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -111,16 +111,7 @@ export function updatePlayerOnlineStatus(uid, isOnline) {
   return update(playerRef, { isOnline, lastSeen: serverTimestamp(), updatedAt: serverTimestamp() });
 }
 
-/**
- * Get player's gold amount.
- * @param {string} uid
- * @returns {Promise<number>}
- */
-export async function getPlayerGold(uid) {
-  const playerRef = ref(database, `players/${uid}/gold`);
-  const snap = await get(playerRef);
-  return snap.exists() ? snap.val() : 0;
-}
+
 
 /**
  * Set player's gold amount.
@@ -132,10 +123,7 @@ export function setPlayerGalacticTokens(uid, amount) {
   return update(playerRef, { galacticTokens: amount, updatedAt: serverTimestamp() });
 }
 
-// Legacy function for backward compatibility
-export function setPlayerGold(uid, amount) {
-  return setPlayerGalacticTokens(uid, amount);
-}
+
 
 /**
  * Sets up a real-time listener for online players.

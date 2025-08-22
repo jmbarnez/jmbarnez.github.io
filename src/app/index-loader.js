@@ -1,6 +1,5 @@
 import { auth } from '/src/utils/firebaseClient.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import '/src/utils/disclaimer.js';
 
 // Function to handle authentication redirect
 function handleAuthRedirect() {
@@ -20,17 +19,7 @@ function handleAuthRedirect() {
   }
 }
 
-// Wait for disclaimer to be accepted before handling auth
-window.addEventListener('disclaimerAccepted', () => {
-  console.log('Disclaimer accepted, proceeding with auth redirect');
-  handleAuthRedirect();
-});
-
-// Also check if disclaimer was already accepted (in case of page refresh)
+// Handle authentication redirect immediately
 document.addEventListener('DOMContentLoaded', () => {
-  const disclaimerAccepted = sessionStorage.getItem('wuzaru_disclaimer_accepted');
-  if (disclaimerAccepted) {
-    console.log('Disclaimer already accepted, proceeding with auth redirect');
-    handleAuthRedirect();
-  }
+  handleAuthRedirect();
 });

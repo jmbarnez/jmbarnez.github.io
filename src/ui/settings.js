@@ -1,5 +1,8 @@
 import { makeDraggable } from '../utils/draggable.js';
 import { setGlobalVolume, getGlobalVolume } from '../utils/constants.js';
+import { setTerrainSeed } from '../game/world.js';
+import { loadTerrainSeed, generateRandomSeed } from '../utils/noise.js';
+import { PERMANENT_TERRAIN_SEED } from '../utils/worldConstants.js';
 
 export function initSettingsPanel() {
   const settingsPanel = document.getElementById('settings-panel');
@@ -16,6 +19,7 @@ export function initSettingsPanel() {
 
   settingsButton.addEventListener('click', () => {
     settingsPanel.classList.toggle('hidden');
+    updateTerrainSeedDisplay();
   });
 
   settingsCloseButton.addEventListener('click', () => {
@@ -26,4 +30,72 @@ export function initSettingsPanel() {
   volumeSlider.addEventListener('input', (e) => {
     setGlobalVolume(parseFloat(e.target.value));
   });
+
+  // Initialize terrain seed controls
+  initTerrainSeedControls();
+}
+
+function initTerrainSeedControls() {
+  const settingsPanel = document.getElementById('settings-panel');
+  if (!settingsPanel) return;
+
+  // Create terrain seed section
+  const seedSection = document.createElement('div');
+  seedSection.className = 'p-4 border-t border-sky-400/20';
+  seedSection.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-sm font-semibold">Terrain Seed</label>
+      <button id="terrain-seed-random" type="button" class="px-2 py-1 rounded bg-slate-800/50 hover:bg-slate-700 transition text-xs text-slate-300">Random</button>
+    </div>
+    <div class="flex gap-2 items-stretch">
+      <input id="terrain-seed-input" type="number" placeholder="Enter seed" class="flex-1 px-3 py-2 rounded border border-slate-600 bg-slate-800/50 text-slate-200 text-sm focus:outline-none focus:border-sky-400 transition-colors" />
+      <button id="terrain-seed-apply" type="button" class="px-4 py-2 rounded bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium transition-colors">Apply</button>
+    </div>
+    <p id="terrain-seed-status" class="text-xs text-slate-400 mt-1"></p>
+  `;
+
+  settingsPanel.appendChild(seedSection);
+
+  // Add event listeners
+  const seedInput = document.getElementById('terrain-seed-input');
+  const seedApplyButton = document.getElementById('terrain-seed-apply');
+  const seedRandomButton = document.getElementById('terrain-seed-random');
+
+  if (seedInput && seedApplyButton && seedRandomButton) {
+    // Disable random button functionality for permanent seed
+    seedRandomButton.addEventListener('click', () => {
+      alert('Using permanent static seed - cannot generate random seed');
+    });
+
+    // Disable apply button functionality for permanent seed
+    seedApplyButton.addEventListener('click', () => {
+      alert('Using permanent static seed - cannot change seed');
+    });
+
+    // Disable keypress functionality for permanent seed
+    seedInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        alert('Using permanent static seed - cannot change seed');
+      }
+    });
+  }
+}
+
+function updateTerrainSeedDisplay() {
+  const seedStatus = document.getElementById('terrain-seed-status');
+  const seedInput = document.getElementById('terrain-seed-input');
+
+  if (!seedStatus || !seedInput) return;
+
+  // Always use the permanent static seed
+  seedStatus.textContent = `Static Seed: ${PERMANENT_TERRAIN_SEED} (0x${PERMANENT_TERRAIN_SEED.toString(16).toUpperCase()})`;
+  seedInput.value = PERMANENT_TERRAIN_SEED;
+
+  // Disable the input and buttons since we're using a permanent seed
+  seedInput.disabled = true;
+  const randomButton = document.getElementById('terrain-seed-random');
+  const applyButton = document.getElementById('terrain-seed-apply');
+  if (randomButton) randomButton.disabled = true;
+  if (applyButton) applyButton.disabled = true;
 }

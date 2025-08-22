@@ -1,5 +1,6 @@
 import { multiplayerManager } from '../game/multiplayerManager.js';
 import { game } from '../game/core.js';
+import { getPhysicsDebugInfo } from '../game/physics.js';
 
 /**
  * AI: Simple ping display in top right corner
@@ -45,23 +46,37 @@ class PingDisplay {
   }
 
   /**
-   * AI: Update ping display with current values and movement debug info
+   * AI: Update ping display with current values and comprehensive physics debug info
    */
   updateDisplay() {
     if (!this.element) return;
 
     const ping = multiplayerManager.getPing();
     const connected = multiplayerManager.isConnected();
-    
+
     let content = '';
-    
-    // AI: Movement debug info at the top
-    if (game.player && game.player.target) {
+
+    // AI: Comprehensive physics debug info
+    if (game.player && game.player.physics) {
+      const debug = getPhysicsDebugInfo(game.player);
+
+      content += `🔧 DRONE FLIGHT\n`;
+      content += `---\n`;
+      content += `Velocity: ${debug.velocity}\n`;
+      content += `Speed: ${debug.speed}\n`;
+      content += `Throttle: ${debug.throttle}\n`;
+      content += `Orientation: ${debug.orientation} (Mouse Aim)\n`;
+      content += `Controls: W=Forward, A/D=Strafe, Mouse=Aim\n`;
+      content += `Status: FLYING\n`;
+
+      content += `---\n`;
+    } else if (game.player && game.player.target) {
+      // Fallback to old movement debug if physics not initialized
       const dx = game.player.target.x - game.player.x;
       const dy = game.player.target.y - game.player.y;
       const dist = Math.hypot(dx, dy);
-      const speed = Math.hypot(game.player.vx, game.player.vy);
-      
+      const speed = Math.hypot(game.player.vx || 0, game.player.vy || 0);
+
       content += `Target: ${dist.toFixed(1)}px\n`;
       content += `Speed: ${speed.toFixed(1)}px/s\n`;
       content += `Mode: ${game.player.continuousMovement ? 'Hold' : 'Click'}\n`;

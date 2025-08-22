@@ -8,12 +8,12 @@
       "damage": 4,
       "speed": 1.8,
       "size": 2,
+      "height": 16,
       "color": "#9B59B6",
       "shadowColor": "rgba(155, 89, 182, 0.3)",
       "xpValue": 8,
       "loot": {
-        "goldMin": 1,
-        "goldMax": 1,
+
         "items": []
       },
       "behavior": "melee_wander",
@@ -28,12 +28,12 @@
       "damage": 12,
       "speed": 1.0,
       "size": 3,
+      "height": 24,
       "color": "#1ABC9C",
       "shadowColor": "rgba(26, 188, 156, 0.3)",
       "xpValue": 20,
       "loot": {
-        "goldMin": 1,
-        "goldMax": 1,
+
         "items": []
       },
       "behavior": "charge",

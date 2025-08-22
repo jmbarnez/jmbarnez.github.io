@@ -1,6 +1,7 @@
 // Main game loop (update/render orchestrator)
 // AI: Updated imports to include the new camera and coordinate conversion functions.
-import { isInWater, drawTerrain, camera } from './world.js';
+import { isInWater, drawTerrain, camera, setTerrainSeed } from './world.js';
+import { WORLD_WIDTH, WORLD_HEIGHT } from '../utils/worldConstants.js';
 
 import { playerService } from '../services/playerService.js';
 import { drawGroundItems } from './items.js';
@@ -15,16 +16,17 @@ import { pingDisplay } from '../ui/pingDisplay.js';
 import { experienceManager } from './experienceManager.js';
 import { experienceBar } from '../ui/experienceBar.js';
 import { drawPlayer, drawSelfMarker, drawMiningLaser, getMuzzlePosition } from './player.js';
-import { worldToScreenCoords, screenToWorldCoords } from '../utils/math.js';
+import { worldToScreenCoords, screenToWorldCoords, calculateEntityDepth } from '../utils/math.js';
 import { joinArea, subscribeAreaPlayers } from '../services/realtimePosition.js';
 import { subscribeGroundItems } from '../services/groundItemService.js';
-import { ACCELERATION, DECELERATION, GRAVITY, DAMPING_FACTOR, MAX_SPEED, DEAD_ZONE, DECEL_ZONE, ATTACK_RANGE, MUZZLE_OFFSET, DRONE_HEIGHT_OFFSET, FIRE_COOLDOWN, INTERACTION_RADIUS, AUTO_ATTACK_DURATION } from '../utils/constants.js';
+import { ACCELERATION, DECELERATION, GRAVITY, DAMPING_FACTOR, MAX_SPEED, DEAD_ZONE, DECEL_ZONE, ATTACK_RANGE, MUZZLE_OFFSET, DRONE_HEIGHT_OFFSET, FIRE_COOLDOWN, INTERACTION_RADIUS, AUTO_ATTACK_DURATION, DAMAGE_PER_HIT } from '../utils/constants.js';
 import { isMouseOverItem, getItemBounds } from '../data/pixelIcons.js';
 import { auth } from '../utils/firebaseClient.js';
 import { gameState } from '../app/state.js';
 import { areaData } from '../data/areaData.js';
 import { initWorldObjects, drawWorldObjects, checkWorldObjectInteraction } from './worldObjects.js';
-import { initEnemies, updateEnemies, drawEnemies, findNearestEnemy, setTargetedEnemy, getTargetedEnemy, getEnemies, cleanupEnemies } from './enemies.js';
+import { initEnemies, updateEnemies, drawEnemies, drawEnemySprite, findNearestEnemy, setTargetedEnemy, getTargetedEnemy, getEnemies, cleanupEnemies } from './enemies.js';
+import { updateDrone, fireWeapon, updateBallisticProjectiles, initializeDronePhysics, PHYSICS_CONSTANTS } from './physics.js';
 import loadingScreen from '../utils/loadingScreen.js';
 import { createProjectile, updateProjectiles, drawProjectiles, initProjectiles } from './projectiles.js';
 import { waitForCanvas } from '../utils/domUtils.js';
@@ -36,15 +38,15 @@ import { initGroundItemUI, cleanupGroundItemUI, updateFloatingMessages, drawGrou
 export const game = {
   canvas: null,
   ctx: null,
-  // AI: World size is now set dynamically based on the canvas's actual rendered size.
-  // This ensures a 1:1 pixel mapping and a seamless, full-screen experience.
-  WORLD_WIDTH: 0,
-  WORLD_HEIGHT: 0,
+  // AI: Fixed world dimensions for deterministic terrain generation.
+  // These are imported from world.js and provide consistent world size.
+  WORLD_WIDTH,
+  WORLD_HEIGHT,
   width: 0,
   height: 0,
   scale: 1, // Canvas scaling factor to fit screen
   // AI: Player's starting position is now set dynamically in the center of the world.
-  player: { x: 0, y: 0, vx: 0, vy: 0, target: null, action: null, angle: 0, activeMiningNode: null, fireCooldown: 0, autoAttackTimer: 0 },
+  player: { x: 0, y: 0, vx: 0, vy: 0, target: null, action: null, angle: 0, activeMiningNode: null, fireCooldown: 0, autoAttackTimer: 0, height: 20 },
   lastTs: 0,
   timeAccumulator: 0, // AI: Accumulator for fixed-step game loop to handle tab focus loss.
   groundItems: [], // {x,y,type,harvest:0-1} - individual pickup items
@@ -64,164 +66,154 @@ function update(dt) {
   const p = game.player;
 
 
-  // AI: Drone Hovering Movement Mechanics
-  // This section implements a physics-based movement system for a drone-like feel.
-  // Instead of moving at a constant speed, the player accelerates towards the target
-  // and decelerates with damping, creating a smooth "hovering" effect.
+  // AI: Ultra-Realistic Physics-Based Drone Movement
+  // Replace simple acceleration with full rigid body physics
 
-  // AI: Using shared movement constants to ensure all players move at the same speed
+  // Convert mouse/keyboard input to physics input
+  const input = {
+    forward: false,
+    backward: false,
+    rotateLeft: false,
+    rotateRight: false,
+    strafeLeft: false,
+    strafeRight: false,
+    boost: false,
+    fire: false
+  };
 
-  // 1. Apply forces towards the target if one exists.
-  if (p.target) {
+  // Map keyboard input to physics input (simplified controls)
+  // W for forward, A/D for sideways movement, mouse for yaw
+  if (camera.keysPressed.w || camera.keysPressed.up) input.forward = true;
+  if (camera.keysPressed.s || camera.keysPressed.down) input.backward = true;
+  if (camera.keysPressed.a || camera.keysPressed.left) input.strafeLeft = true;
+  if (camera.keysPressed.d || camera.keysPressed.right) input.strafeRight = true;
+  if (camera.keysPressed.shift) input.boost = true;
+
+
+
+  // Mouse-based instant turning (like FPS aiming)
+  if (game.mouse && typeof game.mouse.x === 'number' && typeof game.mouse.y === 'number') {
+    const dx = game.mouse.x - p.x;
+    const dy = game.mouse.y - p.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance > 5) { // Avoid jitter when mouse is very close to player
+      const targetAngle = Math.atan2(dy, dx);
+      // Instantly set orientation to mouse direction (no physics rotation)
+      if (p.physics) {
+        p.physics.orientation = targetAngle;
+        p.physics.angularVelocity = 0; // Stop any ongoing rotation
+      }
+      p.angle = targetAngle; // Also update the entity angle directly
+    }
+  }
+
+  // Handle target-based movement (mouse clicks) as fallback
+  if (p.target && p.continuousMovement && !input.forward) {
+    // Convert target-based movement to physics input
     const dx = p.target.x - p.x;
     const dy = p.target.y - p.y;
     const dist = Math.hypot(dx, dy);
 
-    if (dist > DEAD_ZONE || p.continuousMovement) {
-      // Calculate direction unit vector
-      const dirX = dx / dist;
-      const dirY = dy / dist;
-      
-      // Apply acceleration force towards target
-      let forceMultiplier = ACCELERATION;
-      
-      // For continuous movement, maintain constant speed
-      if (p.continuousMovement) {
-        // AI: Use a multiplier on the base acceleration for a more responsive feel
-        // during continuous movement, avoiding hardcoded values.
-        forceMultiplier = ACCELERATION * 1.1;
-      } else {
-        // AI: Use DECEL_ZONE for consistent braking behavior.
-        if (dist < DECEL_ZONE) {
-          const velocityTowardsTarget = (p.vx * dirX + p.vy * dirY);
-          const proximityFactor = 1 - (dist / DECEL_ZONE);
+    if (dist > DEAD_ZONE) {
+      input.forward = true;
 
-          // AI: Apply braking force using the DECELERATION constant.
-          if (velocityTowardsTarget > 0) {
-            const brakeForce = DECELERATION * proximityFactor;
-            p.vx -= dirX * brakeForce * dt;
-            p.vy -= dirY * brakeForce * dt;
-          }
-        }
-      }
-      
-      // Apply thrust towards target
-      p.vx += dirX * forceMultiplier * dt;
-      p.vy += dirY * forceMultiplier * dt;
-    } else {
-      // When the player is within the DEAD_ZONE and not in continuous movement mode,
-      // snap to the target position and stop all movement. This prevents overshooting
-      // and the "rubber-banding" effect.
-      if (!p.continuousMovement) {
-        p.x = p.target.x;
-        p.y = p.target.y;
-        p.vx = 0;
-        p.vy = 0;
-        // Check if this was a ground item target and attempt pickup
-        if (p.target.type === 'groundItem' && p.target.item) {
-          const targetItem = p.target.item; // Store reference before clearing target
-          console.log('[AUTO_PICKUP] Reached ground item, attempting pickup:', targetItem.type);
-          
-          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
-            ? multiplayerManager.localPlayer.uid
-            : 'anonymous';
+      // Calculate desired rotation towards target
+      const targetAngle = Math.atan2(dy, dx);
+      const angleDiff = targetAngle - p.physics.orientation;
 
-          pickupGroundItem(targetItem.id, playerId, p.x, p.y)
-            .then(success => {
-              if (success) {
-                console.log('[AUTO_PICKUP] Successfully picked up ground item:', targetItem.type);
-              } else {
-                console.log('[AUTO_PICKUP] Failed to pick up ground item:', targetItem.type);
-              }
-            })
-            .catch(error => {
-              console.error('[AUTO_PICKUP] Error picking up ground item:', error);
-            });
-        }
-        
-        p.target = null;
-      }
-      
-      // Also check for auto-pickup during continuous movement when close enough
-      if (p.continuousMovement && p.target && p.target.type === 'groundItem' && p.target.item) {
-        const pickupRange = 32;
-        const targetItem = p.target.item; // Store reference to avoid null access issues
-        const distanceToItem = Math.hypot(p.x - targetItem.x, p.y - targetItem.y);
-        
-        if (distanceToItem <= pickupRange) {
-          console.log('[AUTO_PICKUP] Close enough during movement, attempting pickup:', targetItem.type);
-          
-          const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
-            ? multiplayerManager.localPlayer.uid
-            : 'anonymous';
+      // Normalize angle difference to [-π, π]
+      const normalizedDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
 
-          pickupGroundItem(targetItem.id, playerId, p.x, p.y)
-            .then(success => {
-              if (success) {
-                console.log('[AUTO_PICKUP] Successfully picked up ground item during movement:', targetItem.type);
-                // Stop movement after successful pickup
-                p.target = null;
-                p.continuousMovement = false;
-              } else {
-                console.log('[AUTO_PICKUP] Failed to pick up ground item during movement:', targetItem.type);
-              }
-            })
-            .catch(error => {
-              console.error('[AUTO_PICKUP] Error picking up ground item during movement:', error);
-            });
-        }
+      if (Math.abs(normalizedDiff) > 0.1) {
+        input.rotateLeft = normalizedDiff > 0;
+        input.rotateRight = normalizedDiff < 0;
       }
     }
   }
 
-  // 2. Apply gravity (if any).
-  // For drones, GRAVITY is set to 0 in movementConstants.js, so this has no effect.
-  // This line is kept for potential future use with other physics-based objects.
-  p.vy += GRAVITY * dt;
-
-  // 3. Apply air resistance/damping to simulate drag.
-  // This gives the drone a "drifting" or "gliding" feel.
-  // A DAMPING_FACTOR closer to 1 results in more drift, while a lower value
-  // creates more "drag" and makes the drone stop more abruptly.
-  p.vx *= DAMPING_FACTOR;
-  p.vy *= DAMPING_FACTOR;
-
-
-  // 4. Limit the player's velocity to MAX_SPEED.
-  const currentSpeed = Math.hypot(p.vx, p.vy);
-  if (currentSpeed > MAX_SPEED) {
-    const speedRatio = MAX_SPEED / currentSpeed;
-    p.vx *= speedRatio;
-    p.vy *= speedRatio;
+  // Handle weapon firing
+  if (p.fireCooldown <= 0) {
+    input.fire = true;
+    p.fireCooldown = FIRE_COOLDOWN;
   }
 
-  // 5. Update player position based on current velocity.
-  p.x += p.vx * dt;
-  p.y += p.vy * dt;
-
-  // 6. Clamp player position to world boundaries and reset velocity if a boundary is hit.
-  const PLAYER_RADIUS = 8;
-  if (p.x < PLAYER_RADIUS) {
-    p.x = PLAYER_RADIUS;
-    p.vx = 0;
-  } else if (p.x > game.WORLD_WIDTH - PLAYER_RADIUS) {
-    p.x = game.WORLD_WIDTH - PLAYER_RADIUS;
-    p.vx = 0;
-  }
-  if (p.y < PLAYER_RADIUS) {
-    p.y = PLAYER_RADIUS;
-    p.vy = 0;
-  } else if (p.y > game.WORLD_HEIGHT - PLAYER_RADIUS) {
-    p.y = game.WORLD_HEIGHT - PLAYER_RADIUS;
-    p.vy = 0;
+  // Update drone physics
+  if (p.physics) {
+    updateDrone(p, input, dt);
+  } else {
+    // Initialize physics if missing
+    initializeDronePhysics(p);
   }
 
-  // 7. If velocity is negligible, set it to zero to prevent drifting.
-  // Increased threshold to stop micro-movements that cause rocking
-  if (Math.hypot(p.vx, p.vy) < 2) {
-    p.vx = 0;
-    p.vy = 0;
+  // Handle pickup logic (keep existing auto-pickup system)
+  if (p.target && !p.continuousMovement) {
+    const dx = p.target.x - p.x;
+    const dy = p.target.y - p.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist <= DEAD_ZONE) {
+      p.x = p.target.x;
+      p.y = p.target.y;
+
+      // Check if this was a ground item target and attempt pickup
+      if (p.target.type === 'groundItem' && p.target.item) {
+        const targetItem = p.target.item;
+        console.log('[AUTO_PICKUP] Reached ground item, attempting pickup:', targetItem.type);
+
+        const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+          ? multiplayerManager.localPlayer.uid
+          : 'anonymous';
+
+        pickupGroundItem(targetItem.id, playerId, p.x, p.y)
+          .then(success => {
+            if (success) {
+              console.log('[AUTO_PICKUP] Successfully picked up ground item:', targetItem.type);
+            } else {
+              console.log('[AUTO_PICKUP] Failed to pick up ground item:', targetItem.type);
+            }
+          })
+          .catch(error => {
+            console.error('[AUTO_PICKUP] Error picking up ground item:', error);
+          });
+      }
+
+      p.target = null;
+    }
   }
+
+  // Also check for auto-pickup during continuous movement when close enough
+  if (p.continuousMovement && p.target && p.target.type === 'groundItem' && p.target.item) {
+    const pickupRange = 32;
+    const targetItem = p.target.item;
+    const distanceToItem = Math.hypot(p.x - targetItem.x, p.y - targetItem.y);
+
+    if (distanceToItem <= pickupRange) {
+      console.log('[AUTO_PICKUP] Close enough during movement, attempting pickup:', targetItem.type);
+
+      const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
+        ? multiplayerManager.localPlayer.uid
+        : 'anonymous';
+
+      pickupGroundItem(targetItem.id, playerId, p.x, p.y)
+        .then(success => {
+          if (success) {
+            console.log('[AUTO_PICKUP] Successfully picked up ground item during movement:', targetItem.type);
+            // Stop movement after successful pickup
+            p.target = null;
+            p.continuousMovement = false;
+          } else {
+            console.log('[AUTO_PICKUP] Failed to pick up ground item during movement:', targetItem.type);
+          }
+        })
+        .catch(error => {
+          console.error('[AUTO_PICKUP] Error picking up ground item during movement:', error);
+        });
+    }
+  }
+
+  // Update fire cooldown
+  p.fireCooldown = Math.max(0, p.fireCooldown - dt);
 
   // 8. Continuously update player state for real-time saving.
   // This is now the primary way of saving position, replacing on-arrival saves.
@@ -333,37 +325,10 @@ function update(dt) {
 
   // AI: Smooth Drone Rotation
   // This section implements rotational damping for a more realistic drone feel.
-  // Instead of instantly snapping to the cursor's direction, the drone smoothly
-  // interpolates its angle towards the target angle.
-
-  // 1. Calculate the target angle based on the cursor's position.
-  let dx, dy, targetAngle;
-  const targetedEnemy = getTargetedEnemy();
-  if (targetedEnemy) {
-      dx = targetedEnemy.x - p.x;
-      dy = targetedEnemy.y - p.y;
-      targetAngle = Math.atan2(dy, dx);
-  } else {
-      dx = game.mouse.x - p.x;
-      dy = game.mouse.y - p.y;
-      targetAngle = Math.atan2(dy, dx);
-  }
-
-  // 2. Smoothly interpolate the drone's current angle towards the target angle.
-  // This creates a realistic rotational inertia effect.
-  const ROTATION_SPEED = 7; // Adjust for faster or slower rotation.
-  let angleDiff = targetAngle - p.angle;
-
-  // 3. Normalize the angle difference to the range [-PI, PI].
-  // This ensures the drone rotates along the shortest path.
-  while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-  while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-
-  // 4. Apply the interpolation factor, making it frame-rate independent.
-  // The drone's angle is updated by a fraction of the difference each frame.
-  p.angle += angleDiff * (1 - Math.exp(-ROTATION_SPEED * dt));
+  // Mouse-based instant turning handles rotation (no physics rotation needed)
 
   // AI: League of Legends-style Combat Logic with Auto-Attack System
+  const targetedEnemy = getTargetedEnemy();
   if (targetedEnemy) {
       // AI: Check if target is still alive and valid
       if (targetedEnemy.isDead || targetedEnemy.hp <= 0) {
@@ -380,18 +345,18 @@ function update(dt) {
               p.autoAttackTimer = AUTO_ATTACK_DURATION;
           }
 
-          // AI: LoL-style attack range check - use true 3D distance with height
+          // AI: Enhanced Auto-Pilot System - More Aggressive Enemy Following
           const effectiveAttackRange = ATTACK_RANGE;
           if (dist > effectiveAttackRange) {
-              // AI: Move closer using LoL-style approach behavior
-              const optimalDistance = effectiveAttackRange * 0.8; // Stay slightly within range
+              // AI: Move closer using enhanced auto-pilot behavior
+              const optimalDistance = effectiveAttackRange * 0.7; // Stay well within range for better positioning
 
               // Avoid division by zero
               if (dist > 0.001) {
                 const nx = dx / dist;
                 const ny = dy / dist;
 
-                // AI: Position drone to maintain optimal attack distance
+                // AI: Calculate target position for aggressive auto-pilot following
                 const targetX = targetedEnemy.x - nx * optimalDistance;
                 const targetY = targetedEnemy.y - ny * optimalDistance;
 
@@ -400,8 +365,8 @@ function update(dt) {
                 const clampedY = Math.max(8, Math.min(targetY, game.WORLD_HEIGHT - 8));
 
                 p.target = { x: clampedX, y: clampedY };
-                
-                // AI: Continuously follow target if it moves (LoL behavior)
+
+                // AI: Enable aggressive auto-pilot following
                 p.continuousMovement = true;
               } else {
                 // fallback: move directly to enemy center
@@ -412,11 +377,8 @@ function update(dt) {
               p.target = null;
               p.continuousMovement = false;
               
-              // AI: Always face the target while attacking - direct facing for proper combat orientation
-              const simpleDx = targetedEnemy.x - p.x;
-              const simpleDy = targetedEnemy.y - p.y;
-              const targetAngle = Math.atan2(simpleDy, simpleDx);
-              p.angle = targetAngle; // Direct facing - no sprite adjustment needed
+              // AI: While attacking we DO NOT force the drone to rotate to face the target.
+              // Rotation remains controlled by mouse input so players can aim independently.
               
               p.fireCooldown -= dt;
               if (p.fireCooldown <= 0) {
@@ -432,6 +394,15 @@ function update(dt) {
                   createProjectile(startX, startY, targetedEnemy);
                   playGunshotSound();
                   p.fireCooldown = FIRE_COOLDOWN; // Use shared constant for consistency
+
+                  // AI: Sync projectile event to other players
+                  if (multiplayerManager && multiplayerManager.queueProjectileEvent) {
+                    multiplayerManager.queueProjectileEvent({
+                      targetX: targetedEnemy.x,
+                      targetY: targetedEnemy.y,
+                      damage: DAMAGE_PER_HIT
+                    });
+                  }
               }
           }
       }
@@ -448,11 +419,13 @@ function update(dt) {
               const dy = (nearestEnemy.y - nearestEnemy.size) - (p.y - DRONE_HEIGHT_OFFSET);
               const dist = Math.hypot(dx, dy);
               
-              // AI: Auto-attack if enemy is within acquisition range (slightly larger than attack range)
-              const acquisitionRange = ATTACK_RANGE * 1.2; // 20% larger acquisition range
+              // AI: Enhanced auto-attack acquisition - more aggressive enemy following
+              const acquisitionRange = ATTACK_RANGE * 1.5; // 50% larger acquisition range for better auto-pilot
               if (dist <= acquisitionRange) {
                   // AI: Auto-target the nearest enemy for continued combat
                   setTargetedEnemy(nearestEnemy);
+                  // AI: Enable continuous movement for aggressive auto-pilot behavior
+                  p.continuousMovement = true;
               }
           }
       } else {
@@ -463,14 +436,17 @@ function update(dt) {
 
   // Update enemies and projectiles
   updateEnemies(dt);
+  // Update guaranteed-hit projectiles (visual + hit timing)
   updateProjectiles(dt);
+  // Update ballistic projectiles with realistic physics
+  updateBallisticProjectiles(dt);
 
   // Update ground item UI (floating messages)
   updateFloatingMessages(dt);
 }
 
 /**
- * AI: Draws a visual indicator at the target location when right-clicking to move
+ * AI: Draws a visual indicator at the target location for movement
  */
 function drawTargetMarker() {
   // AI: Show target marker based on actual player target, not stored marker position
@@ -598,7 +574,7 @@ function loop(ts) {
   }
   
   // AI: The drawTerrain function now handles clearing the canvas.
-  
+
   // Draw game world elements
   drawTerrain();
 
@@ -607,19 +583,98 @@ function loop(ts) {
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 
+  // Depth-sorted draw: collect drawable entities and sort by (y + height)
+  const drawList = [];
+
+  // Ground items
+  for (const item of game.groundItems) drawList.push({ type: 'groundItem', y: item.y, fn: () => drawGroundItems() });
+  // Resource nodes
+  for (const node of game.resourceNodes) drawList.push({ type: 'resourceNode', y: node.y, fn: () => drawResourceNodes() });
+  // World objects
+  for (const obj of game.worldObjects) drawList.push({ type: 'worldObject', y: obj.y, fn: () => drawWorldObjects() });
+  // Enemies (use game.enemies array)
+  for (const e of game.enemies) drawList.push({ type: 'enemy', y: e.y + (e.height || 0), fn: () => drawEnemySprite(e) });
+  // Projectiles
+  for (const p of [] ) drawList.push({ type: 'projectile', y: p.y, fn: () => drawProjectiles() });
+
+  // Sort by y (ascending) so objects further down draw later (on top)
+  drawList.sort((a, b) => a.y - b.y);
+
+  // Execute draw functions. Many entries may call batched drawers; to avoid
+  // redundant draws we only call high-level draws once per frame below for
+  // subsystems that already batch render.
+  // Simpler approach: render batched subsystems first, then depth-sorted
+  // per-entity sprites (enemies, player, remote players).
   drawGroundItems();
   drawResourceNodes();
   drawWorldObjects();
-  drawEnemies();
   drawProjectiles();
-  drawRemotePlayers();
-  drawPlayer(game.player);
+
+  // Draw enemies, remote players, and player with depth sorting
+  // Combine enemies and remote players and player into a sortable list
+  const dynamicEntities = [];
+  for (const e of game.enemies) dynamicEntities.push({
+    ent: e,
+    depth: calculateEntityDepth(e.x, e.y, e.height),
+    draw: () => {
+      drawEnemySprite(e);
+      // Also draw enemy UI (health bars, targeting indicators)
+      const { ctx } = game;
+      if (!ctx || e.isDead) return;
+
+      // Draw health bar for damaged enemies
+      if (e.hp < e.maxHp) {
+        const barWidth = e.size * 2;
+        const barHeight = 3;
+        const barX = e.x - barWidth / 2;
+        const barY = e.y - e.size * 2;
+
+        // Health bar background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Health bar
+        ctx.fillStyle = 'red';
+        const healthRatio = Math.max(0, e.hp / e.maxHp);
+        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
+      }
+
+      // Draw targeting circle for selected enemy
+      if (game.targetedEnemy?.id === e.id) {
+        ctx.save();
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size + 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  });
+  for (const rp of multiplayerManager.getRemotePlayers()) dynamicEntities.push({
+    ent: rp,
+    depth: calculateEntityDepth(rp.x, rp.y, rp.height),
+    draw: () => drawPlayer(rp)
+  });
+  dynamicEntities.push({
+    ent: game.player,
+    depth: calculateEntityDepth(game.player.x, game.player.y, game.player.height),
+    draw: () => drawPlayer(game.player)
+  });
+
+  // Sort by depth (lower values = more in front)
+  dynamicEntities.sort((a, b) => a.depth - b.depth);
+  for (const d of dynamicEntities) d.draw();
+
+  // Draw overlays related to player after main entities
   drawMiningLaser(ctx, game.player, game.player.activeMiningNode);
   drawSelfMarker(game.player, multiplayerManager.localPlayer.color);
   drawTargetMarker();
 
   // Draw ground item UI (tooltips and floating messages)
   drawGroundItemUI(ctx);
+
+  // Rear dust/boost visuals removed per user request
 
   // AI: Restore the context to draw UI elements at fixed screen positions.
   ctx.restore();
@@ -634,6 +689,8 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
+
+
 /**
  * Initializes the main game area, setting up the canvas, event listeners, and starting the game loop.
  * This function is called once when the game area is loaded.
@@ -645,17 +702,41 @@ export async function initAreaGame(initialPosition) {
     game.canvas = canvas;
     game.ctx = canvas.getContext('2d');
     game.ctx.imageSmoothingEnabled = false;
+    try { canvas.style.imageRendering = 'pixelated'; } catch (e) {}
   
-    // AI: Dynamically set the world and canvas size to match the actual rendered size of the element.
-    // This is the definitive solution to ensure the game world perfectly fills the screen,
-    // removing any black bars, seams, or boundary issues by creating a 1:1 pixel mapping.
+    // For now: make the canvas match the screen size (fullscreen canvas)
+    // while the world size remains fixed (WORLD_WIDTH x WORLD_HEIGHT).
     const rect = canvas.getBoundingClientRect();
-    game.WORLD_WIDTH = rect.width;
-    game.WORLD_HEIGHT = rect.height;
     game.width = rect.width;
     game.height = rect.height;
     canvas.width = game.width;
     canvas.height = game.height;
+
+    // Initialize terrain using fixed world dimensions so the playable area
+    // (WORLD_WIDTH x WORLD_HEIGHT) matches the generated world size.
+    // Show loading screen and block initialization until terrain is ready.
+    try {
+      if (window.loadingScreen && typeof window.loadingScreen.showAreaLoading === 'function') {
+        window.loadingScreen.showAreaLoading('world');
+      }
+      // Wait for terrain map to be assigned by setTerrainSeed -> generateTerrain
+      setTerrainSeed();
+      // Poll until terrain is ready with a reasonable timeout
+      const start = Date.now();
+      while (!game.terrain || !game.terrain.map) {
+        // Avoid blocking the main thread for too long
+        await new Promise(res => setTimeout(res, 50));
+        if (Date.now() - start > 10000) {
+          console.warn('Terrain generation taking too long, continuing anyway');
+          break;
+        }
+      }
+      if (window.loadingScreen && typeof window.loadingScreen.hide === 'function') {
+        window.loadingScreen.hide();
+      }
+    } catch (e) {
+      console.error('Terrain initialization failed:', e);
+    }
 
     // Initialize highlight manager with the canvas
     highlightManager.init(canvas);
@@ -687,6 +768,9 @@ export async function initAreaGame(initialPosition) {
       game.player.y = game.WORLD_HEIGHT / 2;
     }
 
+    // Initialize physics for the player drone
+    initializeDronePhysics(game.player);
+
     // AI: The player's state is already updated by playerService. No need to force a save here.
 
     // AI: Initialize world objects (market, etc.)
@@ -710,33 +794,89 @@ export async function initAreaGame(initialPosition) {
     window.gameInstance = game;
     
     // AI: Add mouse wheel listener for zooming with more restrictive limits.
-    canvas.addEventListener(
-      'wheel',
-      (e) => {
-        e.preventDefault();
-        // AI: Adjust target zoom level for smooth interpolation
-        const zoomDelta = e.deltaY > 0 ? -0.15 : 0.15;
-        const MIN_ZOOM = 1.5;
-        const MAX_ZOOM = 2.5;
-        camera.targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.targetZoom + zoomDelta));
-      },
-      { passive: false },
-    );
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      // Discrete zoom: pick next/previous allowed zoom level
+      const dir = e.deltaY > 0 ? -1 : 1;
+      const allowed = (camera.allowedZooms && camera.allowedZooms.slice().sort((a,b)=>a-b)) || [1,2,3];
+      // find nearest index to current targetZoom
+      let idx = 0;
+      for (let i = 1; i < allowed.length; i++) {
+        if (Math.abs(allowed[i] - camera.targetZoom) < Math.abs(allowed[idx] - camera.targetZoom)) idx = i;
+      }
+      idx = Math.max(0, Math.min(allowed.length - 1, idx + dir));
+      camera.targetZoom = allowed[idx];
+    }, { passive: false });
 
+    // AI: Add keyboard event listeners for camera controls
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      switch (key) {
+        case 'w':
+        case 'arrowup':
+          camera.keysPressed.w = true;
+          camera.keysPressed.up = true;
+          break;
+        case 'a':
+        case 'arrowleft':
+          // Strafe left
+          camera.keysPressed.a = true;
+          camera.keysPressed.left = true;
+          break;
+        case 's':
+        case 'arrowdown':
+          camera.keysPressed.s = true;
+          camera.keysPressed.down = true;
+          break;
+        case 'd':
+        case 'arrowright':
+          // Strafe right
+          camera.keysPressed.d = true;
+          camera.keysPressed.right = true;
+          break;
+        case ' ': // Space bar - center on player
+          e.preventDefault(); // Prevent page scroll
+          camera.centerOnPlayer();
+          break;
+        case 'f': // F key - toggle free camera mode
+          camera.toggleFreeCamera();
+          break;
+      }
+    });
 
-    // AI: Hybrid movement system - track mouse state
-    let isRightMouseHeld = false;
-    let rightClickStartTime = 0;
-    let rightClickStartPos = null;
-    const HOLD_THRESHOLD = 200; // milliseconds to distinguish click from hold
+    document.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      switch (key) {
+        case 'w':
+        case 'arrowup':
+          camera.keysPressed.w = false;
+          camera.keysPressed.up = false;
+          break;
+        case 'a':
+        case 'arrowleft':
+          camera.keysPressed.a = false;
+          camera.keysPressed.left = false;
+          break;
+        case 's':
+        case 'arrowdown':
+          camera.keysPressed.s = false;
+          camera.keysPressed.down = false;
+          break;
+        case 'd':
+        case 'arrowright':
+          camera.keysPressed.d = false;
+          camera.keysPressed.right = false;
+          break;
+      }
+    });
 
-    // AI: Add mousedown and mouseup listeners for hybrid click-to-move/hold-to-move.
+    // AI: Simple right-click to move system
+
+    // AI: Add mousedown listener for right-click to move.
     canvas.addEventListener('mousedown', (e) => {
       if (e.button === 2) { // Right mouse button
         e.preventDefault();
-        isRightMouseHeld = true;
-        rightClickStartTime = Date.now();
-        
+
         // AI: Manually update mouse coords on mousedown to ensure the drone moves
         // toward the correct location even if the mouse doesn't move.
         const rect = canvas.getBoundingClientRect();
@@ -745,8 +885,7 @@ export async function initAreaGame(initialPosition) {
         const screenX = (e.clientX - rect.left) * scaleX;
         const screenY = (e.clientY - rect.top) * scaleY;
         const worldCoords = screenToWorldCoords(screenX, screenY, camera);
-        
-        rightClickStartPos = { x: screenX, y: screenY };
+
         game.mouse.x = worldCoords.x;
         game.mouse.y = worldCoords.y;
         
@@ -755,13 +894,13 @@ export async function initAreaGame(initialPosition) {
         const enemyClickRadius = clickedEnemy ? Math.max(clickedEnemy.size * 2.5, 15) : 0; // Larger click area
         
         if (clickedEnemy && Math.hypot(clickedEnemy.x - worldCoords.x, clickedEnemy.y - worldCoords.y) < enemyClickRadius) {
-            // AI: Target enemy with LoL-style auto-attack behavior
+            // AI: Enhanced Auto-Pilot Targeting - Aggressive enemy following
             setTargetedEnemy(clickedEnemy);
-            game.player.target = null; // Clear movement target - combat system will handle positioning
+            game.player.target = null; // Clear movement target - auto-pilot will handle positioning
             game.targetMarker = null; // Clear visual marker
             game.player.autoAttackTimer = AUTO_ATTACK_DURATION; // Initialize auto-attack timer
-            // AI: Removed fireCooldown reset - respect attack timing
-            game.player.continuousMovement = false; // Start with precise positioning
+            // AI: Enable continuous movement for aggressive auto-pilot behavior
+            game.player.continuousMovement = true;
         } else {
             // AI: Clear enemy targeting and move to location (LoL move command)
             setTargetedEnemy(null);
@@ -782,27 +921,12 @@ export async function initAreaGame(initialPosition) {
       }
     });
 
-    canvas.addEventListener('mouseup', (e) => {
-      if (e.button === 2) { // Right mouse button
-        e.preventDefault();
-        isRightMouseHeld = false;
-        
-        const holdDuration = Date.now() - rightClickStartTime;
-        
-        if (holdDuration < HOLD_THRESHOLD) {
-          // Short click = move to point (already set in mousedown)
-          game.player.continuousMovement = false;
-        } else {
-          // Was holding = stop continuous movement
-          game.player.continuousMovement = false;
-        }
-      }
-    });
+    // Right-click movement is handled in mousedown event
 
     // AI: Context menu prevention is now handled in the mousedown event for right-clicks
     // This provides more reliable right-click detection without browser interference
 
-    // AI: Enhanced mousemove handler for both cursor tracking and continuous movement
+    // AI: Basic mousemove handler for cursor tracking
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -810,21 +934,10 @@ export async function initAreaGame(initialPosition) {
       const mouseX = (e.clientX - rect.left) * scaleX;
       const mouseY = (e.clientY - rect.top) * scaleY;
       const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
-      
+
       // Always update mouse position for drone rotation
       game.mouse.x = worldCoords.x;
       game.mouse.y = worldCoords.y;
-
-      // Handle continuous movement while holding right mouse
-      if (isRightMouseHeld) {
-        const holdDuration = Date.now() - rightClickStartTime;
-        
-        if (holdDuration > HOLD_THRESHOLD) {
-          // Switch to continuous movement mode after hold threshold
-          game.player.target = worldCoords;
-          game.player.continuousMovement = true; // Enable continuous movement
-        }
-      }
     });
   
     // AI: Right-click interaction system (replaces 'E' key)
@@ -837,13 +950,13 @@ export async function initAreaGame(initialPosition) {
       e.preventDefault();
       e.stopPropagation();
 
-      console.log('[RIGHT_CLICK] Right-click detected at:', e.clientX, e.clientY);
+      
 
       // AI: Check if the player is currently targeting an enemy for combat
       // If so, prioritize combat and ignore interaction clicks
       const targetedEnemy = getTargetedEnemy();
       if (targetedEnemy) {
-        console.log('[RIGHT_CLICK] Enemy targeted, ignoring interaction');
+
         return;
       }
 
@@ -982,18 +1095,18 @@ export async function initAreaGame(initialPosition) {
 
       // AI: If a valid interactable object was found, perform the corresponding action.
       if (nearestInteractable) {
-        console.log('[RIGHT_CLICK] Found interactable:', interactionType, nearestInteractable.id || nearestInteractable.type);
+
 
         // AI: Clear any movement target when interacting with objects for better UX
         game.player.target = null;
         game.player.continuousMovement = false;
 
         if (interactionType === 'resourceNode') {
-          console.log('[RIGHT_CLICK] Interacting with resource node:', nearestInteractable.id);
+
 
           // AI: Always deactivate any currently active mining node first
           if (game.player.activeMiningNode && game.player.activeMiningNode !== nearestInteractable) {
-            console.log('[RIGHT_CLICK] Deactivating previous node:', game.player.activeMiningNode.id);
+
             game.player.activeMiningNode.active = false;
             game.player.activeMiningNode = null;
             stopLaserSound();
@@ -1003,19 +1116,19 @@ export async function initAreaGame(initialPosition) {
           nearestInteractable.active = true;
           game.player.activeMiningNode = nearestInteractable;
           startLaserSound();
-          console.log('[RIGHT_CLICK] Activated resource node:', nearestInteractable.id);
+
         } else if (interactionType === 'groundItem') {
-          console.log('[RIGHT_CLICK] Interacting with ground item:', nearestInteractable.type);
+
 
           // Calculate distance to the ground item
           const distanceToItem = Math.hypot(game.player.x - nearestInteractable.x, game.player.y - nearestInteractable.y);
           const pickupRange = 32; // Must be within 32px to pick up
           
-          console.log('[RIGHT_CLICK] Distance to item:', distanceToItem, 'Pickup range:', pickupRange);
+
 
           if (distanceToItem <= pickupRange) {
             // Close enough - pick up immediately
-            console.log('[RIGHT_CLICK] Close enough, picking up immediately');
+
             
             const playerId = multiplayerManager.isConnected() && multiplayerManager.localPlayer
               ? multiplayerManager.localPlayer.uid
@@ -1024,17 +1137,17 @@ export async function initAreaGame(initialPosition) {
             pickupGroundItem(nearestInteractable.id, playerId, game.player.x, game.player.y)
               .then(success => {
                 if (success) {
-                  console.log('[RIGHT_CLICK] Successfully picked up ground item:', nearestInteractable.type);
+      
                 } else {
-                  console.log('[RIGHT_CLICK] Failed to pick up ground item:', nearestInteractable.type);
+
                 }
               })
               .catch(error => {
-                console.error('[RIGHT_CLICK] Error picking up ground item:', error);
+
               });
           } else {
             // Too far - move to the item
-            console.log('[RIGHT_CLICK] Too far, moving to ground item first');
+
             
             // Set movement target to the ground item
             game.player.target = {
@@ -1045,11 +1158,11 @@ export async function initAreaGame(initialPosition) {
             };
             game.player.continuousMovement = true;
             
-            console.log('[RIGHT_CLICK] Set movement target to ground item at:', nearestInteractable.x, nearestInteractable.y);
+
           }
         }
       } else {
-        console.log('[RIGHT_CLICK] No interactable object found');
+
       }
     });
   
@@ -1093,8 +1206,7 @@ export async function initAreaGame(initialPosition) {
               canvas.height = newHeight;
               game.width = newWidth;
               game.height = newHeight;
-              game.WORLD_WIDTH = newWidth;
-              game.WORLD_HEIGHT = newHeight;
+              // World dimensions are fixed - no need to update them
               
               // AI: Reset canvas context state
               const ctx = canvas.getContext('2d');
@@ -1172,8 +1284,7 @@ export async function initAreaGame(initialPosition) {
           canvas.height = rect.height;
           game.width = rect.width;
           game.height = rect.height;
-          game.WORLD_WIDTH = rect.width;
-          game.WORLD_HEIGHT = rect.height;
+          // World dimensions are fixed - no need to update them
           
           // AI: Reset canvas context state
           const ctx = canvas.getContext('2d');

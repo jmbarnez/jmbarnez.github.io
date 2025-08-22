@@ -62,15 +62,43 @@ function drawIconInternal(ctx, id, x, y, scale, outline, colorOverride, withShad
   switch (id) {
     // App/Panel icons
     case 'inventory': {
-      // A sturdy backpack for adventurers.
-      const body = '#8b5e3c', bodyL = '#a26e45', bodyD = '#6d4a32';
-      const strap = '#4a3322';
-      plot(2, 4, 8, 6, body); // main bag
-      plot(3, 3, 6, 1, bodyL); // top flap highlight
-      plot(2, 9, 8, 1, bodyD); // bottom shadow
-      plot(4, 2, 4, 2, body); // top flap
-      plot(4, 5, 1, 3, strap); // left strap
-      plot(7, 5, 1, 3, strap); // right strap
+      // HD Modern Backpack Icon - High quality, detailed design
+      const mainBody = '#4A90E2', mainBodyL = '#5BA3F0', mainBodyD = '#357ABD'; // Blue backpack
+      const pocket = '#2C5AA0', pocketL = '#3A6BC7'; // Darker blue pockets
+      const strap = '#1E3A5F', strapL = '#2A4A7A'; // Dark blue straps
+      const buckle = '#FFD700', buckleL = '#FFED4E'; // Gold buckles
+      const highlight = '#7BB3FF'; // Light blue highlights
+
+      // Main backpack body (modern curved design)
+      plot(1, 2, 10, 8, mainBody); // Main body
+      plot(2, 1, 8, 2, mainBodyL); // Top rounded edge
+      plot(1, 9, 10, 1, mainBodyD); // Bottom edge
+
+      // Front pocket (stylized)
+      plot(3, 4, 6, 4, pocket); // Main pocket
+      plot(4, 3, 4, 1, pocketL); // Pocket top highlight
+      plot(3, 7, 6, 1, mainBodyD); // Pocket bottom
+
+      // Straps (modern design)
+      plot(0, 3, 1, 6, strap); // Left strap
+      plot(11, 3, 1, 6, strap); // Right strap
+      plot(0, 2, 1, 1, strapL); // Left strap top highlight
+      plot(11, 2, 1, 1, strapL); // Right strap top highlight
+
+      // Buckles/attachment points
+      plot(0, 5, 1, 2, buckle); // Left buckle
+      plot(11, 5, 1, 2, buckle); // Right buckle
+      plot(0, 5, 1, 1, buckleL); // Left buckle highlight
+      plot(11, 5, 1, 1, buckleL); // Right buckle highlight
+
+      // Front panel details
+      plot(4, 4, 4, 1, highlight); // Top pocket highlight
+      plot(5, 6, 2, 1, highlight); // Bottom pocket highlight
+
+      // Backpack opening (zipper line)
+      plot(4, 2, 4, 1, strap); // Zipper line
+      plot(5, 2, 2, 1, strapL); // Zipper highlight
+
       break;
     }
     case 'equipment': {

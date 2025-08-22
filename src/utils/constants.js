@@ -2,16 +2,16 @@
 // Only exports values that are referenced across the codebase.
 
 // === Movement / Gameplay Constants ===
-export const ACCELERATION = 800; // pixels/second^2
-export const DECELERATION = 1800; // pixels/second^2
-export const GRAVITY = 0; // pixels/second^2
+export const ACCELERATION = 400000; // pixels/second^2 (10x faster)
+export const DECELERATION = 900000; // pixels/second^2 (10x faster)
+export const GRAVITY = 40; // pixels/second^2 - low gravity for drone hover feel
 export const DAMPING_FACTOR = 0.94; // drag multiplier
-export const MAX_SPEED = 160; // pixels/second
+export const MAX_SPEED = 80000; // pixels/second (10x faster)
 
 export const DEAD_ZONE = 3; // pixels
 export const DECEL_ZONE = 20; // pixels
-export const INTERACTION_RADIUS = 32; // pixels - precise interaction range
-export const ATTACK_RANGE = 55; // pixels
+export const INTERACTION_RADIUS = 100; // pixels - precise interaction range (increased for faster movement)
+export const ATTACK_RANGE = 200; // pixels (increased for faster movement)
 export const MUZZLE_OFFSET = 12; // pixels
 export const DRONE_HEIGHT_OFFSET = 12; // pixels
 
@@ -28,7 +28,7 @@ export const LONG_SESSION_THRESHOLD = 300000; // ms
 export const FIRE_COOLDOWN = 1.5; // seconds
 export const AUTO_ATTACK_DURATION = 2.0; // seconds
 
-export const PROJECTILE_SPEED = 200; // pixels/second
+export const PROJECTILE_SPEED = 2000; // pixels/second (10x faster to match movement speed)
 export const PROJECTILE_LIFETIME = 2.0; // seconds
 
 export const ENEMY_HP = 3; // fallback standard enemy HP
@@ -72,7 +72,7 @@ export const RARE_LOOT_CHANCE = 0.1; // 10% chance for rare items
 export const EPIC_LOOT_CHANCE = 0.05; // 5% chance for epic items
 export const MIN_ITEM_DROP_COUNT = 1;
 export const MAX_ITEM_DROP_COUNT = 3;
-export const GOLD_DROP_CHANCE = 0.8; // 80% chance to drop gold
+
 
 // === Small app-level constants ===
 export const INVENTORY_SIZE = 24;

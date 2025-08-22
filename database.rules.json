@@ -9,12 +9,24 @@
         "players": {
           "$playerId": {
             ".read": "auth != null",
-            ".write": "auth != null && (auth.uid == $playerId || auth.uid == 'TYE52DZAPoQKqgppIwDSjeVzOtc2')"
+            // allow clients to update only their own presence/player info
+            ".write": "auth != null && auth.uid == $playerId"
           }
         },
         "enemies": {
           ".read": "auth != null",
-          ".write": "auth != null"
+          // only server (Cloud Functions) should modify enemies
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+        },
+        "groundItems": {
+          ".read": "auth != null",
+          // client cannot directly create or remove ground items; server handles it
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+        },
+        "projectiles": {
+          ".read": "auth != null",
+          // allow clients to write visual-only projectiles under a requests node instead
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
         }
       }
     },
@@ -30,6 +42,12 @@
         ".read": "auth != null",
         ".write": "auth != null",
         ".indexOn": "ts"
+      }
+    },
+    "global": {
+      "terrainSeed": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
       }
     }
   }

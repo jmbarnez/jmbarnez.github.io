@@ -38,9 +38,11 @@ export function subscribeAreaPlayers(areaId, onEvent) {
 
     // AI: Enhanced change handling with better session and message tracking
     // Only pass through changes that are meaningful for the multiplayer system
+    // Consider projectileEvent changes relevant so remote clients receive projectile events
     const hasRelevantChange = val.chat || val.typing !== undefined ||
                              (val.ax !== undefined && val.ay !== undefined) ||
-                             val.action !== undefined || val.angle !== undefined;
+                             val.action !== undefined || val.angle !== undefined ||
+                             (val.projectileEvent !== undefined);
 
     if (hasRelevantChange) {
       // AI: Add session tracking to help with stale detection

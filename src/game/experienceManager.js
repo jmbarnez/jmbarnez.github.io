@@ -361,7 +361,7 @@ class ExperienceManager {
           const progressData = this.saveProgress();
           // AI: Pass the experience data directly to the service.
           await setPlayerSkills(this.uid, progressData);
-          console.log('Experience data saved to server');
+
         }
       } catch (error) {
         console.error('Failed to save experience to server:', error);

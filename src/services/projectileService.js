@@ -1,28 +1,37 @@
-import { database as db } from '../utils/firebaseClient.js';
-import { ref, onChildAdded, push, remove, set } from 'firebase/database';
+import { sendDamageRequest } from './enemyService.js';
 
 /**
- * Subscribes to new projectiles in a given area.
- * @param {string} areaId - The ID of the area.
- * @param {function} callback - The function to call with new projectile data.
- * @returns {function} The unsubscribe function.
+ * Projectile service - lightweight helper for guaranteed-hit attacks.
+ *
+ * Projectiles are rendered client-side. For authoritative damage apply,
+ * call `sendGuaranteedHit` which writes a damage request via the enemy service.
  */
-export function subscribeToProjectiles(areaId, callback) {
-    const projectilesRef = ref(db, `areas/${areaId}/projectiles`);
-    return onChildAdded(projectilesRef, (snapshot) => {
-        callback(snapshot.val());
-        // Remove the projectile after it has been processed
-        remove(snapshot.ref);
-    });
+
+/**
+ * Send an authoritative guaranteed-hit attack (server processes damage).
+ * @param {string} areaId
+ * @param {string} enemyId
+ * @param {string} uid
+ * @param {number} damage
+ * @returns {Promise<object>} Resolves with damage result from server function
+ */
+export function sendGuaranteedHit(areaId, enemyId, uid, damage) {
+    return sendDamageRequest(areaId, enemyId, uid, damage);
 }
 
 /**
- * Creates a new projectile in the database.
- * @param {string} areaId - The ID of the area.
- * @param {object} data - The projectile data.
+ * Legacy stub: subscribeToProjectiles is no longer recommended.
+ * Use client-side visuals instead.
  */
-export function createProjectile(areaId, data) {
-    const projectilesRef = ref(db, `areas/${areaId}/projectiles`);
-    const newProjectileRef = push(projectilesRef);
-    return set(newProjectileRef, data);
+export function subscribeToProjectiles(areaId, callback) {
+    console.warn('subscribeToProjectiles is deprecated; use client-side projectile rendering.');
+    return () => {};
+}
+
+/**
+ * Legacy stub: createProjectile is deprecated. Spawn visuals locally via game/projectiles.js
+ */
+export function createProjectile(/* areaId, data */) {
+    console.warn('createProjectile (service) deprecated; spawn projectiles locally in game code');
+    return Promise.resolve(false);
 }

@@ -16,7 +16,7 @@ onAuthStateChanged(auth, async (u) => {
 
 // Centralized initialization
 document.addEventListener('DOMContentLoaded', () => {
-  // Wait for disclaimer to be accepted before initializing game
+  // Initialize game immediately
   const initializeGame = () => {
     initDesktopScreen();
     initGame();
@@ -30,13 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Check if disclaimer is already accepted
-  const disclaimerAccepted = sessionStorage.getItem('wuzaru_disclaimer_accepted');
-  if (disclaimerAccepted) {
-    // Initialize immediately if disclaimer already accepted
-    initializeGame();
-  } else {
-    // Wait for disclaimer acceptance
-    window.addEventListener('disclaimerAccepted', initializeGame, { once: true });
-  }
+  // Initialize game immediately
+  initializeGame();
 });

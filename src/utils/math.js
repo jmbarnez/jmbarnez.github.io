@@ -46,6 +46,42 @@ export function getExpRequiredForLevel(level) {
   return getExpForLevel(level);
 }
 
+/**
+ * Snaps a value to the nearest integer for crisp pixel art rendering
+ * @param {number} value - The value to snap
+ * @returns {number} The snapped integer value
+ */
+export function snapToPixel(value) {
+  return Math.round(value);
+}
+
+/**
+ * Snaps coordinates to integers for crisp pixel art rendering
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @returns {object} Object with snapped x and y coordinates
+ */
+export function snapCoordsToPixel(x, y) {
+  return {
+    x: snapToPixel(x),
+    y: snapToPixel(y)
+  };
+}
+
+/**
+ * Calculate depth value for entity sorting (lower = more in front)
+ * @param {number} x - Entity X position
+ * @param {number} y - Entity Y position
+ * @param {number} height - Entity height
+ * @param {number} depthBias - Additional depth bias (optional)
+ * @returns {number} Depth value for sorting
+ */
+export function calculateEntityDepth(x, y, height = 0, depthBias = 0.1) {
+  // Primary sorting by Y position + height (higher Y = more behind)
+  // Secondary sorting by X position with slight bias (creates natural depth)
+  return (y + height) + (x * depthBias);
+}
+
 export function weightedPick(list) {
   const total = list.reduce((s, it) => s + (it.weight || 1), 0);
   if (total <= 0) return null;
@@ -78,7 +114,15 @@ export function clampWorldCoordinates(x, y, game, padding = 12) {
 }
 
 // AI: Converts world coordinates to screen coordinates, accounting for camera position and zoom.
+// AI: Snaps to integers for crisp pixel art under discrete zoom levels.
 export function worldToScreenCoords(worldX, worldY, camera) {
+  const screenX = (worldX - camera.x) * camera.zoom;
+  const screenY = (worldY - camera.y) * camera.zoom;
+  return snapCoordsToPixel(screenX, screenY);
+}
+
+// AI: Converts world coordinates to screen coordinates with sub-pixel precision.
+export function worldToScreenCoordsPrecise(worldX, worldY, camera) {
   const screenX = (worldX - camera.x) * camera.zoom;
   const screenY = (worldY - camera.y) * camera.zoom;
   return { x: screenX, y: screenY };

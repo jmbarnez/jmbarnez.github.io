@@ -503,12 +503,12 @@ export async function setupUserListeners(user) {
       if (data.username && window.multiplayerManager) {
         window.multiplayerManager.updateUsername(data.username);
       }
-      // Legacy support for old 'gold' field
-      else if (data.gold !== undefined) {
-        gameState.galacticTokens = data.gold || 0;
+
+      if (data.galacticTokens !== undefined) {
         gameState.playerCoins = gameState.galacticTokens;
         try { updateCoinDisplay(gameState.galacticTokens); } catch (_) {}
       }
+
       // Always accept latest snapshot for inventory to avoid getting stuck
       // in a loading state if a local write hangs.
       if (Array.isArray(data.inventory)) {
@@ -591,31 +591,43 @@ export async function setupUserListeners(user) {
   function renderMessages(messages) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
-    
+
+    // Debug: Log incoming messages
+    console.log('[CHAT] renderMessages called with', messages.length, 'messages');
+    if (messages.length > 0) {
+      console.log('[CHAT] Latest message:', messages[messages.length - 1]);
+    }
+
     // Find new messages to show as bubbles
-    const newMessages = chatStreamInitialized
-      ? messages.filter(msg => coerceTs(msg.ts) > lastProcessedTs)
-      : [];
-    
-    // Update last processed message ID
+    const newMessages = messages.filter(msg => coerceTs(msg.ts) > lastProcessedTs);
+
+    // Update last processed message ID/time
     if (messages.length > 0) {
       const lastTs = coerceTs(messages[messages.length - 1].ts);
       if (lastTs > lastProcessedTs) lastProcessedTs = lastTs;
       lastProcessedMessageId = messages[messages.length - 1].id;
     }
-    if (!chatStreamInitialized) chatStreamInitialized = true;
-    
+
     // Show chat bubbles for new messages from other players
+    const remotePlayers = multiplayerManager.getRemotePlayers();
+
     newMessages.forEach(msg => {
+
       if (window.gameInstance && msg.uid && msg.uid !== gameState.user?.uid) {
-        // AI: Use multiplayerManager instead of removed game.mp structure
-        const remotePlayers = multiplayerManager.getRemotePlayers();
+        console.log('[CHAT] Remote players available:', remotePlayers.length);
+
         const otherPlayer = remotePlayers.find(p => p.uid === msg.uid);
-        
+        console.log('[CHAT] Found other player:', otherPlayer ? { uid: otherPlayer.uid, x: otherPlayer.x, y: otherPlayer.y } : null);
+
         if (otherPlayer && otherPlayer.x !== undefined && otherPlayer.y !== undefined) {
           const screenCoords = worldToScreenCoords(otherPlayer.x, otherPlayer.y);
+          console.log('[CHAT] Showing chat bubble at:', screenCoords);
           showPlayerMessage(msg.uid, msg.text, screenCoords.x, screenCoords.y - 30, 5000);
+        } else {
+          console.warn('[CHAT] Could not show bubble - player not found or missing coordinates');
         }
+      } else {
+        console.log('[CHAT] Skipping message - not from other player or no game instance');
       }
     });
 
@@ -810,6 +822,10 @@ function tryRecoverInventory(uid) {
   // We now initialize with an empty inventory and wait for the Firestore listener to populate it.
   gameState.playerInventory = Array.from({ length: 24 }, () => null);
   renderInventory();
+
+
+
+
 }
 
 // Bridge used by main.js to wire auth → listeners
