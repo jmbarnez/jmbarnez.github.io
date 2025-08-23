@@ -5,6 +5,9 @@ google_credentials.json
 google-*.json
 *.gserviceaccount.json
 service-account*.json
+functions/service-account-key.json
+functions/*.gserviceaccount.json
+functions/google-credentials.json
 
 # Common private key/credential file extensions
 *.pem
@@ -14,6 +17,7 @@ service-account*.json
 **/google-credentials.json
 **/google_credentials.json
 **/service-account*.json
+**/service-account-key.json
 
 # Dependencies
 node_modules/

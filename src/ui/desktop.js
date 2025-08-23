@@ -48,7 +48,6 @@ export function initDesktopScreen() {
   // AI: Declare skillsPanel and equipmentPanel here to ensure they are accessible throughout initDesktopScreen.
   const skillsPanel = document.getElementById('skills-panel');
   const equipmentPanel = document.getElementById('equipment-panel');
-  const marketPanel = document.getElementById('market-panel'); // AI: Declare marketPanel here to ensure it's accessible throughout initDesktopScreen.
 
   // --- Module Initialization ---
   initPixelIcons(); // AI: Initialize all pixel icons, including new skill, equipment, and market icons.
@@ -75,156 +74,56 @@ export function initDesktopScreen() {
   // Exploring feature removed; spawns handled by area mini-game beach
 
   // --- UI Panels ---
-  const logoutButton = document.getElementById('btn-logout');
-  if (logoutButton) {
-    logoutButton.onclick = async () => {
-      const u = auth.currentUser;
-      if (u) {
-        // Save current position before logout if game is loaded
-        if (window.gameInstance && window.gameInstance.player) {
-          const game = window.gameInstance;
-          try {
-            playerService.stop(); // Stop saving on logout
-            await playerService.saveState(); // Force a final save
-          } catch (_) {
-            // Silent best-effort failure
-          }
-        }
-        
-        // Mark player as offline
-        updatePlayerOnlineStatus(u.uid, false);
-
-        // AI: Clean up chat bubbles and stop cleanup system before logout
-      }
-      signOut(auth).finally(() => {
-        window.location.href = '/login.html';
-      });
-    };
-  }
-
-  // Draggable Panels
-  const serverStatusPanel = document.getElementById('server-status-panel');
-  if (serverStatusPanel) {
-    // Dragging disabled for desktop UI panels per current design
-    // makeDraggable(serverStatusPanel, serverStatusPanel.querySelector('.panel-header'));
-  }
-  const chatPanel = document.getElementById('chat-panel-container');
-  if (chatPanel) {
-    // Chat is fixed and always visible; ensure input is enabled and remove draggable behavior.
-    const chatInputEl = document.getElementById('chat-input');
-    if (chatInputEl) chatInputEl.disabled = false;
-    // If any previous draggable behavior exists, do not attach it for the chat panel.
-  }
-
-  // AI: Draggable Skills Panel
-  if (skillsPanel) {
-    // AI: The skills panel is now part of the tabbed interface, so we don't need to make it draggable.
-    // AI: Wire up skill UI elements to experience manager updates
-    try {
-      const miningBar = document.getElementById('skill-bar-mining');
-      const fishingBar = document.getElementById('skill-bar-fishing');
-      const gatheringBar = document.getElementById('skill-bar-gathering');
-      const miningLevel = document.getElementById('skill-level-mining');
-      const fishingLevel = document.getElementById('skill-level-fishing');
-      const gatheringLevel = document.getElementById('skill-level-gathering');
-      const miningXp = document.getElementById('skill-xp-mining');
-      const fishingXp = document.getElementById('skill-xp-fishing');
-      const gatheringXp = document.getElementById('skill-xp-gathering');
-      const xenohuntingBar = document.getElementById('skill-bar-xenohunting');
-      const xenohuntingLevel = document.getElementById('skill-level-xenohunting');
-      const xenohuntingXp = document.getElementById('skill-xp-xenohunting');
-
-      if (miningBar || fishingBar || gatheringBar) {
-        // Initial render
-        const renderSkill = (skillKey, barEl, levelEl, xpEl) => {
-          const s = experienceManager.skills[skillKey] || { level: 1, experience: 0 };
-          const cur = s.experience;
-          const lvl = s.level;
-          const reqForThis = getExpForLevel(lvl);
-            const reqNext = getExpForLevel(lvl + 1);
-            const progress = Math.max(0, Math.min(1, (cur - reqForThis) / Math.max(1, reqNext - reqForThis)));
-            if (barEl) barEl.style.width = `${Math.round(progress * 100)}%`;
-            if (levelEl) levelEl.textContent = String(lvl);
-            if (xpEl) xpEl.textContent = `${Math.round(cur - reqForThis)}/${Math.round(reqNext - reqForThis)}`;
-          };
-
-          renderSkill('mining', miningBar, miningLevel, miningXp);
-          renderSkill('fishing', fishingBar, fishingLevel, fishingXp);
-          renderSkill('gathering', gatheringBar, gatheringLevel, gatheringXp);
-          renderSkill('xenohunting', xenohuntingBar, xenohuntingLevel, xenohuntingXp);
-
-          // Subscribe to skill updates
-          // AI: Subscribe to experience events to keep the skills panel updated.
-          // This ensures that when a player gains experience, the UI reflects the change.
-          experienceManager.subscribe((event) => {
-            // AI: Check if the event is a skill update.
-            // This is the primary event for changes in skill-specific experience.
-            if (event.type === 'skillUpdate') {
-              const key = event.skill;
-              // AI: Use a switch statement for clarity and efficiency.
-              // This replaces the previous series of 'if' statements.
-              switch (key) {
-                case 'mining':
-                  renderSkill('mining', miningBar, miningLevel, miningXp);
-                  break;
-                case 'fishing':
-                  renderSkill('fishing', fishingBar, fishingLevel, fishingXp);
-                  break;
-                case 'gathering':
-                  renderSkill('gathering', gatheringBar, gatheringLevel, gatheringXp);
-                  break;
-                case 'xenohunting':
-                  renderSkill('xenohunting', xenohuntingBar, xenohuntingLevel, xenohuntingXp);
-                  break;
-              }
-            } else if (event.type === 'loaded' || event.type === 'reset') {
-              // AI: When game data is loaded or reset, update all skills panels.
-              // This ensures the UI is synchronized with the game state from the start.
-              renderSkill('mining', miningBar, miningLevel, miningXp);
-              renderSkill('fishing', fishingBar, fishingLevel, fishingXp);
-              renderSkill('gathering', gatheringBar, gatheringLevel, gatheringXp);
-              renderSkill('xenohunting', xenohuntingBar, xenohuntingLevel, xenohuntingXp);
-            }
-          });
-      }
-    } catch (_) {}
-  }
-
-  // AI: Draggable Equipment Panel
-  if (equipmentPanel) {
-    // AI: The equipment panel is now part of the tabbed interface, so we don't need to make it draggable.
-  }
-
-  // AI: Draggable Market Panel
-  if (marketPanel) {
-    // Dragging disabled for desktop UI panels
-    // makeDraggable(marketPanel, document.getElementById('market-header'));
-  }
-
-  // Server Status
-  const serverStatusText = document.getElementById('server-status-text');
-  if (serverStatusText) {
-    setTimeout(() => {
-      serverStatusText.textContent = 'Online';
-      serverStatusText.style.color = '#22c55e'; // green-500
-    }, 2000);
-  }
-
-  // --- AI: Consolidated Tabbed Panel Logic ---
   const mainPanelContainer = document.getElementById('main-panel-container');
-  if (mainPanelContainer) {
-    // Re-enable dragging for inventory panel
-    makeDraggable(mainPanelContainer, document.getElementById('main-panel-header'));
-  }
   const mainPanelToggle = document.getElementById('main-panel-toggle');
   const mainPanelClose = document.getElementById('main-panel-close');
+
+  // AI: Tab switching functionality for main panel
   const tabButtons = document.querySelectorAll('.tab-button');
   const tabContents = document.querySelectorAll('.tab-content');
 
-  // Function to toggle the main panel's visibility
+  function switchTab(targetTab) {
+    // AI: Remove active class from all tab buttons and hide all tab content
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabContents.forEach(content => content.classList.add('hidden'));
+    
+    // AI: Add active class to clicked button and show corresponding content
+    const activeButton = document.querySelector(`[data-tab="${targetTab}"]`);
+    const activeContent = document.getElementById(`${targetTab}-panel`);
+    
+    if (activeButton) {
+      activeButton.classList.add('active');
+    }
+    if (activeContent) {
+      activeContent.classList.remove('hidden');
+    }
+  }
+
+  // AI: Add click event listeners to all tab buttons
+  tabButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      const targetTab = e.target.getAttribute('data-tab');
+      if (targetTab) {
+        switchTab(targetTab);
+      }
+    });
+  });
+
+  // AI: Function to toggle the main panel's visibility with focus management
   const toggleMainPanel = () => {
     if (mainPanelContainer) {
+      const isHidden = mainPanelContainer.classList.contains('hidden');
       mainPanelContainer.classList.toggle('hidden');
+      
+      // AI: Focus management - ensure game canvas gets focus when panels close
+      if (!isHidden) { // Panel was visible, now hiding
+        const canvas = document.getElementById('area-canvas');
+        if (canvas) {
+          setTimeout(() => canvas.focus(), 50); // Brief delay to ensure DOM update
+        }
+      }
+      
+      updateUIOpenState(); // Update global UI state
     }
   };
 
@@ -233,118 +132,197 @@ export function initDesktopScreen() {
     mainPanelToggle.onclick = toggleMainPanel;
   }
 
-  // Event listener for the close button
+  // AI: Event listener for the close button with focus management
   if (mainPanelClose) {
     mainPanelClose.onclick = () => {
       if (mainPanelContainer) {
         mainPanelContainer.classList.add('hidden');
-      }
-    };
-  }
-
-  // Event listener for the 'Tab' key
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      toggleMainPanel();
-    }
-  });
-
-  // Event listeners for tab switching
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const tab = button.dataset.tab;
-
-      // Update button styles
-      tabButtons.forEach(btn => {
-        btn.classList.remove('active', 'text-white');
-        btn.classList.add('text-slate-400');
-      });
-      button.classList.add('active', 'text-white');
-      button.classList.remove('text-slate-400');
-
-      // Show/hide content
-      tabContents.forEach(content => {
-        if (content.id === `${tab}-panel`) {
-          content.classList.remove('hidden');
-        } else {
-          content.classList.add('hidden');
+        // AI: Return focus to game canvas when panel is closed
+        const canvas = document.getElementById('area-canvas');
+        if (canvas) {
+          setTimeout(() => canvas.focus(), 50);
         }
-      });
-    });
-  });
-
-  // AI: Market Panel Toggle (market button removed - now accessed via world object)
-  const marketClose = document.getElementById('market-close');
-
-  if (marketClose && marketPanel) { // AI: Ensure marketPanel exists before attaching listener.
-    marketClose.onclick = () => marketPanel.classList.add('hidden');
-  }
-
-  // --- Mute Button ---
-  const muteButton = document.getElementById('btn-mute');
-  if (muteButton) {
-    const iconContainer = muteButton.querySelector('[data-icon]');
-
-    const updateMuteButton = () => {
-      const muted = isMuted();
-      if (iconContainer) {
-        const newIconId = muted ? 'sound-off' : 'sound-on';
-        iconContainer.dataset.icon = newIconId;
-        iconContainer.innerHTML = ''; // Clear old canvas
-        const canvas = createPixelIconForItem({ id: newIconId }, { cssSize: 16, scale: 1 });
-        iconContainer.appendChild(canvas);
-        iconContainer.className = muted ? 'w-4 h-4 text-red-400' : 'w-4 h-4 text-emerald-400';
+        updateUIOpenState(); // Update global UI state
       }
-      muteButton.title = muted ? 'Sound Off (click to unmute)' : 'Sound On (click to mute)';
-      muteButton.setAttribute('aria-pressed', String(muted));
-      muteButton.setAttribute('data-muted', String(muted));
-      muteButton.className = muted
-        ? 'w-7 h-6 flex items-center justify-center rounded bg-red-900/70 hover:bg-red-800 transition ring-1 ring-red-500/50'
-        : 'w-7 h-6 flex items-center justify-center rounded bg-slate-800/50 hover:bg-slate-700 transition ring-1 ring-emerald-500/20';
     };
-
-    updateMuteButton();
-
-    muteButton.addEventListener('click', () => {
-      setMuted(!isMuted());
-      updateMuteButton();
-    });
   }
 
-
-  // --- Chat System ---
-  const chatInput = document.getElementById('chat-input');
-  const chatMessages = document.getElementById('chat-messages');
-  const chatToggle = document.getElementById('chat-toggle');
   const chatPanelContainer = document.getElementById('chat-panel-container');
+  const chatToggle = document.getElementById('chat-toggle');
   const chatClose = document.getElementById('chat-close');
   const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
   
+  // AI: Initialize chat panel draggable with proper positioning cleanup
+  // Removed pre-positioning that caused jump issues - let makeDraggable handle initial positioning
+  if (chatPanelContainer) {
+    const chatHeader = chatPanelContainer.querySelector('.cursor-grab');
+    // AI: Pass onDragStart callback to clean up any CSS positioning classes that could interfere
+    makeDraggable(chatPanelContainer, chatHeader, {
+      onDragStart: (element) => {
+        // AI: Clean up any Tailwind positioning classes that could conflict with pixel-based positioning
+        element.style.bottom = 'auto';
+        element.style.right = 'auto';
+        element.style.transform = 'none';
+        element.style.margin = '0';
+      }
+    });
+  }
+
   // Initialize global chat elements
   chatOnlineIndicator = document.getElementById('chat-online-indicator');
-  chatConnectionStatus = document.getElementById('chat-connection-status');
+  chatConnectionIndicatorElement = document.getElementById('chat-connection-status');
   onlineCountSidebar = document.getElementById('online-count-sidebar');
   onlineList = document.getElementById('online-list');
 
+  // Set initial connection status to yellow (connecting)
+  if (chatConnectionIndicatorElement) {
+    chatConnectionIndicatorElement.className = 'w-2 h-2 rounded-full bg-yellow-500 transition-colors';
+    chatConnectionIndicatorElement.title = 'Connecting...';
+  }
+  if (chatOnlineIndicator) {
+    chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-slate-800 transition-colors';
+  }
+
   // Chat toggle functionality
   let isChatOpen = false;
-  
-  function toggleChat() {
-    isChatOpen = !isChatOpen;
-    if (isChatOpen) {
-      chatPanelContainer?.classList.remove('hidden');
-      // Enable chat input when panel is opened
-      if (chatInput) chatInput.disabled = false;
-    } else {
-      chatPanelContainer?.classList.add('hidden');
-      // Disable chat input when panel is closed
-      if (chatInput) chatInput.disabled = true;
+  // Multiplayer related
+  window.currentOnlinePlayers = [];
+  window.chatStatusObject = { connected: false, error: null };
+  window.isUIOpen = false; // Global flag to indicate if any top-level UI is open
+  let onlinePlayersLastReceived = 0;
+  const PLAYER_TIMEOUT_MS = 30000; // 30 seconds
+  // Store references for Firebase callbacks
+  window.globalRenderOnlinePlayers = null;
+  window.globalUpdateOnlineStatus = null;
+  window.globalRenderMessages = null;
+
+  window.globalUpdateOnlineStatus = function updateOnlineStatus(isConnected) {
+    if (chatOnlineIndicator) {
+      if (isConnected) {
+        chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 transition-colors';
+        chatOnlineIndicator.title = 'Connected to chat';
+      } else {
+        chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-slate-800 transition-colors';
+        chatOnlineIndicator.title = 'Connecting to chat...';
+      }
+    }
+
+    // Only update chatConnectionStatus if we don't have player count info
+    if (chatConnectionIndicatorElement && (!window.currentOnlinePlayers || window.currentOnlinePlayers.length === 0)) {
+      if (isConnected) {
+        chatConnectionIndicatorElement.className = 'w-2 h-2 rounded-full bg-green-500 transition-colors';
+        chatConnectionIndicatorElement.title = 'Connected to chat';
+      } else {
+        chatConnectionIndicatorElement.className = 'w-2 h-2 rounded-full bg-yellow-500 transition-colors';
+        chatConnectionIndicatorElement.title = 'Connecting to chat...';
+      }
     }
   }
+
+  window.globalRenderOnlinePlayers = function renderOnlinePlayers(players) {
+    const onlineCount = document.getElementById('online-count');
+    const onlineList = document.getElementById('online-list');
+    const connectionStatus = document.getElementById('chat-connection-status');
+
+    // AI: Filter out stale players with more lenient timeout to handle idle players better
+    // Increased from 45s to 5 minutes to avoid removing idle players who are still connected
+    const freshPlayers = players.filter((p) => {
+      let updated = 0;
+      if (p.updatedAt) {
+        if (typeof p.updatedAt === 'number') updated = p.updatedAt;
+        else if (typeof p.updatedAt.toMillis === 'function') updated = p.updatedAt.toMillis();
+        else if (typeof p.updatedAt === 'string') {
+          const n = Number(p.updatedAt);
+          if (Number.isFinite(n)) updated = n;
+        }
+      }
+      // If we know they're online but missing timestamp, count them
+      if (!updated) return !!p.isOnline;
+      return (Date.now() - updated) <= 300000; // 5 minutes freshness window - more tolerant for idle players
+    });
+
+    // Store current online players for use in chat rendering
+    window.currentOnlinePlayers = freshPlayers.length ? freshPlayers : players;
+
+    const countVal = freshPlayers.length || players.length || 0;
+    if (onlineCount) onlineCount.textContent = `${countVal} online`;
+    if (connectionStatus) {
+      connectionStatus.classList.remove('bg-gray-500', 'bg-green-500', 'bg-yellow-500');
+      if (countVal > 0) {
+        connectionStatus.classList.add('bg-green-500');
+        connectionStatus.title = `${countVal} player${countVal !== 1 ? 's' : ''} online`;
+      } else {
+        connectionStatus.classList.add('bg-yellow-500');
+        connectionStatus.title = 'Connected - No players online';
+      }
+    }
+
+    if (onlineList) {
+      onlineList.innerHTML = '';
+      const toRender = freshPlayers.length ? freshPlayers : players;
+      toRender.forEach(p => {
+        const playerEl = document.createElement('div');
+        // Use multiple fallback options for display name
+        const displayName = p.username || p.displayName || p.uid || 'Unknown Player';
+        playerEl.textContent = displayName;
+        playerEl.className = 'text-slate-300 py-0.5 truncate';
+        playerEl.title = displayName; // Show full name on hover
+        onlineList.appendChild(playerEl);
+      });
+    }
+  }
+
+  function toggleChat() {
+    if (!chatPanelContainer) return;
+
+    const isCurrentlyHidden = chatPanelContainer.classList.contains('hidden');
+
+    if (isCurrentlyHidden) {
+      chatPanelContainer.classList.remove('hidden');
+      if (chatInput) chatInput.disabled = false;
+      // Trigger initial online players check if chat panel is opened
+      if (window.currentOnlinePlayers && window.currentOnlinePlayers.length > 0) {
+        if (window.globalRenderOnlinePlayers) window.globalRenderOnlinePlayers(window.currentOnlinePlayers);
+      }
+
+      // AI: Always position the panel in bottom left, ignore saved position
+      chatPanelContainer.style.position = 'fixed';
+      chatPanelContainer.style.transform = 'none';
+      positionChatBottomLeft();
+
+      // AI: Disabled position saving - panel always starts in bottom left
+    } else {
+      chatPanelContainer.classList.add('hidden');
+      if (chatInput) chatInput.disabled = true;
+
+      // AI: No position saving needed - panel always starts in bottom left
+    }
+    updateUIOpenState(); // Update global UI state
+  }
+
+  // AI: Position chat panel in bottom left with margin from edges
+  function positionChatBottomLeft() {
+    const viewportHeight = window.innerHeight;
+    const panelHeight = 400;
+    const marginFromEdges = 20; // AI: Margin from screen edges
+
+    chatPanelContainer.style.position = 'fixed';
+    chatPanelContainer.style.transform = 'none';
+    chatPanelContainer.style.bottom = `${marginFromEdges}px`;
+    chatPanelContainer.style.left = `${marginFromEdges}px`;
+    // AI: Clear any conflicting positioning properties
+    chatPanelContainer.style.top = 'auto';
+    chatPanelContainer.style.right = 'auto';
+  }
+
+  // AI: Position saving functions removed - chat always starts in bottom left
   
   // Chat toggle button event
   chatToggle?.addEventListener('click', toggleChat);
+
+  // Set initial status to connecting
+  if (window.globalUpdateOnlineStatus) window.globalUpdateOnlineStatus(false);
   
   // Close chat button
   chatClose?.addEventListener('click', () => {
@@ -360,7 +338,7 @@ export function initDesktopScreen() {
   }
   
   // Initial status
-  updateOnlineStatus(false);
+  if (window.globalUpdateOnlineStatus) window.globalUpdateOnlineStatus(false);
 
 
   // Clicking anywhere on the desktop (that isn't an input) restores gameplay key focus
@@ -389,24 +367,11 @@ export function initDesktopScreen() {
 
   let messagesUnsubscribe = null;
 let onlinePlayersUnsubscribe = null;
-let playerDataUnsubscribe = null;
-let currentOnlinePlayers = [];
-
+  let playerDataUnsubscribe = null;
 // Global chat elements and functions
-let chatOnlineIndicator, chatConnectionStatus, onlineCountSidebar, onlineList;
-let onlinePlayers = [];
+  let chatOnlineIndicator, chatConnectionIndicatorElement, onlineCountSidebar, onlineList;
+  let onlinePlayers = [];
 
-function updateOnlineStatus(isConnected) {
-  if (chatOnlineIndicator && chatConnectionStatus) {
-    if (isConnected) {
-      chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 transition-colors';
-      chatConnectionStatus.className = 'w-2 h-2 rounded-full bg-green-500 transition-colors';
-    } else {
-      chatOnlineIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-800 transition-colors';
-      chatConnectionStatus.className = 'w-2 h-2 rounded-full bg-red-500 transition-colors';
-    }
-  }
-}
 
 function updateOnlinePlayersList(players) {
   onlinePlayers = players || [];
@@ -509,11 +474,11 @@ export async function setupUserListeners(user) {
         try { updateCoinDisplay(gameState.galacticTokens); } catch (_) {}
       }
 
-      // Always accept latest snapshot for inventory to avoid getting stuck
+      // AI: Always accept latest snapshot for inventory to avoid getting stuck
       // in a loading state if a local write hangs.
       if (Array.isArray(data.inventory)) {
-        // Normalize inventory to 24 slots and coerce missing to null
-        const normalized = Array.from({ length: 24 }, (_, i) => {
+        // AI: Normalize inventory to 48 slots (expanded from 32 to utilize larger panel) and coerce missing to null
+        const normalized = Array.from({ length: 48 }, (_, i) => {
           const slot = data.inventory[i];
           return slot == null ? null : slot;
         });
@@ -526,16 +491,18 @@ export async function setupUserListeners(user) {
     });
 
     // 3. Set up chat and presence listeners
-    messagesUnsubscribe = onChatMessages(renderMessages);
+    messagesUnsubscribe = onChatMessages((messages) => {
+      if (window.globalRenderMessages) window.globalRenderMessages(messages);
+    });
     onlinePlayersUnsubscribe = onOnlinePlayersChange((players) => {
-      renderOnlinePlayers(players);
+      if (window.globalRenderOnlinePlayers) window.globalRenderOnlinePlayers(players);
       updateOnlinePlayersList(players);
-      updateOnlineStatus(true); // We're connected if we're getting updates
+      if (window.globalUpdateOnlineStatus) window.globalUpdateOnlineStatus(true); // We're connected if we're getting updates
     });
     
     // 4. Set online status
     updatePlayerOnlineStatus(user.uid, true);
-    updateOnlineStatus(true); // Mark as connected
+    if (window.globalUpdateOnlineStatus) window.globalUpdateOnlineStatus(true); // Mark as connected
 
     // 5. Enable chat input and form submit
     // 5. Enable chat input and form submit
@@ -588,7 +555,7 @@ export async function setupUserListeners(user) {
   let lastProcessedTs = 0;
   let chatStreamInitialized = false;
 
-  function renderMessages(messages) {
+  window.globalRenderMessages = function renderMessages(messages) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
 
@@ -648,7 +615,7 @@ export async function setupUserListeners(user) {
       // Player list (left of timestamp)
       const playerListSpan = document.createElement('span');
       playerListSpan.className = 'text-emerald-400 mr-2';
-      const onlineUsernames = currentOnlinePlayers.map(p => p.username).filter(Boolean);
+      const onlineUsernames = window.currentOnlinePlayers.map(p => p.username).filter(Boolean);
       const isPlayerOnline = onlineUsernames.includes(msg.username);
       playerListSpan.textContent = isPlayerOnline ? '●' : '○';
       playerListSpan.title = isPlayerOnline ? 'Player is online' : 'Player is offline';
@@ -697,58 +664,6 @@ export async function setupUserListeners(user) {
     }
   }
 
-  function renderOnlinePlayers(players) {
-    const onlineCount = document.getElementById('online-count');
-    const onlineList = document.getElementById('online-list');
-    const connectionStatus = document.getElementById('chat-connection-status');
-
-    // AI: Filter out stale players with more lenient timeout to handle idle players better
-    // Increased from 45s to 5 minutes to avoid removing idle players who are still connected
-    const freshPlayers = players.filter((p) => {
-      let updated = 0;
-      if (p.updatedAt) {
-        if (typeof p.updatedAt === 'number') updated = p.updatedAt;
-        else if (typeof p.updatedAt.toMillis === 'function') updated = p.updatedAt.toMillis();
-        else if (typeof p.updatedAt === 'string') {
-          const n = Number(p.updatedAt);
-          if (Number.isFinite(n)) updated = n;
-        }
-      }
-      // If we know they're online but missing timestamp, count them
-      if (!updated) return !!p.isOnline;
-      return (Date.now() - updated) <= 300000; // 5 minutes freshness window - more tolerant for idle players
-    });
-
-    // Store current online players for use in chat rendering
-    currentOnlinePlayers = freshPlayers.length ? freshPlayers : players;
-
-    const countVal = freshPlayers.length || players.length || 0;
-    if (onlineCount) onlineCount.textContent = `${countVal} online`;
-    if (connectionStatus) {
-      connectionStatus.classList.remove('bg-gray-500', 'bg-green-500', 'bg-yellow-500');
-      if (countVal > 0) {
-        connectionStatus.classList.add('bg-green-500');
-        connectionStatus.title = 'Connected';
-      } else {
-        connectionStatus.classList.add('bg-gray-500');
-        connectionStatus.title = 'No online players';
-      }
-    }
-
-    if (onlineList) {
-      onlineList.innerHTML = '';
-      const toRender = freshPlayers.length ? freshPlayers : players;
-      toRender.forEach(p => {
-        const playerEl = document.createElement('div');
-        // Use multiple fallback options for display name
-        const displayName = p.username || p.displayName || p.uid || 'Unknown Player';
-        playerEl.textContent = displayName;
-        playerEl.className = 'text-slate-300 py-0.5 truncate';
-        playerEl.title = displayName; // Show full name on hover
-        onlineList.appendChild(playerEl);
-      });
-    }
-  }
 
   // --- Player Stats & Data Sync ---
   // This is now handled in the consolidated onAuthStateChanged listener above.
@@ -819,14 +734,72 @@ function tryRecoverInventory(uid) {
   // AI: This function is now a stub.
   // The local storage recovery logic has been removed to ensure inventory is always fetched from Firestore.
   // This prevents issues with stale or outdated local data overwriting the online state.
-  // We now initialize with an empty inventory and wait for the Firestore listener to populate it.
-  gameState.playerInventory = Array.from({ length: 24 }, () => null);
+  // AI: Initialize with expanded 48-slot inventory (increased from 32) to match larger panel and wait for Firestore listener to populate it.
+  gameState.playerInventory = Array.from({ length: 48 }, () => null);
   renderInventory();
 
 
-
-
 }
+
+// Function to update the UI based on online players
+function updateOnlinePlayersUI(players, isConnected) {
+  // Update global chat status object
+  window.chatStatusObject.connected = isConnected;
+  window.chatStatusObject.error = isConnected ? null : "Disconnected"; // Or a more specific error
+
+  // Only update chat connection indicator if we don't have player count info OR if it's explicitly disconnected
+  if (chatConnectionIndicatorElement && (!window.currentOnlinePlayers || window.currentOnlinePlayers.length === 0 || !isConnected)) {
+    if (isConnected) {
+      chatConnectionIndicatorElement.className = 'w-2 h-2 rounded-full bg-green-500 transition-colors';
+      chatConnectionIndicatorElement.title = 'Connected to chat';
+    } else {
+      chatConnectionIndicatorElement.className = 'w-2 h-2 rounded-full bg-yellow-500 transition-colors';
+      chatConnectionIndicatorElement.title = 'Connecting to chat...';
+    }
+  }
+
+  // Update sidebar online players count
+  if (onlineCountSidebar) {
+    onlineCountSidebar.textContent = players.length;
+  }
+
+  // Update online list
+  if (onlineList) {
+    onlineList.innerHTML = '';
+    players.forEach(p => {
+      const playerDiv = document.createElement('div');
+      playerDiv.className = 'flex items-center gap-2 p-2 rounded-lg hover:bg-slate-700/50 transition-colors cursor-pointer';
+      // Use multiple fallback options for display name
+      const displayName = p.username || p.displayName || `Player${p.uid?.slice(-4) || 'Unknown'}`;
+      playerDiv.innerHTML = `
+        <div class="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></div>
+        <span class="truncate font-medium" title="${displayName}">${displayName}</span>
+      `;
+      onlineList.appendChild(playerDiv);
+    });
+  }
+}
+
+// Helper to check if any top-level UI panel is open
+function updateUIOpenState() {
+  const mainPanelContainer = document.getElementById('main-panel-container');
+  const chatPanelContainer = document.getElementById('chat-panel-container');
+  const settingsPanel = document.getElementById('settings-panel');
+
+  window.isUIOpen = (
+    !mainPanelContainer?.classList.contains('hidden') ||
+    !chatPanelContainer?.classList.contains('hidden') ||
+    !settingsPanel?.classList.contains('hidden')
+  );
+}
+
+// --- Global Panel Control ---
+// Global UI elements
+
+// Store references for Firebase callbacks
+window.globalRenderOnlinePlayers = null;
+window.globalUpdateOnlineStatus = null;
+window.globalRenderMessages = null;
 
 // Bridge used by main.js to wire auth → listeners
 export function handleAuthChange(user) {

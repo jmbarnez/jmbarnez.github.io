@@ -40,14 +40,19 @@ export function makeDraggable(element, handle, options) {
       options.onDragStart(element);
     }
 
-    // 3. Switch to absolute positioning. This positions the element relative
-    // to the nearest positioned ancestor or the initial containing block.
-    // We also explicitly set top/left in pixels based on the initial measurement.
-    // This "locks" the element in its current visual position.
-    element.style.position = 'absolute';
-    element.style.top = `${rect.top}px`;
-    element.style.left = `${rect.left}px`;
-    
+    // 3. For fixed-positioned elements, keep them as fixed and use viewport coordinates.
+    // For absolute elements, switch to absolute positioning.
+    if (element.style.position === 'fixed') {
+      // Keep fixed positioning but set explicit top/left from viewport coordinates
+      element.style.top = `${rect.top}px`;
+      element.style.left = `${rect.left}px`;
+    } else {
+      // Switch to absolute positioning for other elements
+      element.style.position = 'absolute';
+      element.style.top = `${rect.top}px`;
+      element.style.left = `${rect.left}px`;
+    }
+
     // 4. Clear any transforms or margins that might affect positioning.
     element.style.transform = 'none';
     element.style.margin = '0';
@@ -74,14 +79,10 @@ export function makeDraggable(element, handle, options) {
       // Ensure the element stays within the viewport.
       const elementWidth = element.offsetWidth;
       const elementHeight = element.offsetHeight;
-      
-      // The status bar is not part of the draggable area on the main screen,
-      // but on the login screen it doesn't exist. We check for it gracefully.
-      const statusBar = document.getElementById('status-bar');
-      const headerHeight = statusBar ? statusBar.offsetHeight : 0;
 
-      // Define the boundaries.
-      const minTop = headerHeight;
+      // For fixed-positioned elements, use viewport boundaries
+      // For absolute elements, consider any offset parent
+      const minTop = 0;
       const maxTop = window.innerHeight - elementHeight;
       const minLeft = 0;
       const maxLeft = window.innerWidth - elementWidth;

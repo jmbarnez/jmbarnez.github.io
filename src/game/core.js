@@ -13,6 +13,7 @@ import { playMiningSound, startLaserSound, stopLaserSound, playCycleCompleteSoun
 import { drawRemotePlayers, initNetwork } from './network.js';
 import { multiplayerManager } from './multiplayerManager.js';
 import { pingDisplay } from '../ui/pingDisplay.js';
+
 import { experienceManager } from './experienceManager.js';
 import { experienceBar } from '../ui/experienceBar.js';
 import { drawPlayer, drawSelfMarker, drawMiningLaser, getMuzzlePosition } from './player.js';
@@ -188,9 +189,8 @@ function update(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
 
-    // Clamp player to world bounds so WASD cannot fly outside the playable area.
-    // Keep a small padding from the edge to avoid sprite clipping.
-    const PAD = 8;
+    // Constrain player to sand area - prevent flying into black areas
+    const PAD = 50; // Larger padding to keep player well within sand bounds
     p.x = Math.max(PAD, Math.min(p.x, game.WORLD_WIDTH - PAD));
     p.y = Math.max(PAD, Math.min(p.y, game.WORLD_HEIGHT - PAD));
 
@@ -272,8 +272,10 @@ function update(dt) {
     const dist = Math.hypot(dx, dy);
 
     if (dist <= DEAD_ZONE) {
-      p.x = p.target.x;
-      p.y = p.target.y;
+      // Apply sand area boundary constraints
+      const PAD = 50;
+      p.x = Math.max(PAD, Math.min(p.target.x, WORLD_WIDTH - PAD));
+      p.y = Math.max(PAD, Math.min(p.target.y, WORLD_HEIGHT - PAD));
 
       // Check if this was a ground item target and attempt pickup
       if (p.target.type === 'groundItem' && p.target.item) {
@@ -482,9 +484,10 @@ function update(dt) {
                 const targetX = targetedEnemy.x - nx * optimalDistance;
                 const targetY = targetedEnemy.y - ny * optimalDistance;
 
-                // Clamp to world boundaries if available
-                const clampedX = Math.max(8, Math.min(targetX, game.WORLD_WIDTH - 8));
-                const clampedY = Math.max(8, Math.min(targetY, game.WORLD_HEIGHT - 8));
+                // Clamp to sand area boundaries
+                const PAD = 50;
+                const clampedX = Math.max(PAD, Math.min(targetX, game.WORLD_WIDTH - PAD));
+                const clampedY = Math.max(PAD, Math.min(targetY, game.WORLD_HEIGHT - PAD));
 
                 p.target = { x: clampedX, y: clampedY };
 
@@ -822,6 +825,88 @@ export async function initAreaGame(initialPosition) {
     canvas.width = game.width;
     canvas.height = game.height;
 
+    // Auto-focus the canvas so users don't need to click to start playing
+    canvas.tabIndex = 0; // Make canvas focusable
+    setTimeout(() => {
+      canvas.focus();
+      console.log('Canvas auto-focused on game start');
+    }, 100); // Small delay to ensure DOM is ready
+
+    // Enhanced focus management system
+    let canvasFocusTimeout;
+
+    // Function to focus canvas with visual feedback
+    const focusCanvas = () => {
+      if (document.activeElement !== canvas) {
+        canvas.focus();
+        canvas.style.outline = '2px solid rgba(59, 130, 246, 0.5)';
+        setTimeout(() => {
+          canvas.style.outline = 'none';
+        }, 300);
+        console.log('Canvas focused');
+      }
+    };
+
+    // Auto-refocus canvas when user finishes interacting with other elements
+    const autoRefocusCanvas = () => {
+      // Clear any existing timeout
+      if (canvasFocusTimeout) clearTimeout(canvasFocusTimeout);
+
+      // Set timeout to refocus canvas after user interaction
+      canvasFocusTimeout = setTimeout(() => {
+        const activeElement = document.activeElement;
+        const isInputLike = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+        const isChatInput = (el) => el && el.id === 'chat-input';
+        const isGameUI = (el) => el && (el.closest('#chat-panel-container') || el.closest('#main-panel-container'));
+
+        // Don't refocus if user is actively typing in chat or other inputs
+        if (!isInputLike(activeElement) && !isChatInput(activeElement) && !isGameUI(activeElement)) {
+          focusCanvas();
+        }
+      }, 200); // Short delay to allow for natural UI interactions
+    };
+
+    // Add focus event listeners
+    canvas.addEventListener('focus', () => {
+      canvas.style.outline = '2px solid rgba(59, 130, 246, 0.3)';
+      console.log('Canvas gained focus');
+    });
+
+    canvas.addEventListener('blur', () => {
+      canvas.style.outline = 'none';
+      console.log('Canvas lost focus');
+    });
+
+    // Monitor document for focus changes and auto-refocus canvas
+    document.addEventListener('focusin', (e) => {
+      const activeElement = e.target;
+      const isInputLike = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      const isChatInput = (el) => el && el.id === 'chat-input';
+      const isGameUI = (el) => el && (el.closest('#chat-panel-container') || el.closest('#main-panel-container'));
+
+      if (isInputLike(activeElement) || isChatInput(activeElement) || isGameUI(activeElement)) {
+        // User is interacting with UI elements, schedule auto-refocus
+        autoRefocusCanvas();
+      }
+    });
+
+    // Click to focus fallback
+    canvas.addEventListener('click', () => {
+      focusCanvas();
+    });
+
+    // Focus canvas on page visibility change (when user returns to tab)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        setTimeout(() => {
+          focusCanvas();
+        }, 100);
+      }
+    });
+
+    // Initial focus
+    focusCanvas();
+
     // Initialize terrain using fixed world dimensions so the playable area
     // (WORLD_WIDTH x WORLD_HEIGHT) matches the generated world size.
     // Show loading screen and block initialization until terrain is ready.
@@ -868,9 +953,10 @@ export async function initAreaGame(initialPosition) {
     // AI: Set the player's starting position. If a valid saved position is provided, use it.
     // Otherwise, default to the center of the world. This ensures saved positions are respected.
     if (initialPosition && typeof initialPosition.x === 'number' && typeof initialPosition.y === 'number') {
-      // AI: Ensure the loaded position is within world bounds to prevent off-screen spawning
-      const clampedX = Math.max(8, Math.min(initialPosition.x, game.WORLD_WIDTH - 8));
-      const clampedY = Math.max(8, Math.min(initialPosition.y, game.WORLD_HEIGHT - 8));
+      // AI: Ensure the loaded position is within sand area
+      const PAD = 50;
+      const clampedX = Math.max(PAD, Math.min(initialPosition.x, game.WORLD_WIDTH - PAD));
+      const clampedY = Math.max(PAD, Math.min(initialPosition.y, game.WORLD_HEIGHT - PAD));
       game.player.x = clampedX;
       game.player.y = clampedY;
     } else {
@@ -936,6 +1022,7 @@ export async function initAreaGame(initialPosition) {
 
       // Keydown on canvas
       canvas.addEventListener('keydown', (e) => {
+        if (window.isUIOpen) return; // Prevent game input when UI is open
         const active = document.activeElement;
         const isInputLike = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
         if (isInputLike(active)) return; // honor UI inputs
@@ -957,6 +1044,7 @@ export async function initAreaGame(initialPosition) {
 
       // Keyup on canvas
       canvas.addEventListener('keyup', (e) => {
+        if (window.isUIOpen) return; // Prevent game input when UI is open
         const active = document.activeElement;
         const isInputLike = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
         if (isInputLike(active)) return;
@@ -977,6 +1065,7 @@ export async function initAreaGame(initialPosition) {
 
     // AI: Add mousedown listener for right-click to move.
     canvas.addEventListener('mousedown', (e) => {
+      if (window.isUIOpen) return; // Prevent game input when UI is open
       if (e.button === 2) { // Right mouse button
         e.preventDefault();
 
@@ -1035,6 +1124,7 @@ export async function initAreaGame(initialPosition) {
 
     // AI: Basic mousemove handler for cursor tracking
     canvas.addEventListener('mousemove', (e) => {
+      if (window.isUIOpen) return; // Prevent game input when UI is open
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
@@ -1050,6 +1140,7 @@ export async function initAreaGame(initialPosition) {
     // AI: Right-click interaction system (replaces 'E' key)
     // This allows manual interaction with resource nodes, ground items, and world objects.
     canvas.addEventListener('mousedown', (e) => {
+      if (window.isUIOpen) return; // Prevent game input when UI is open
       // AI: Only handle right-click (button 2)
       if (e.button !== 2) return;
 
@@ -1272,7 +1363,21 @@ export async function initAreaGame(initialPosition) {
           }
         }
       } else {
-
+        // AI: Normal right-click movement - clamp to sand area bounds
+        const PAD = 50;
+        const clampedX = Math.max(PAD, Math.min(game.mouse.x, WORLD_WIDTH - PAD));
+        const clampedY = Math.max(PAD, Math.min(game.mouse.y, WORLD_HEIGHT - PAD));
+        
+        game.player.target = { x: clampedX, y: clampedY };
+        game.player.continuousMovement = true;
+        
+        // Set visual target marker
+        game.targetMarker = {
+          x: clampedX,
+          y: clampedY,
+          life: 2.0,
+          maxLife: 2.0
+        };
       }
     });
   
@@ -1452,6 +1557,33 @@ export async function initAreaGame(initialPosition) {
       game.ctx = fallbackCanvas.getContext('2d');
       fallbackCanvas.width = game.WORLD_WIDTH;
       fallbackCanvas.height = game.WORLD_HEIGHT;
+
+      // Auto-focus the fallback canvas as well
+      fallbackCanvas.tabIndex = 0;
+
+      // Apply the same focus management to fallback canvas
+      const fallbackFocusCanvas = () => {
+        if (document.activeElement !== fallbackCanvas) {
+          fallbackCanvas.focus();
+          fallbackCanvas.style.outline = '2px solid rgba(59, 130, 246, 0.5)';
+          setTimeout(() => {
+            fallbackCanvas.style.outline = 'none';
+          }, 300);
+        }
+      };
+
+      setTimeout(() => {
+        fallbackFocusCanvas();
+      }, 100);
+
+      // Add focus management to fallback canvas
+      fallbackCanvas.addEventListener('focus', () => {
+        fallbackCanvas.style.outline = '2px solid rgba(59, 130, 246, 0.3)';
+      });
+
+      fallbackCanvas.addEventListener('blur', () => {
+        fallbackCanvas.style.outline = 'none';
+      });
       const getTime = () => (typeof window !== 'undefined' && window.performance && window.performance.now) ? window.performance.now() : Date.now();
       loop(getTime());
     }

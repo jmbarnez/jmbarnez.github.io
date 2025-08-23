@@ -79,9 +79,20 @@ html, body {
   filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.3));
 }
 
-/* Unified panel theme - apply the gray tint to all main UI panels */
-#main-panel-container,
-#market-panel,
+/* Enhanced sci-fi panel theme - apply to all main UI panels */
+#main-panel-container {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(14, 165, 233, 0.2) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  color: #e2e8f0;
+  border-radius: 24px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(14, 165, 233, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 #settings-panel,
 #server-status-panel {
   background: rgba(28, 32, 36, 0.72) !important; /* unified gray tint */
@@ -102,23 +113,45 @@ html, body {
   box-shadow: none !important;
 }
 
-/* Panel headers should be subtle and match the theme */
+/* Enhanced panel headers with sci-fi styling */
 .desktop-panel-header {
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+  padding: 1rem 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Panel content area default */
+.desktop-panel-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.desktop-panel-header:hover::before {
+  opacity: 1;
+}
+
+/* Enhanced panel content area */
 .desktop-panel-content,
 .desktop-panel-body {
   background: transparent;
-  padding: 0.75rem 1rem;
+  padding: 1.5rem;
 }
 
-/* Ensure panels can scroll when content overflows */
-#main-panel-container .p-4,
-#market-panel .p-4,
+/* AI: Updated scrolling for larger main panel - removed unnecessary height restriction */
+/* Panel content now uses full available space without artificial height limits */
+#main-panel-container .p-6 {
+  /* AI: Removed max-height restriction - let content expand to use full available panel space */
+  overflow: visible; /* AI: Changed from auto to visible to avoid unnecessary scrollbars */
+}
+
 #settings-panel .p-4,
 #chat-panel .flex-1 {
   max-height: 60vh;
@@ -133,9 +166,9 @@ html, body {
 
 /* Ensure chat panel container sits bottom-left with proper positioning */
 #chat-panel-container {
-  bottom: 24px !important;
-  left: 16px !important;
-  right: auto !important;
+  bottom: 24px;
+  left: 16px;
+  right: auto;
   max-width: 90vw; /* More conservative width */
   min-width: 400px; /* Lower minimum width for smaller design */
 }
@@ -175,8 +208,8 @@ html, body {
     width: calc(100vw - 32px) !important;
     max-width: none !important;
     min-width: 350px !important;
-    left: 16px !important;
-    right: 16px !important;
+    left: 16px;
+    right: 16px;
   }
 
   /* Reduce sidebar width on mobile */
@@ -317,31 +350,170 @@ html, body {
 .inventory-slot {
   transition: background 0.1s ease;
 }
-/* Bottom Bar Styles */
+/* Bottom Bar Styles - Sci-Fi Theme */
 .action-btn {
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: rgba(28, 32, 36, 0.75); /* unified gray tint */
-  border: 1px solid rgba(96, 165, 250, 0.12);
-  color: #e5e7eb;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.95); /* slate-900/95 */
+  border: 1px solid rgba(14, 165, 233, 0.2); /* sky-400/20 */
+  color: #e2e8f0;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.1s ease;
-}
-.action-btn:hover {
-  background: rgba(28, 32, 36, 0.9);
-  border-color: rgba(96, 165, 250, 0.24);
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
 }
 
-/* AI: Styles for the new tabbed panel */
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.action-btn:hover {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(14, 165, 233, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(14, 165, 233, 0.2);
+}
+
+.action-btn:hover::before {
+  opacity: 1;
+}
+
+.action-btn:active {
+  transform: translateY(0px);
+  transition: all 0.1s ease;
+}
+
+/* Top Bar Buttons - Sci-Fi Theme */
+.top-btn {
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.95); /* slate-900/95 */
+  border: 1px solid rgba(14, 165, 233, 0.2); /* sky-400/20 */
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.top-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.top-btn:hover {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(14, 165, 233, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);
+}
+
+.top-btn:hover::before {
+  opacity: 1;
+}
+
+.top-btn:active {
+  transform: translateY(0px);
+  transition: all 0.1s ease;
+}
+
+/* Settings button specific styling */
+#settings-button {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+#settings-button:hover {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(14, 165, 233, 0.3);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);
+}
+
+/* Logout button specific styling */
+#btn-logout {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(244, 63, 94, 0.2); /* rose-500/20 */
+}
+
+#btn-logout:hover {
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.3);
+  box-shadow: 0 8px 24px rgba(244, 63, 94, 0.15);
+}
+
+/* Enhanced sci-fi tab buttons */
+.tab-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  backdrop-filter: blur(10px);
+}
+
+.tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tab-button:hover::before {
+  opacity: 1;
+}
+
+.tab-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(14, 165, 233, 0.2);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.1);
+}
+
 .tab-button.active {
-  background-color: rgba(56, 189, 248, 0.2); /* sky-400/20 */
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
   color: #ffffff;
   font-weight: 600;
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow:
+    0 6px 20px rgba(14, 165, 233, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.tab-button.active::before {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+}
+
+.tab-button:active {
+  transform: translateY(0px);
+  transition: all 0.1s ease;
 }
 
 /* Inventory Panel Styles */
@@ -351,9 +523,10 @@ html, body {
   padding-bottom: 1rem; /* Add some padding at the bottom */
 }
 
-/* Skills Panel Styles */
+/* AI: Skills Panel Styles - removed width restriction to use full available space */
 #skills-panel {
-  width: 300px; /* AI: Set a fixed width for the skills panel. */
+  /* AI: Removed fixed width restriction - let skills panel use full available space */
+  width: 100%; /* AI: Changed from 300px to 100% to use full panel width */
 }
 
 /* Skill Card Text Handling - force single-line with ellipsis */
@@ -451,57 +624,126 @@ html, body {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Equipment Panel Styles */
+/* AI: Equipment Panel Styles - removed width restriction to use full available space */
 #equipment-panel {
-  width: 200px; /* AI: Set a fixed width for the equipment panel. */
+  /* AI: Removed fixed width restriction - let equipment panel use full available space */
+  width: 100%; /* AI: Changed from 200px to 100% to use full panel width */
 }
 
 .equipment-slot {
-  width: 100%; /* AI: Allow slots to stretch */
-  height: 48px; /* AI: Slightly taller slots */
-  background: rgba(28, 32, 36, 0.6); /* unified gray tint */
-  border: 1px solid rgba(129, 140, 248, 0.08); /* subtle border */
-  border-radius: 6px;
+  width: 100%; /* AI: Allow slots to stretch to full available width */
+  min-height: 100px; /* AI: Increased from 80px to 100px for better proportions with expanded space */
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 12px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.equipment-slot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .equipment-slot:hover {
-  background: rgba(28, 32, 36, 0.75);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
+  border-color: rgba(14, 165, 233, 0.4);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 20px rgba(14, 165, 233, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* AI: Style for the larger core/cpu slots */
+.equipment-slot:hover::before {
+  opacity: 1;
+}
+
+/* AI: Enhanced style for the larger core/cpu slots - expanded height */
 .equipment-slot[data-slot-type="core"],
 .equipment-slot[data-slot-type="cpu"] {
-  height: 64px;
-  background: rgba(30, 41, 59, 0.7); /* slate-800/70 */
+  min-height: 140px; /* AI: Increased from 120px to 140px for better proportions */
+  background: linear-gradient(135deg, rgba(20, 30, 50, 0.9) 0%, rgba(40, 55, 80, 0.7) 100%);
 }
 
-/* Market Panel Styles */
-#market-panel {
-  width: 400px; /* AI: Set a fixed width for the market panel. */
-  height: 300px;
+.equipment-slot[data-slot-type="core"]:hover,
+.equipment-slot[data-slot-type="cpu"]:hover {
+  background: linear-gradient(135deg, rgba(20, 30, 50, 0.95) 0%, rgba(40, 55, 80, 0.85) 100%);
 }
 
+/* AI: Inventory Panel Styles - optimized grid layout to fit panel perfectly */
 #inventory-grid {
   display: grid;
-  /* AI: Removed gap between cells and adjusted grid to fit new cell size. */
-  grid-template-columns: repeat(6, 40px); /* 6 columns * 40px = 240px grid content */
-  grid-template-rows: repeat(4, 40px);   /* 4 rows * 40px = 160px grid content */
-  gap: 0; /* No space between cells */
-  justify-content: center;
+  /* AI: 8x6 grid (48 slots) sized to fit the available panel space */
+  grid-template-columns: repeat(8, 1fr); 
+  grid-template-rows: repeat(6, 1fr);    
+  gap: 8px; 
+  height: calc(100% - 32px); /* AI: Account for padding */
+  width: calc(100% - 32px);  /* AI: Account for padding */
+  margin: 0 auto; /* AI: Center the grid */
 }
 
 .inventory-slot {
-  /* AI: Increased cell size for a tighter, slightly larger look. */
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 25, 55, 0.8);
-  border: 1px solid rgba(64, 123, 255, 0.2);
-  border-radius: 0; /* Square corners for a tighter grid */
+  /* AI: Enhanced inventory slots with sci-fi styling - flexible sizing to fill grid cells */
+  width: 100%;  /* AI: Fill full width of grid cell */
+  height: 100%; /* AI: Fill full height of grid cell */
+  min-width: 48px;  /* AI: Minimum size for usability */
+  min-height: 48px; /* AI: Minimum size for usability */
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.15);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.inventory-slot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.inventory-slot:hover {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
+  border-color: rgba(14, 165, 233, 0.3);
+  transform: scale(1.05);
+  box-shadow:
+    0 4px 12px rgba(14, 165, 233, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.inventory-slot:hover::before {
+  opacity: 1;
+}
+
+.inventory-slot img,
+.inventory-slot canvas {
+  border-radius: 6px;
 }
 
 /* .hidden now provided by theme.css */

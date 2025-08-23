@@ -42,7 +42,10 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        "service-account-key.json",
+        "*.gserviceaccount.json",
+        "google-credentials.json"
       ],
       "predeploy": []
     }

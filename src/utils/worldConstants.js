@@ -1,12 +1,18 @@
 // src/utils/worldConstants.js
 // Fixed world dimensions for deterministic terrain generation
 
-// Fixed world dimensions - scaled up 4x from original to provide a larger travel area
-// Original was 800x400; increase to 3200x1600 so the generated world is larger while
-// the canvas remains screen-sized for rendering.
-// Reduced world dimensions to match pixel/petite aesthetic (half of previous)
-export const WORLD_WIDTH = 800 * 2; // 1600
-export const WORLD_HEIGHT = 400 * 2; // 800
+// Fixed world dimensions - scaled up 10x for a much larger world
+// Original was 1600x800, now 16000x8000 for massive exploration area
+export const WORLD_WIDTH = 800 * 2 * 10; // 16000
+export const WORLD_HEIGHT = 400 * 2 * 10; // 8000
+
+// Tile / chunk sizing for chunked tile-based world generation
+// TILE_PIXEL_SIZE: size of a single tile in pixels (matches pixel-art grid)
+export const TILE_PIXEL_SIZE = 32;
+// CHUNK_TILE_SIZE: number of tiles per chunk (square)
+export const CHUNK_TILE_SIZE = 32;
+// CHUNK_PIXEL_SIZE: pixel size of a chunk canvas
+export const CHUNK_PIXEL_SIZE = CHUNK_TILE_SIZE * TILE_PIXEL_SIZE; // 1024
 
 // Permanent terrain seed for deterministic world generation
 export const PERMANENT_TERRAIN_SEED = 1766955619;

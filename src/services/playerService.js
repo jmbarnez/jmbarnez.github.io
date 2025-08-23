@@ -167,19 +167,19 @@ class PlayerService {
     let currentInventory = await getPlayerInventory(this.uid);
 
     // Ensure currentInventory is always an array. If it's null, undefined, or not an array,
-    // initialize it as an empty array.
+    // AI: initialize it as an empty array with expanded 48 slots (increased from 32).
     if (!Array.isArray(currentInventory)) {
-      currentInventory = Array(24).fill(null);
+      currentInventory = Array(48).fill(null);
       await setPlayerInventory(this.uid, currentInventory); // Persist the new empty array
     } else {
-      // Ensure the inventory has exactly 24 slots, padding with null if necessary.
-      if (currentInventory.length < 24) {
-        while (currentInventory.length < 24) {
+      // AI: Ensure the inventory has exactly 48 slots (expanded from 32), padding with null if necessary.
+      if (currentInventory.length < 48) {
+        while (currentInventory.length < 48) {
           currentInventory.push(null);
         }
         await setPlayerInventory(this.uid, currentInventory);
-      } else if (currentInventory.length > 24) {
-        currentInventory = currentInventory.slice(0, 24);
+      } else if (currentInventory.length > 48) {
+        currentInventory = currentInventory.slice(0, 48);
         await setPlayerInventory(this.uid, currentInventory);
       }
     }

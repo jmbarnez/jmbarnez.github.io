@@ -1,6 +1,7 @@
 import { multiplayerManager } from '../game/multiplayerManager.js';
 import { game } from '../game/core.js';
 import { getPhysicsDebugInfo } from '../game/physics.js';
+import { camera } from '../game/world.js';
 
 /**
  * AI: Simple ping display in top right corner
@@ -80,6 +81,21 @@ class PingDisplay {
       content += `Target: ${dist.toFixed(1)}px\n`;
       content += `Speed: ${speed.toFixed(1)}px/s\n`;
       content += `Mode: ${game.player.continuousMovement ? 'Hold' : 'Click'}\n`;
+      content += '---\n';
+    }
+
+    // AI: Camera zoom level info
+    if (camera) {
+      const currentZoom = camera.zoom.toFixed(2);
+      const targetZoom = camera.targetZoom.toFixed(2);
+      const zoomStatus = currentZoom === targetZoom ? 'Stable' : 'Transitioning';
+
+      content += `📹 CAMERA\n`;
+      content += `---\n`;
+      content += `Zoom: ${currentZoom}x\n`;
+      content += `Target: ${targetZoom}x\n`;
+      content += `Status: ${zoomStatus}\n`;
+      content += `Scroll: Zoom ±\n`;
       content += '---\n';
     }
 

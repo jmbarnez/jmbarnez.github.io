@@ -3,6 +3,10 @@ import { setGlobalVolume, getGlobalVolume } from '../utils/constants.js';
 import { setTerrainSeed } from '../game/world.js';
 import { loadTerrainSeed, generateRandomSeed } from '../utils/noise.js';
 import { PERMANENT_TERRAIN_SEED } from '../utils/worldConstants.js';
+import { auth } from '../utils/firebaseClient.js';
+import { signOut } from "firebase/auth";
+import { updatePlayerOnlineStatus } from '../services/firestoreService.js';
+import { playerService } from '../services/playerService.js';
 
 export function initSettingsPanel() {
   const settingsPanel = document.getElementById('settings-panel');
@@ -10,8 +14,9 @@ export function initSettingsPanel() {
   const settingsCloseButton = document.getElementById('settings-close');
   const settingsHeader = document.getElementById('settings-header');
   const volumeSlider = document.getElementById('volume-slider');
+  const logoutButton = document.getElementById('btn-logout');
 
-  if (!settingsPanel || !settingsButton || !settingsCloseButton || !settingsHeader || !volumeSlider) {
+  if (!settingsPanel || !settingsButton || !settingsCloseButton || !settingsHeader || !volumeSlider || !logoutButton) {
     return;
   }
 
@@ -20,16 +25,34 @@ export function initSettingsPanel() {
   settingsButton.addEventListener('click', () => {
     settingsPanel.classList.toggle('hidden');
     updateTerrainSeedDisplay();
+    window.updateUIOpenState(); // Update global UI state
   });
 
   settingsCloseButton.addEventListener('click', () => {
     settingsPanel.classList.add('hidden');
+    window.updateUIOpenState(); // Update global UI state
   });
 
   volumeSlider.value = getGlobalVolume();
   volumeSlider.addEventListener('input', (e) => {
     setGlobalVolume(parseFloat(e.target.value));
   });
+
+  logoutButton.onclick = async () => {
+    const u = auth.currentUser;
+    if (u) {
+      // Save current position before logout if game is loaded
+      if (window.gameInstance && window.gameInstance.player) {
+        playerService.stop(); // Stop saving on logout
+        await playerService.saveState(); // Force a final save
+      }
+      // Mark player as offline
+      updatePlayerOnlineStatus(u.uid, false);
+    }
+    signOut(auth).finally(() => {
+      window.location.href = '/login.html';
+    });
+  };
 
   // Initialize terrain seed controls
   initTerrainSeedControls();

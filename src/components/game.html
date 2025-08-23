@@ -41,110 +41,270 @@
     <!-- Explore button removed: item spawns handled by area mini-game -->
 
 
-    <!-- AI: Consolidated Tabbed Panel -->
-    <div id="main-panel-container" class="hidden glow-blue fixed w-[360px] bg-slate-900/95 text-slate-200 border border-sky-400/20 rounded-2xl shadow-2xl backdrop-blur-2xl z-50" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-      <div id="main-panel-header" class="desktop-panel-header flex items-center justify-between p-3 border-b border-sky-400/20 cursor-move select-none">
+    <!-- AI: Consolidated Tabbed Panel - expanded size for better inventory grid display -->
+    <div id="main-panel-container" class="hidden glow-blue fixed w-[1000px] h-[700px] bg-slate-900/95 text-slate-200 border border-sky-400/20 rounded-3xl shadow-2xl backdrop-blur-2xl z-60" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
+      <div id="main-panel-header" class="desktop-panel-header flex items-center justify-between p-4 border-b border-sky-400/20 cursor-grab active:cursor-grabbing select-none relative overflow-hidden">
+        <!-- Enhanced gradient overlay for draggable feedback -->
+        <div class="absolute inset-0 bg-gradient-to-r from-emerald-400/5 via-sky-400/5 to-purple-400/5 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+
         <!-- Tab Buttons -->
-        <div class="flex items-center gap-1">
-          <button id="tab-button-inventory" type="button" data-tab="inventory" class="tab-button active px-1 py-0.5 rounded bg-slate-700/50 hover:bg-slate-600/50 transition text-xs text-white">Inventory</button>
-          <button id="tab-button-equipment" type="button" data-tab="equipment" class="tab-button px-1 py-0.5 rounded hover:bg-slate-700/50 transition text-xs text-slate-400">Equipment</button>
-          <button id="tab-button-skills" type="button" data-tab="skills" class="tab-button px-1 py-0.5 rounded hover:bg-slate-700/50 transition text-xs text-slate-400">Skills</button>
+        <div class="flex items-center gap-2 relative z-10">
+          <button id="tab-button-inventory" type="button" data-tab="inventory" class="tab-button active px-4 py-2 rounded-xl bg-sky-400/20 hover:bg-sky-400/30 transition-all duration-200 text-sm text-white font-medium shadow-lg border border-sky-400/30">Inventory</button>
+          <button id="tab-button-equipment" type="button" data-tab="equipment" class="tab-button px-4 py-2 rounded-xl hover:bg-slate-700/50 transition-all duration-200 text-sm text-slate-400 font-medium border border-transparent hover:border-slate-600/30">Equipment</button>
+          <button id="tab-button-skills" type="button" data-tab="skills" class="tab-button px-4 py-2 rounded-xl hover:bg-slate-700/50 transition-all duration-200 text-sm text-slate-400 font-medium border border-transparent hover:border-slate-600/30">Skills</button>
         </div>
-        <button id="main-panel-close" type="button" data-no-drag class="panel-close absolute top-2 right-2 text-red-500 hover:text-red-300 text-lg leading-none" aria-label="Close">×</button>
+
+        <!-- Panel Title -->
+        <div class="flex-1 text-center relative z-10">
+          <h2 class="text-lg font-bold text-slate-200 bg-gradient-to-r from-emerald-400 via-sky-400 to-purple-400 bg-clip-text text-transparent">
+            Command Interface
+          </h2>
+        </div>
+
+        <button id="main-panel-close" type="button" data-no-drag class="panel-close absolute top-3 right-3 text-red-400 hover:text-red-300 text-xl leading-none transition-all duration-200 hover:scale-110 relative z-10" aria-label="Close">×</button>
       </div>
-      <div class="p-4">
+      <!-- AI: Expanded content area to match larger panel size -->
+      <div class="p-6 h-[620px] overflow-hidden">
         <!-- Inventory Panel Content -->
-        <div id="inventory-panel" class="tab-content">
-          <div class="flex flex-col items-stretch gap-2">
-            <!-- AI: Added inventory controls (sort, coin pouch) back -->
-            <div class="flex items-center justify-between mb-2">
-              <button id="inventory-sort-button" type="button" data-no-drag class="px-2 py-1 rounded bg-slate-800/50 hover:bg-slate-700 transition text-xs text-slate-300">Sort</button>
-              <div id="inventory-coin-pouch" class="flex items-center gap-1 px-1.5 py-0.5 bg-slate-800/50 border border-sky-400/20 rounded">
-                <div id="inventory-coin-icon-container" class="w-3.5 h-3.5"></div>
-                <span id="inventory-coin-amount" class="text-xs font-semibold">0</span>
+        <div id="inventory-panel" class="tab-content h-full">
+          <div class="flex flex-col items-stretch gap-4 h-full">
+            <!-- Header Section -->
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-sky-400/20 flex items-center justify-center">
+                  <div data-icon="inventory" class="w-5 h-5 text-sky-400"></div>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-slate-200">Inventory Storage</h3>
+                  <p class="text-sm text-slate-400">Manage your collected items</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <button id="inventory-sort-button" type="button" data-no-drag class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 transition-all duration-200 text-sm text-slate-300 hover:text-white border border-slate-600/30 hover:border-slate-500/50 shadow-lg">
+                  <span class="flex items-center gap-2">
+                    <div data-icon="sort" class="w-4 h-4"></div>
+                    Sort
+                  </span>
+                </button>
+                <div id="inventory-coin-pouch" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/10 to-orange-400/10 border border-yellow-400/20 rounded-xl shadow-lg">
+                  <div id="inventory-coin-icon-container" class="w-5 h-5"></div>
+                  <span id="inventory-coin-amount" class="text-sm font-bold text-yellow-300">0</span>
+                  <span class="text-xs text-yellow-400">Tokens</span>
+                </div>
               </div>
             </div>
-            <div id="inventory-grid" class="grid grid-cols-6 gap-2"></div>
+
+            <!-- AI: Inventory Grid - clean layout without background artifacts -->
+            <div class="flex-1">
+              <div id="inventory-grid" class="h-full w-full p-4"></div>
+            </div>
           </div>
         </div>
         <!-- Equipment Panel Content -->
-        <div id="equipment-panel" class="tab-content hidden">
-          <div class="grid grid-cols-4 gap-2 justify-items-center">
-            <!-- Core & CPU -->
-            <div class="equipment-slot col-span-2" data-slot-type="core"><span>Core</span></div>
-            <div class="equipment-slot col-span-2" data-slot-type="cpu"><span>CPU</span></div>
-            
-            <!-- Modules -->
-            <div class="equipment-slot" data-slot-type="module1"><span>Module</span></div>
-            <div class="equipment-slot" data-slot-type="module2"><span>Module</span></div>
-            <div class="equipment-slot" data-slot-type="module3"><span>Module</span></div>
-            <div class="equipment-slot" data-slot-type="module4"><span>Module</span></div>
+        <div id="equipment-panel" class="tab-content hidden h-full">
+          <div class="flex flex-col items-stretch gap-4 h-full">
+            <!-- Header Section -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-purple-400/20 flex items-center justify-center">
+                <div data-icon="equipment" class="w-5 h-5 text-purple-400"></div>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-slate-200">Equipment Systems</h3>
+                <p class="text-sm text-slate-400">Configure your gear and modules</p>
+              </div>
+            </div>
 
-            <!-- Weapons -->
-            <div class="equipment-slot col-span-2" data-slot-type="weapon1"><span>Weapon</span></div>
-            <div class="equipment-slot col-span-2" data-slot-type="weapon2"><span>Weapon</span></div>
+            <!-- AI: Equipment Grid - expanded to use full available space with responsive layout -->
+            <div class="flex-1 bg-slate-800/30 rounded-2xl border border-slate-600/30 p-6">
+              <div class="grid grid-cols-4 gap-6 justify-items-center">
+                <!-- Core & CPU -->
+                <div class="equipment-slot col-span-2" data-slot-type="core">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-emerald-400/10 to-cyan-400/10 border border-emerald-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="core" class="w-8 h-8 text-emerald-400"></div>
+                    <span class="text-sm font-medium text-emerald-300">Core System</span>
+                  </div>
+                </div>
+                <div class="equipment-slot col-span-2" data-slot-type="cpu">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-blue-400/10 to-purple-400/10 border border-blue-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="cpu" class="w-8 h-8 text-blue-400"></div>
+                    <span class="text-sm font-medium text-blue-300">CPU Unit</span>
+                  </div>
+                </div>
+
+                <!-- Modules -->
+                <div class="equipment-slot" data-slot-type="module1">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-orange-400/10 to-red-400/10 border border-orange-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="module" class="w-6 h-6 text-orange-400"></div>
+                    <span class="text-xs font-medium text-orange-300">Module 1</span>
+                  </div>
+                </div>
+                <div class="equipment-slot" data-slot-type="module2">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-pink-400/10 to-rose-400/10 border border-pink-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="module" class="w-6 h-6 text-pink-400"></div>
+                    <span class="text-xs font-medium text-pink-300">Module 2</span>
+                  </div>
+                </div>
+                <div class="equipment-slot" data-slot-type="module3">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-indigo-400/10 to-violet-400/10 border border-indigo-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="module" class="w-6 h-6 text-indigo-400"></div>
+                    <span class="text-xs font-medium text-indigo-300">Module 3</span>
+                  </div>
+                </div>
+                <div class="equipment-slot" data-slot-type="module4">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-teal-400/10 to-green-400/10 border border-teal-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="module" class="w-6 h-6 text-teal-400"></div>
+                    <span class="text-xs font-medium text-teal-300">Module 4</span>
+                  </div>
+                </div>
+
+                <!-- Weapons -->
+                <div class="equipment-slot col-span-2" data-slot-type="weapon1">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-red-400/10 to-pink-400/10 border border-red-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="weapon" class="w-8 h-8 text-red-400"></div>
+                    <span class="text-sm font-medium text-red-300">Primary Weapon</span>
+                  </div>
+                </div>
+                <div class="equipment-slot col-span-2" data-slot-type="weapon2">
+                  <div class="w-full h-full rounded-xl bg-gradient-to-br from-yellow-400/10 to-orange-400/10 border border-yellow-400/30 flex flex-col items-center justify-center gap-2">
+                    <div data-icon="weapon" class="w-8 h-8 text-yellow-400"></div>
+                    <span class="text-sm font-medium text-yellow-300">Secondary Weapon</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <!-- Skills Panel Content -->
-        <div id="skills-panel" class="tab-content hidden">
-            <div class="grid grid-cols-2 gap-4">
-              <!-- Mining Skill Card -->
-              <div class="relative flex flex-col items-center gap-2 p-2 rounded bg-slate-800/50">
-                <div class="absolute top-1 right-2 text-xs text-slate-400"><span id="skill-level-mining">1</span></div>
-                <div data-icon="mining" class="w-8 h-8 text-gray-400"></div>
-                <div class="w-full">
-                  <div class="text-sm font-semibold mb-1">Mining</div>
-                  <div class="relative w-full h-4 bg-slate-900 rounded overflow-hidden border border-slate-700">
-                    <div id="skill-bar-mining" class="progress-bar-fill progress-bar-fill--sta" style="width: 0%;"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span id="skill-xp-mining" class="text-xs font-semibold text-white text-shadow">0/100</span>
+        <div id="skills-panel" class="tab-content hidden h-full">
+          <div class="flex flex-col items-stretch gap-4 h-full">
+            <!-- Header Section -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-emerald-400/20 flex items-center justify-center">
+                <div data-icon="skills" class="w-5 h-5 text-emerald-400"></div>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-slate-200">Neural Interface</h3>
+                <p class="text-sm text-slate-400">Skill progression and neural enhancement</p>
+              </div>
+            </div>
+
+            <!-- AI: Skills Grid - added overflow-y-auto to handle content that exceeds panel height -->
+            <div class="flex-1 bg-slate-800/30 rounded-2xl border border-slate-600/30 p-6 overflow-y-auto">
+              <div class="grid grid-cols-2 gap-6">
+                <!-- Mining Skill Card -->
+                <div class="relative flex flex-col gap-4 p-6 rounded-xl bg-gradient-to-br from-gray-400/10 to-slate-600/10 border border-gray-400/20 hover:border-gray-400/30 transition-all duration-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-400/20 flex items-center justify-center">
+                        <div data-icon="mining" class="w-7 h-7 text-gray-400"></div>
+                      </div>
+                      <div>
+                        <h4 class="text-lg font-bold text-slate-200">Mining</h4>
+                        <p class="text-sm text-slate-400">Resource extraction</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold text-gray-300" id="skill-level-mining">1</div>
+                      <div class="text-xs text-gray-400">Level</div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-slate-400">Progress</span>
+                      <span class="text-gray-300 font-medium" id="skill-xp-mining">0/100</span>
+                    </div>
+                    <div class="relative w-full h-6 bg-slate-900/80 rounded-lg overflow-hidden border border-slate-600/30">
+                      <div id="skill-bar-mining" class="progress-bar-fill progress-bar-fill--sta h-full transition-all duration-300 rounded-lg" style="width: 0%;"></div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <!-- Fishing Skill Card -->
-              <div class="relative flex flex-col items-center gap-2 p-2 rounded bg-slate-800/50">
-                <div class="absolute top-1 right-2 text-xs text-slate-400"><span id="skill-level-fishing">1</span></div>
-                <div data-icon="fishing" class="w-8 h-8 text-blue-400"></div>
-                <div class="w-full">
-                  <div class="text-sm font-semibold mb-1">Fishing</div>
-                  <div class="relative w-full h-4 bg-slate-900 rounded overflow-hidden border border-slate-700">
-                    <div id="skill-bar-fishing" class="progress-bar-fill progress-bar-fill--mp" style="width: 0%;"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span id="skill-xp-fishing" class="text-xs font-semibold text-white text-shadow">0/100</span>
+
+                <!-- Fishing Skill Card -->
+                <div class="relative flex flex-col gap-4 p-6 rounded-xl bg-gradient-to-br from-blue-400/10 to-cyan-400/10 border border-blue-400/20 hover:border-blue-400/30 transition-all duration-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-blue-400/20 flex items-center justify-center">
+                        <div data-icon="fishing" class="w-7 h-7 text-blue-400"></div>
+                      </div>
+                      <div>
+                        <h4 class="text-lg font-bold text-slate-200">Fishing</h4>
+                        <p class="text-sm text-slate-400">Aquatic harvesting</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold text-blue-300" id="skill-level-fishing">1</div>
+                      <div class="text-xs text-blue-400">Level</div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-slate-400">Progress</span>
+                      <span class="text-blue-300 font-medium" id="skill-xp-fishing">0/100</span>
+                    </div>
+                    <div class="relative w-full h-6 bg-slate-900/80 rounded-lg overflow-hidden border border-slate-600/30">
+                      <div id="skill-bar-fishing" class="progress-bar-fill progress-bar-fill--mp h-full transition-all duration-300 rounded-lg" style="width: 0%;"></div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <!-- Gathering Skill Card -->
-              <div class="relative flex flex-col items-center gap-2 p-2 rounded bg-slate-800/50">
-                <div class="absolute top-1 right-2 text-xs text-slate-400"><span id="skill-level-gathering">1</span></div>
-                <div data-icon="gathering" class="w-8 h-8 text-emerald-400"></div>
-                <div class="w-full">
-                  <div class="text-sm font-semibold mb-1">Gathering</div>
-                  <div class="relative w-full h-4 bg-slate-900 rounded overflow-hidden border border-slate-700">
-                    <div id="skill-bar-gathering" class="progress-bar-fill progress-bar-fill--hp" style="width: 0%;"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span id="skill-xp-gathering" class="text-xs font-semibold text-white text-shadow">0/100</span>
+
+                <!-- Gathering Skill Card -->
+                <div class="relative flex flex-col gap-4 p-6 rounded-xl bg-gradient-to-br from-emerald-400/10 to-green-400/10 border border-emerald-400/20 hover:border-emerald-400/30 transition-all duration-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-emerald-400/20 flex items-center justify-center">
+                        <div data-icon="gathering" class="w-7 h-7 text-emerald-400"></div>
+                      </div>
+                      <div>
+                        <h4 class="text-lg font-bold text-slate-200">Gathering</h4>
+                        <p class="text-sm text-slate-400">Natural resources</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold text-emerald-300" id="skill-level-gathering">1</div>
+                      <div class="text-xs text-emerald-400">Level</div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-slate-400">Progress</span>
+                      <span class="text-emerald-300 font-medium" id="skill-xp-gathering">0/100</span>
+                    </div>
+                    <div class="relative w-full h-6 bg-slate-900/80 rounded-lg overflow-hidden border border-slate-600/30">
+                      <div id="skill-bar-gathering" class="progress-bar-fill progress-bar-fill--hp h-full transition-all duration-300 rounded-lg" style="width: 0%;"></div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <!-- Xenohunting Skill Card -->
-              <div class="relative flex flex-col items-center gap-2 p-2 rounded bg-slate-800/50">
-                <div class="absolute top-1 right-2 text-xs text-slate-400"><span id="skill-level-xenohunting">1</span></div>
-                <div data-icon="alien" class="w-8 h-8 text-purple-400"></div>
-                <div class="w-full">
-                  <div class="text-sm font-semibold mb-1">Xenohunting</div>
-                  <div class="relative w-full h-4 bg-slate-900 rounded overflow-hidden border border-slate-700">
-                    <div id="skill-bar-xenohunting" class="progress-bar-fill progress-bar-fill--xp" style="width: 0%;"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span id="skill-xp-xenohunting" class="text-xs font-semibold text-white text-shadow">0/100</span>
+
+                <!-- Xenohunting Skill Card -->
+                <div class="relative flex flex-col gap-4 p-6 rounded-xl bg-gradient-to-br from-purple-400/10 to-pink-400/10 border border-purple-400/20 hover:border-purple-400/30 transition-all duration-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-purple-400/20 flex items-center justify-center">
+                        <div data-icon="alien" class="w-7 h-7 text-purple-400"></div>
+                      </div>
+                      <div>
+                        <h4 class="text-lg font-bold text-slate-200">Xenohunting</h4>
+                        <p class="text-sm text-slate-400">Alien encounters</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold text-purple-300" id="skill-level-xenohunting">1</div>
+                      <div class="text-xs text-purple-400">Level</div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-slate-400">Progress</span>
+                      <span class="text-purple-300 font-medium" id="skill-xp-xenohunting">0/100</span>
+                    </div>
+                    <div class="relative w-full h-6 bg-slate-900/80 rounded-lg overflow-hidden border border-slate-600/30">
+                      <div id="skill-bar-xenohunting" class="progress-bar-fill progress-bar-fill--xp h-full transition-all duration-300 rounded-lg" style="width: 0%;"></div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -160,22 +320,24 @@
       </div>
     </button>
 
-    <!-- Chat Panel -->
-    <div id="chat-panel-container" class="hidden fixed bottom-24 left-4 w-[600px] h-[400px] bg-slate-900/95 border border-sky-400/20 rounded-xl shadow-2xl backdrop-blur-2xl z-50">
+    <!-- AI: Chat Panel - positioned by JavaScript, no default centering transforms -->
+    <div id="chat-panel-container" class="hidden fixed w-[600px] h-[400px] bg-slate-900/95 border border-sky-400/20 rounded-xl shadow-2xl backdrop-blur-2xl z-60">
       <div class="flex flex-col h-full">
         <!-- Chat Header -->
-        <div class="flex items-center justify-between p-3 border-b border-sky-400/20">
-          <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between p-3 border-b border-sky-400/20 cursor-grab active:cursor-grabbing select-none relative overflow-hidden">
+          <!-- Subtle gradient overlay for draggable feedback -->
+          <div class="absolute inset-0 bg-gradient-to-r from-sky-400/5 via-transparent to-purple-400/5 opacity-0 hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="flex items-center gap-2 relative z-10">
             <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-2.324-.306c-.584.296-1.29.406-2.676.406-1.387 0-2.092-.11-2.676-.406A8.955 8.955 0 018 20C3.582 20 0 16.418 0 12S3.582 4 8 4s8 3.582 8 8z" />
             </svg>
             <span class="text-sm font-semibold text-slate-200">Global Chat</span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 relative z-10">
             <!-- Connection Status -->
             <div id="chat-connection-status" class="w-2 h-2 rounded-full bg-gray-500 transition-colors" title="Connection Status"></div>
             <!-- Close Button -->
-            <button id="chat-close" type="button" class="text-slate-400 hover:text-red-400 transition-colors" aria-label="Close Chat">
+            <button id="chat-close" type="button" class="text-slate-400 hover:text-red-400 transition-colors relative z-10" aria-label="Close Chat">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -219,20 +381,7 @@
     </div>
 
 
-    <!-- Market Panel -->
-    <div id="market-panel" class="hidden glow-blue fixed w-[400px] h-[300px] bg-slate-900/95 text-slate-200 border border-rose-400/20 rounded-2xl shadow-2xl backdrop-blur-2xl z-50" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-      <div id="market-header" class="desktop-panel-header flex items-center justify-end p-4 border-b border-rose-400/20 cursor-move select-none">
-        <!-- AI: Removed Market title. -->
-        <!-- AI: Standardized close button styling. -->
-        <button id="market-close" type="button" data-no-drag class="panel-close absolute top-2 right-2 text-red-500 hover:text-red-300 text-lg leading-none" aria-label="Close">×</button>
-      </div>
-      <div class="flex flex-col items-stretch p-4 gap-3">
-        <!-- Market content will go here -->
-        <p class="text-sm text-slate-400">Welcome to the Market! Buy and sell items here.</p>
-      </div>
-    </div>
-
-   <!-- Settings Panel -->
+    <!-- Settings Panel -->
    <div id="settings-panel" class="hidden glow-blue fixed w-[300px] bg-slate-900/95 text-slate-200 border border-sky-400/20 rounded-2xl shadow-2xl backdrop-blur-2xl z-50" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
      <div id="settings-header" class="desktop-panel-header flex items-center justify-between p-4 border-b border-sky-400/20 cursor-move select-none">
        <div class="flex items-center gap-2">
@@ -242,10 +391,13 @@
        <button id="settings-close" type="button" class="panel-close text-red-500 hover:text-red-300 text-lg leading-none" data-no-drag aria-label="Close">×</button>
      </div>
      <div class="p-4">
-       <div class="flex items-center justify-between">
+       <div class="flex items-center justify-between mb-4">
          <label for="volume-slider" class="text-sm font-semibold">Master Volume</label>
          <input type="range" id="volume-slider" min="0" max="1" step="0.01" class="w-40">
        </div>
+       <button id="btn-logout" type="button" class="w-full py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition-colors" title="Logout">
+         <span>Logout</span>
+       </button>
      </div>
    </div>
 
@@ -260,11 +412,8 @@
       </button>
     </div>
     <!-- Logout button moved to top left for visibility and accessibility -->
-    <button id="settings-button" type="button" class="fixed top-4 left-4 h-8 w-8 flex items-center justify-center rounded-lg bg-slate-800/70 hover:bg-slate-700/80 transition-all duration-200 text-xs text-slate-300 hover:text-white font-bold shadow-lg z-50" title="Settings">
-      <div data-icon="gear" class="w-4 h-4 text-slate-300"></div>
-    </button>
-    <button id="btn-logout" type="button" class="fixed top-4 left-14 h-8 px-4 flex items-center rounded-lg bg-slate-800/70 hover:bg-rose-600/80 transition-all duration-200 text-xs text-slate-300 hover:text-white font-bold shadow-lg z-50" title="Logout">
-      Logout
+    <button id="settings-button" type="button" class="fixed top-4 left-4 h-8 w-8 flex items-center justify-center top-btn z-50" title="Settings">
+      <div data-icon="gear" class="w-4 h-4 text-slate-300 relative z-10"></div>
     </button>
   </div>
 </body>

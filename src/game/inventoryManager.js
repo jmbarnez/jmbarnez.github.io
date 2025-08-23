@@ -10,8 +10,8 @@ import { setPlayerGalacticTokens } from '../services/firestoreService.js';
  */
 class InventoryManager {
   constructor() {
-    // AI: Maximum inventory slots - centralized constant
-    this.MAX_SLOTS = 24;
+    // AI: Maximum inventory slots - expanded to match UI panel (48 slots = 8x6 grid)
+    this.MAX_SLOTS = 48;
     
     // AI: Current inventory state - single source of truth
     this._inventory = null;

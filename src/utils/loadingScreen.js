@@ -5,6 +5,21 @@
  */
 
 class LoadingScreen {
+  static LOADING_MESSAGES = [
+    "Calculating the meaning of life... just kidding, loading assets!",
+    "Herding digital sheep. This takes a while.",
+    "Our gnomes are diligently painting pixels.",
+    "Polishing the polygons. Almost there!",
+    "Hacking the mainframe... with a butter knife.",
+    "Reticulating splines. Don't ask.",
+    "Brewing coffee for the code. It's a long night.",
+    "Warning: May contain nuts. And dragons.",
+    "Dividing by zero for extra processing power.",
+    "Summoning the ancient spirits of the server room.",
+    "Feeding the hamsters. They're very hungry.",
+    "Searching for lost socks in the data streams."
+  ];
+
   constructor() {
     this.screen = null;
     this.messageElement = null;
@@ -38,12 +53,15 @@ class LoadingScreen {
 
     this.isVisible = true;
     this.screen.classList.remove('hidden');
-    this.updateMessage(message);
+
+    // Use a random message if no specific message is provided
+    const displayMessage = message || LoadingScreen.LOADING_MESSAGES[Math.floor(Math.random() * LoadingScreen.LOADING_MESSAGES.length)];
+    this.updateMessage(displayMessage);
 
     // Reset progress bar when showing
     if (this.progressElement) this.progressElement.style.width = '0%';
 
-    // Debug: console.log(`Loading screen shown: ${message}`);
+    // Debug: console.log(`Loading screen shown: ${displayMessage}`);
   }
 
   hide() {
