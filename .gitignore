@@ -1,3 +1,20 @@
+# Ignore Google service account / credential files
+# Examples: google-credentials.json, service-account.json, *.gserviceaccount.json
+google-credentials.json
+google_credentials.json
+google-*.json
+*.gserviceaccount.json
+service-account*.json
+
+# Common private key/credential file extensions
+*.pem
+*.key
+
+# Ignore credential copies in subfolders (functions/, config/, etc.)
+**/google-credentials.json
+**/google_credentials.json
+**/service-account*.json
+
 # Dependencies
 node_modules/
 npm-debug.log*
