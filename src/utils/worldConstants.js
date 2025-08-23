@@ -1,10 +1,16 @@
 // src/utils/worldConstants.js
 // Fixed world dimensions for deterministic terrain generation
 
-// Fixed world dimensions - scaled up 10x for a much larger world
-// Original was 1600x800, now 16000x8000 for massive exploration area
-export const WORLD_WIDTH = 800 * 2 * 10; // 16000
-export const WORLD_HEIGHT = 400 * 2 * 10; // 8000
+// Fixed world dimensions - small manageable world for focused gameplay
+// Changed to smaller size for better performance and focused experience
+// Increase world size for testing (4x area)
+// Set smaller world dimensions per user request
+export const WORLD_WIDTH = 1600; // smaller world width
+export const WORLD_HEIGHT = 800; // smaller world height
+
+// How close to the world edge players and camera are allowed to go.
+// Set to 0 to allow touching the exact world boundary.
+export const WORLD_PADDING = 0;
 
 // Tile / chunk sizing for chunked tile-based world generation
 // TILE_PIXEL_SIZE: size of a single tile in pixels (matches pixel-art grid)

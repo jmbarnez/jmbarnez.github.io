@@ -1,4 +1,4 @@
-import { CHUNK_TILE_SIZE, TILE_PIXEL_SIZE, CHUNK_PIXEL_SIZE, PERMANENT_TERRAIN_SEED, BIOMES } from '../utils/worldConstants.js';
+import { CHUNK_TILE_SIZE, TILE_PIXEL_SIZE, CHUNK_PIXEL_SIZE, PERMANENT_TERRAIN_SEED, BIOMES, WORLD_WIDTH, WORLD_HEIGHT } from '../utils/worldConstants.js';
 import { seededNoise } from '../utils/noise.js';
 
 // Basic WorldGenerator implementing chunk caching and tile-grid generation.
@@ -23,6 +23,21 @@ export class WorldGenerator {
   getChunk(cx, cy) {
     const key = this._chunkKey(cx, cy);
     if (this.cache.has(key)) return this.cache.get(key);
+
+    // Prevent generating chunks that lie entirely outside the configured world
+    // dimensions. This ensures the chunked generator respects the global
+    // `WORLD_WIDTH` / `WORLD_HEIGHT` bounds (previous behavior generated
+    // unbounded chunks for any requested cx/cy). Returning `null` for out-
+    // of-bounds chunks allows callers (drawTerrain) to skip drawing them and
+    // keeps generation bounded to the playable area.
+    const chunkLeft = cx * CHUNK_PIXEL_SIZE;
+    const chunkTop = cy * CHUNK_PIXEL_SIZE;
+    const chunkRight = chunkLeft + CHUNK_PIXEL_SIZE;
+    const chunkBottom = chunkTop + CHUNK_PIXEL_SIZE;
+
+    if (chunkLeft >= WORLD_WIDTH || chunkTop >= WORLD_HEIGHT || chunkRight <= 0 || chunkBottom <= 0) {
+      return null;
+    }
 
     const chunkSeed = this._deriveChunkSeed(cx, cy);
 

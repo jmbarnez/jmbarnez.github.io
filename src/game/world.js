@@ -4,8 +4,9 @@
 import { game } from './core.js';
 import { worldToScreenCoords, screenToWorldCoords } from '../utils/math.js';
 import { seededNoise, saveTerrainSeed, loadTerrainSeed, generateRandomSeed } from '../utils/noise.js';
-import { WORLD_WIDTH, WORLD_HEIGHT, OASIS_CONFIG, BIOMES, PERMANENT_TERRAIN_SEED, CHUNK_PIXEL_SIZE, TILE_PIXEL_SIZE, CHUNK_TILE_SIZE } from '../utils/worldConstants.js';
-import WorldGenerator from './worldGenerator.js';
+import { WORLD_WIDTH, WORLD_HEIGHT, OASIS_CONFIG, BIOMES, PERMANENT_TERRAIN_SEED, CHUNK_PIXEL_SIZE, TILE_PIXEL_SIZE, CHUNK_TILE_SIZE, WORLD_PADDING } from '../utils/worldConstants.js';
+// Chunked world generator removed for small fixed world.
+// WorldGenerator module retained in repo for reference but not used here.
 
 // Terrain downsample factor used for faster generation and for caching keys.
 // Increase to 4 for much faster generation with coarse but acceptable detail.
@@ -60,14 +61,14 @@ async function generateTerrain(seed) {
   terrainCanvas.height = WORLD_HEIGHT;
   const ctx = terrainCanvas.getContext('2d');
 
-  // Fill entire world with desert sand color
-  try {
-    const desertColor = BIOMES.DRY_SAND.color || '#c9b98a';
-    ctx.fillStyle = desertColor;
-    ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-  } catch (e) {
-    console.warn('Failed to fill desert terrain color:', e);
-  }
+  // Ensure crisp pixel rendering
+  ctx.imageSmoothingEnabled = false;
+
+  // Fill the world canvas with the desert sand color so the playable area
+  // is visible immediately. Previously the generator left the canvas
+  // transparent which showed as black in the viewport when rendered.
+  ctx.fillStyle = (BIOMES && BIOMES.DRY_SAND && BIOMES.DRY_SAND.color) || '#c9b98a';
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
   // Create empty water mask (no water in pure desert)
   const waterMask = new Array(WORLD_HEIGHT);
@@ -148,14 +149,15 @@ export const camera = {
   // The correct values are set in the update() function every frame.
   width: 0,
   height: 0,
-  zoom: 1, // Current zoom level locked to 1x
-  targetZoom: 1, // Target zoom locked to 1x
-  // Locked to 1x zoom only
-  allowedZooms: [1],
+  zoom: 1, // Current zoom level (interpolated towards targetZoom)
+  targetZoom: 1, // Target zoom set by UI (mouse wheel / settings)
+  // Allow multiple zoom levels; keep this array small and discrete so wheel
+  // scrolling snaps to meaningful steps. Avoid hardcoding elsewhere.
+  allowedZooms: [1, 1.5, 2],
   // AI: Camera smoothing factor - lower values make camera movement more gradual
   smoothing: 0.08, // AI: Reduced to eliminate snapping, creates smoother movement
   // AI: Distance threshold - camera only moves when player is this far from center
-  followThreshold: 15, // AI: LoL-style dead zone - camera doesn't move until player is this far from center
+  followThreshold: 50, // AI: LoL-style dead zone - camera doesn't move until player is this far from center
   // AI: Look-ahead distance - how far ahead camera looks in direction of movement
   lookAheadDistance: 40, // AI: LoL-style look-ahead for more dynamic feel
 
@@ -164,87 +166,73 @@ export const camera = {
   moveSpeed: 24, // Camera movement speed in pixels per frame (3x faster)
   keysPressed: { w: false, a: false, s: false, d: false, up: false, down: false, left: false, right: false },
   
-  // AI: Updates camera position with smooth following and boundary constraints
+  // AI: Updates camera position with strict centering and edge clamping
   update() {
-  // Zoom is locked to 1x
-  this.zoom = 1;
-  this.targetZoom = 1;
-  // AI: Calculate effective viewport dimensions (1:1 since zoom is locked to 1x)
-  this.width = game.width;
-  this.height = game.height;
-    
-    // AI: Handle free camera movement vs player following
+  // Smoothly interpolate zoom toward targetZoom so zoom changes feel natural.
+  // We do this first so viewport size calculation below uses the current
+  // interpolated zoom for accurate clamping and centering.
+  if (this.targetZoom === undefined || this.targetZoom === null) this.targetZoom = this.zoom;
+  // Snap targetZoom to nearest allowed level if allowedZooms provided
+  if (Array.isArray(this.allowedZooms) && this.allowedZooms.length > 0) {
+    // Ensure targetZoom is one of allowed values (wheel handler sets this)
+    if (!this.allowedZooms.includes(this.targetZoom)) {
+      // Find closest allowed zoom
+      let closest = this.allowedZooms[0];
+      let minDiff = Math.abs(this.targetZoom - closest);
+      for (let i = 1; i < this.allowedZooms.length; i++) {
+        const d = Math.abs(this.targetZoom - this.allowedZooms[i]);
+        if (d < minDiff) { minDiff = d; closest = this.allowedZooms[i]; }
+      }
+      this.targetZoom = closest;
+    }
+  }
+
+  // Interpolate current zoom toward targetZoom (smooth transition)
+  const ZOOM_LERP = 0.18; // tuned for snappy but smooth feel
+  this.zoom += (this.targetZoom - this.zoom) * ZOOM_LERP;
+  // If very close, snap to avoid floating residue
+  if (Math.abs(this.zoom - this.targetZoom) < 0.001) this.zoom = this.targetZoom;
+
+  // Compute effective viewport size in world pixels accounting for current zoom.
+  // The canvas is scaled by `camera.zoom` during draw (ctx.scale), so the
+  // number of world pixels visible equals CSS pixels divided by zoom.
+  this.width = Math.max(1, Math.round(game.width / (this.zoom || 1)));
+  this.height = Math.max(1, Math.round(game.height / (this.zoom || 1)));
+
+    // Free camera mode: unchanged behavior but with updated clamps
     if (this.isFreeCamera) {
-      // AI: Free camera mode - handle keyboard input for movement
       let moveX = 0;
       let moveY = 0;
-
-      // WASD keys
       if (this.keysPressed.w || this.keysPressed.up) moveY -= this.moveSpeed;
       if (this.keysPressed.s || this.keysPressed.down) moveY += this.moveSpeed;
       if (this.keysPressed.a || this.keysPressed.left) moveX -= this.moveSpeed;
       if (this.keysPressed.d || this.keysPressed.right) moveX += this.moveSpeed;
 
-      // Apply movement to camera
       this.x += moveX;
       this.y += moveY;
 
-      // Clamp to world boundaries - never show outside world edges
+      // Clamp to world boundaries
       this.x = Math.max(0, Math.min(this.x, Math.max(0, game.WORLD_WIDTH - this.width)));
       this.y = Math.max(0, Math.min(this.y, Math.max(0, game.WORLD_HEIGHT - this.height)));
-
-    } else {
-      // AI: Player following mode (LoL-style camera)
-    const cameraCenterX = this.x + this.width / 2;
-    const cameraCenterY = this.y + this.height / 2;
-    
-    // AI: Calculate distance from player to camera center
-    const distanceFromCenter = Math.hypot(
-      game.player.x - cameraCenterX,
-      game.player.y - cameraCenterY
-    );
-    
-      // AI: LoL-style camera with dead zone and look-ahead
-    if (distanceFromCenter > this.followThreshold) {
-        // AI: Calculate player's movement direction for look-ahead
-        const playerMoveX = game.player.x - (game.player.lastX || game.player.x);
-        const playerMoveY = game.player.y - (game.player.lastY || game.player.y);
-        const movementMagnitude = Math.hypot(playerMoveX, playerMoveY);
-
-        // AI: Calculate look-ahead offset if player is moving
-        let lookAheadX = 0, lookAheadY = 0;
-        if (movementMagnitude > 1) { // Only apply look-ahead if moving significantly
-          const normalizedMoveX = playerMoveX / movementMagnitude;
-          const normalizedMoveY = playerMoveY / movementMagnitude;
-          lookAheadX = normalizedMoveX * this.lookAheadDistance;
-          lookAheadY = normalizedMoveY * this.lookAheadDistance;
-        }
-
-        // AI: Calculate desired camera position with look-ahead
-        let desiredX = game.player.x - this.width / 2 + lookAheadX;
-        let desiredY = game.player.y - this.height / 2 + lookAheadY;
-
-        // AI: Always clamp camera to show only world content
-        desiredX = Math.max(0, Math.min(desiredX, Math.max(0, game.WORLD_WIDTH - this.width)));
-        desiredY = Math.max(0, Math.min(desiredY, Math.max(0, game.WORLD_HEIGHT - this.height)));
-
-        // AI: Smooth camera movement towards desired position
-        this.targetX += (desiredX - this.targetX) * 0.1;
-        this.targetY += (desiredY - this.targetY) * 0.1;
-      }
-
-      // AI: Store current position for next frame's movement calculation
-      game.player.lastX = game.player.x;
-      game.player.lastY = game.player.y;
-    
-    // AI: Smooth camera movement towards target position
-    this.x += (this.targetX - this.x) * this.smoothing;
-    this.y += (this.targetY - this.y) * this.smoothing;
+      return;
     }
-    
-    // AI: Final clamp to ensure camera never shows outside world boundaries
-    this.x = Math.max(0, Math.min(this.x, Math.max(0, game.WORLD_WIDTH - this.width)));
-    this.y = Math.max(0, Math.min(this.y, Math.max(0, game.WORLD_HEIGHT - this.height)));
+
+    // Follow mode: strictly center the camera on the player, then clamp.
+    // This makes the camera remain still when the player moves toward world edges
+    // because the clamped camera position can't move further; the player will
+    // continue moving to the corner while the viewport stays at the edge.
+    const desiredX = Math.round(game.player.x - this.width / 2);
+    const desiredY = Math.round(game.player.y - this.height / 2);
+
+    // Clamp desired position so viewport never shows outside the world.
+    const maxCamX = Math.max(0, game.WORLD_WIDTH - this.width);
+    const maxCamY = Math.max(0, game.WORLD_HEIGHT - this.height);
+
+    this.x = Math.max(0, Math.min(desiredX, maxCamX));
+    this.y = Math.max(0, Math.min(desiredY, maxCamY));
+    // Keep target in sync for any smoothing toggles or future use
+    this.targetX = this.x;
+    this.targetY = this.y;
   },
 
   // AI: Center camera on player (used when space bar is pressed)
@@ -272,42 +260,32 @@ export function drawTerrain() {
     return;
   }
 
-  // Ensure a world generator exists (use terrain seed if available)
-  if (!game._worldGenerator) game._worldGenerator = new WorldGenerator(game.terrain && game.terrain.seed);
-
-  // Clear canvas to black
+  // Clear viewport in screen pixels
   ctx.clearRect(0, 0, game.width, game.height);
-  
-  // Fill only the world bounds area with sand color
-  const worldScreenX = -camera.x;
-  const worldScreenY = -camera.y;
-  const worldScreenWidth = game.WORLD_WIDTH;
-  const worldScreenHeight = game.WORLD_HEIGHT;
-  
-  ctx.fillStyle = '#c9b98a'; // Desert sand color
-  ctx.fillRect(worldScreenX, worldScreenY, worldScreenWidth, worldScreenHeight);
 
-  // Compute visible chunk range
-  const chunkX0 = Math.floor(camera.x / CHUNK_PIXEL_SIZE);
-  const chunkY0 = Math.floor(camera.y / CHUNK_PIXEL_SIZE);
-  const chunkX1 = Math.floor((camera.x + camera.width) / CHUNK_PIXEL_SIZE);
-  const chunkY1 = Math.floor((camera.y + camera.height) / CHUNK_PIXEL_SIZE);
+  // Draw the terrain with the same camera transform used for entities so
+  // it moves with the viewport. We apply the transform locally inside
+  // drawTerrain to avoid changing the existing draw order in core.loop.
+  ctx.save();
+  ctx.scale(camera.zoom, camera.zoom);
+  ctx.translate(-camera.x, -camera.y);
 
-  ctx.imageSmoothingEnabled = false;
-
-  for (let cy = chunkY0; cy <= chunkY1; cy++) {
-    for (let cx = chunkX0; cx <= chunkX1; cx++) {
-      const chunk = game._worldGenerator.getChunk(cx, cy);
-      if (!chunk || !chunk.canvas) continue;
-      const drawX = cx * CHUNK_PIXEL_SIZE - camera.x;
-      const drawY = cy * CHUNK_PIXEL_SIZE - camera.y;
-      try {
-        ctx.drawImage(chunk.canvas, Math.floor(drawX), Math.floor(drawY), CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
-      } catch (e) {
-        // Defensive fallback: ignore drawing errors
-      }
+  if (game.terrain && game.terrain.map) {
+    try {
+      ctx.imageSmoothingEnabled = false;
+      // Draw terrain at world origin; transforms above position it correctly
+      ctx.drawImage(game.terrain.map, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    } catch (e) {
+      // Defensive: ignore draw errors
     }
+  } else {
+    // Fallback: fill sand area using world bounds
+    ctx.fillStyle = '#c9b98a'; // Desert sand color
+    ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   }
+
+  // Restore so caller can apply its own transforms for subsequent draws
+  ctx.restore();
 }
 
 // Check if a position is in water using the terrain water mask

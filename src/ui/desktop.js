@@ -21,6 +21,7 @@ import { updateCoinDisplay } from '../ui/inventory.js'; // AI: Import for updati
 import { sendGlobalMessage, setTypingStatus } from '../game/ui.js'; // AI: Import global message and typing status functions.
 import { multiplayerManager } from '../game/multiplayerManager.js';
 import { initSettingsPanel } from './settings.js';
+import { initSkillsPanel } from './skills.js';
 import { ensureNotificationContainer, showDesktopNotification } from '../utils/domUtils.js';
 // import { SPAWN_CHANCE_PER_TICK, EXPLORE_TICK_INTERVAL_MS } from './utils/constants.js';
 import { coerceTs, formatChatTime } from '../utils/math.js';
@@ -39,6 +40,23 @@ function initPixelIcons() {
   });
 }
 
+// Global fallback toggle for debug panel (safe to call before initDesktopScreen runs)
+window.toggleDebugPanel = function toggleDebugPanelFallback() {
+  try {
+    const el = document.getElementById('debug-panel-container');
+    if (!el) return;
+    const isHidden = el.classList.contains('hidden');
+    el.classList.toggle('hidden');
+    if (!isHidden) {
+      const canvas = document.getElementById('area-canvas');
+      if (canvas) setTimeout(() => canvas.focus(), 50);
+    }
+    if (typeof window.updateUIOpenState === 'function') window.updateUIOpenState();
+  } catch (e) {
+    // ignore
+  }
+};
+
 export function initDesktopScreen() {
   // --- DOM Element Lookups ---
   // AI: The status bar and bottom bar have been removed for a cleaner UI.
@@ -54,6 +72,8 @@ export function initDesktopScreen() {
   initInventory(inventoryGrid, desktopScreen);
   initDragDrop(desktopScreen);
   initSettingsPanel();
+  // Initialize skills panel UI to sync with experience manager
+  initSkillsPanel();
   // No DOM-based item highlights; items are drawn in canvas
   // Initialize robust RTDB presence (mirrored to Firestore by CFN)
   initRealtimePresence();
@@ -114,7 +134,7 @@ export function initDesktopScreen() {
     if (mainPanelContainer) {
       const isHidden = mainPanelContainer.classList.contains('hidden');
       mainPanelContainer.classList.toggle('hidden');
-      
+
       // AI: Focus management - ensure game canvas gets focus when panels close
       if (!isHidden) { // Panel was visible, now hiding
         const canvas = document.getElementById('area-canvas');
@@ -122,10 +142,131 @@ export function initDesktopScreen() {
           setTimeout(() => canvas.focus(), 50); // Brief delay to ensure DOM update
         }
       }
-      
+
       updateUIOpenState(); // Update global UI state
     }
   };
+
+  // AI: Global function to toggle main panel (accessible from game core)
+  window.toggleMainPanel = toggleMainPanel;
+
+  // AI: Debug panel functionality
+  const debugPanelContainer = document.getElementById('debug-panel-container');
+  const debugPanelClose = document.getElementById('debug-panel-close');
+  const debugClearConsole = document.getElementById('debug-clear-console');
+  const debugGC = document.getElementById('debug-gc');
+  const debugReload = document.getElementById('debug-reload');
+
+  // AI: Global function to toggle debug panel (renamed from update panel)
+  const toggleDebugPanel = () => {
+    if (debugPanelContainer) {
+      const isHidden = debugPanelContainer.classList.contains('hidden');
+      debugPanelContainer.classList.toggle('hidden');
+
+      // AI: Focus management - return focus to game when closing
+      if (!isHidden) {
+        const canvas = document.getElementById('area-canvas');
+        if (canvas) {
+          setTimeout(() => canvas.focus(), 50);
+        }
+      }
+
+      updateUIOpenState();
+      // Re-apply canvas DPR/resolution in case layout changed while panel was open
+      try {
+        if (window.applyDPRSetting) window.applyDPRSetting();
+      } catch (_) {}
+      // Force a reflow so canvas bounding rect updates immediately
+      void document.body.getBoundingClientRect();
+    }
+  };
+
+  // AI: Make debug panel toggle global
+  window.toggleDebugPanel = toggleDebugPanel;
+
+  // AI: Close button handler
+  if (debugPanelClose) {
+    debugPanelClose.onclick = toggleDebugPanel;
+  }
+
+  // AI: Update action handlers
+  if (debugClearConsole) {
+    debugClearConsole.onclick = () => {
+      const consoleDiv = document.getElementById('debug-console');
+      if (consoleDiv) {
+        consoleDiv.innerHTML = '<div class="text-slate-500">Console cleared...</div>';
+      }
+    };
+  }
+
+  if (debugGC) {
+    debugGC.onclick = () => {
+      if (window.gc) {
+        window.gc();
+        console.log('Manual garbage collection triggered');
+      } else {
+        console.log('Manual GC not available (use Chrome with --enable-gc-experiment)');
+      }
+    };
+  }
+
+  if (debugReload) {
+    debugReload.onclick = () => {
+      window.location.reload();
+    };
+  }
+
+  // AI: Console logging capture for debug panel
+  const originalConsoleLog = console.log;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+
+  // AI: Function to add message to debug console
+  const addDebugMessage = (type, ...args) => {
+    const consoleDiv = document.getElementById('debug-console');
+    if (!consoleDiv) return;
+
+    const timestamp = new Date().toLocaleTimeString();
+    const message = args.join(' ');
+    const maxMessages = 20; // Keep only last 20 messages
+
+    // Create message element
+    const messageEl = document.createElement('div');
+    messageEl.className = `text-[10px] ${type === 'error' ? 'text-red-400' : type === 'warn' ? 'text-yellow-400' : 'text-slate-300'}`;
+    messageEl.textContent = `[${timestamp}] ${message}`;
+
+    // Add to console
+    consoleDiv.appendChild(messageEl);
+
+    // Remove old messages if too many
+    while (consoleDiv.children.length > maxMessages) {
+      consoleDiv.removeChild(consoleDiv.firstChild);
+    }
+
+    // Auto-scroll to bottom
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+  };
+
+  // AI: Override console methods to capture debug output
+  console.log = (...args) => {
+    originalConsoleLog.apply(console, args);
+    addDebugMessage('log', ...args);
+  };
+
+  console.warn = (...args) => {
+    originalConsoleWarn.apply(console, args);
+    addDebugMessage('warn', ...args);
+  };
+
+  console.error = (...args) => {
+    originalConsoleError.apply(console, args);
+    addDebugMessage('error', ...args);
+  };
+
+  // AI: Add initial debug message
+  setTimeout(() => {
+    console.log('Debug panel initialized - press F3 to toggle');
+  }, 1000);
 
   // Event listener for the main toggle button
   if (mainPanelToggle) {

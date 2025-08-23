@@ -13,6 +13,8 @@
   --font-family: 'Press Start 2P', cursive;
   --glow-outer: 0 0 24px rgba(64, 123, 255, 0.12);
   --glow-inner: 0 0 60px rgba(64, 123, 255, 0.06);
+  --glow-red-outer: 0 0 24px rgba(239, 68, 68, 0.15);
+  --glow-red-inner: 0 0 60px rgba(239, 68, 68, 0.08);
 }
 
 html {
@@ -35,6 +37,11 @@ body.desktop-view {
 /* Subtle blue glow helper */
 .glow-blue {
   box-shadow: var(--glow-outer), var(--glow-inner);
+}
+
+/* Subtle red glow helper for debug panel */
+.glow-red {
+  box-shadow: var(--glow-red-outer), var(--glow-red-inner);
 }
 
 /* Give login panel a subtle glow without changing layout */

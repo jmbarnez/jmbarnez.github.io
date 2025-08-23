@@ -1,7 +1,7 @@
 // Main game loop (update/render orchestrator)
 // AI: Updated imports to include the new camera and coordinate conversion functions.
 import { isInWater, drawTerrain, camera, setTerrainSeed } from './world.js';
-import { WORLD_WIDTH, WORLD_HEIGHT } from '../utils/worldConstants.js';
+import { WORLD_WIDTH, WORLD_HEIGHT, WORLD_PADDING } from '../utils/worldConstants.js';
 
 import { playerService } from '../services/playerService.js';
 import { drawGroundItems } from './items.js';
@@ -12,7 +12,6 @@ import { pickupGroundItem } from '../services/groundItemService.js';
 import { playMiningSound, startLaserSound, stopLaserSound, playCycleCompleteSound, playGunshotSound } from '../utils/sfx.js';
 import { drawRemotePlayers, initNetwork } from './network.js';
 import { multiplayerManager } from './multiplayerManager.js';
-import { pingDisplay } from '../ui/pingDisplay.js';
 
 import { experienceManager } from './experienceManager.js';
 import { experienceBar } from '../ui/experienceBar.js';
@@ -190,7 +189,7 @@ function update(dt) {
     p.y += p.vy * dt;
 
     // Constrain player to sand area - prevent flying into black areas
-    const PAD = 50; // Larger padding to keep player well within sand bounds
+    const PAD = WORLD_PADDING;
     p.x = Math.max(PAD, Math.min(p.x, game.WORLD_WIDTH - PAD));
     p.y = Math.max(PAD, Math.min(p.y, game.WORLD_HEIGHT - PAD));
 
@@ -273,9 +272,9 @@ function update(dt) {
 
     if (dist <= DEAD_ZONE) {
       // Apply sand area boundary constraints
-      const PAD = 50;
-      p.x = Math.max(PAD, Math.min(p.target.x, WORLD_WIDTH - PAD));
-      p.y = Math.max(PAD, Math.min(p.target.y, WORLD_HEIGHT - PAD));
+      const PAD = WORLD_PADDING;
+      p.x = Math.max(PAD, Math.min(p.target.x, game.WORLD_WIDTH - PAD));
+      p.y = Math.max(PAD, Math.min(p.target.y, game.WORLD_HEIGHT - PAD));
 
       // Check if this was a ground item target and attempt pickup
       if (p.target.type === 'groundItem' && p.target.item) {
@@ -485,7 +484,7 @@ function update(dt) {
                 const targetY = targetedEnemy.y - ny * optimalDistance;
 
                 // Clamp to sand area boundaries
-                const PAD = 50;
+                const PAD = WORLD_PADDING;
                 const clampedX = Math.max(PAD, Math.min(targetX, game.WORLD_WIDTH - PAD));
                 const clampedY = Math.max(PAD, Math.min(targetY, game.WORLD_HEIGHT - PAD));
 
@@ -696,7 +695,12 @@ function loop(ts) {
   // AI: Update the camera once per frame, after all physics updates are complete.
   // This prevents the camera from moving too quickly when the game catches up on missed time.
   camera.update();
-  
+
+  // AI: Update debug panel with real-time information
+  if (window.updateDebugPanel) {
+    window.updateDebugPanel();
+  }
+
   const { ctx } = game;
   
   // AI: Guard against null context in main loop
@@ -819,11 +823,40 @@ export async function initAreaGame(initialPosition) {
   
     // For now: make the canvas match the screen size (fullscreen canvas)
     // while the world size remains fixed (WORLD_WIDTH x WORLD_HEIGHT).
-    const rect = canvas.getBoundingClientRect();
-    game.width = rect.width;
-    game.height = rect.height;
-    canvas.width = game.width;
-    canvas.height = game.height;
+    // Helper: configure canvas backing store and context transform according to scaling preference
+    function setCanvasResolution() {
+      // Size canvas to the full window viewport to ensure a true fullscreen canvas
+      // The CSS layout already positions the canvas as inset-0; use window.inner sizes
+      const canvasRect = { width: window.innerWidth, height: window.innerHeight };
+      const rawDpr = window.devicePixelRatio || 1;
+      const useInteger = localStorage.getItem('useIntegerDPR') === 'true';
+      const dpr = useInteger ? Math.max(1, Math.floor(rawDpr)) : Math.max(1, rawDpr);
+
+      // Keep CSS size in logical pixels
+      canvas.style.width = `${Math.round(canvasRect.width)}px`;
+      canvas.style.height = `${Math.round(canvasRect.height)}px`;
+
+      // Backing store size in physical pixels
+      canvas.width = Math.round(canvasRect.width * dpr);
+      canvas.height = Math.round(canvasRect.height * dpr);
+
+      // Keep logical game width/height in CSS pixels for camera math
+      game.width = canvasRect.width;
+      game.height = canvasRect.height;
+
+      // Configure context scaling so 1 unit in our world = 1 CSS pixel
+      game.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      game.ctx.imageSmoothingEnabled = false;
+
+      // expose current dpr for debugging
+      window.currentGameDPR = dpr;
+    }
+
+    // Make this callable from settings without full reload
+    window.applyDPRSetting = () => { try { setCanvasResolution(); } catch (_) {} };
+
+    // Apply initial resolution
+    setCanvasResolution();
 
     // Auto-focus the canvas so users don't need to click to start playing
     canvas.tabIndex = 0; // Make canvas focusable
@@ -954,14 +987,15 @@ export async function initAreaGame(initialPosition) {
     // Otherwise, default to the center of the world. This ensures saved positions are respected.
     if (initialPosition && typeof initialPosition.x === 'number' && typeof initialPosition.y === 'number') {
       // AI: Ensure the loaded position is within sand area
-      const PAD = 50;
+      const PAD = WORLD_PADDING;
       const clampedX = Math.max(PAD, Math.min(initialPosition.x, game.WORLD_WIDTH - PAD));
       const clampedY = Math.max(PAD, Math.min(initialPosition.y, game.WORLD_HEIGHT - PAD));
       game.player.x = clampedX;
       game.player.y = clampedY;
     } else {
-      game.player.x = game.WORLD_WIDTH / 2;
-      game.player.y = game.WORLD_HEIGHT / 2;
+      // Spawn near resources in top-left area instead of world center
+      game.player.x = 300;
+      game.player.y = 250;
     }
 
     // Do not initialize full drone physics by default when using WASD control scheme.
@@ -984,8 +1018,7 @@ export async function initAreaGame(initialPosition) {
     initProjectiles(); // Initialize projectile system for proper server sync
 
 
-    // AI: Initialize ping display
-    pingDisplay.init();
+    // Ping display removed (moved into debug panel)
     
     // AI: Initialize experience system
     experienceBar.init();
@@ -1039,6 +1072,23 @@ export async function initAreaGame(initialPosition) {
             e.preventDefault(); camera.centerOnPlayer(); break;
           }
           case 'f': camera.toggleFreeCamera(); break;
+          case 'tab': {
+            e.preventDefault(); // Prevent default tab behavior (tabbing to next element)
+            if (window.toggleMainPanel) {
+              window.toggleMainPanel(); // Toggle the main panel
+            }
+            break;
+          }
+          case 'f3': {
+            e.preventDefault(); // Prevent default F3 behavior (find)
+            if (window.toggleDebugPanel) {
+              window.toggleDebugPanel(); // Toggle the debug panel
+            } else if (window.toggleUpdatePanel) {
+              // Backwards compatibility: try update panel toggle
+              window.toggleUpdatePanel();
+            }
+            break;
+          }
         }
       });
 
@@ -1063,6 +1113,121 @@ export async function initAreaGame(initialPosition) {
 
     // AI: Simple right-click to move system
 
+// AI: Debug panel update function
+function updateUpdatePanel() {
+  if (typeof window !== 'undefined' && window.gameInstance) {
+    const game = window.gameInstance;
+    const player = game.player;
+
+    // Player info
+    const playerPos = document.getElementById('debug-player-pos');
+    const playerVel = document.getElementById('debug-player-vel');
+    const playerSpeed = document.getElementById('debug-player-speed');
+    const currentArea = document.getElementById('debug-current-area');
+
+    if (player && playerPos) {
+      playerPos.textContent = `${Math.round(player.x)}, ${Math.round(player.y)}`;
+    }
+    if (player && playerVel) {
+      const vx = player.vx || 0;
+      const vy = player.vy || 0;
+      playerVel.textContent = `${vx.toFixed(1)}, ${vy.toFixed(1)}`;
+    }
+    if (player && playerSpeed) {
+      const vx = player.vx || 0;
+      const vy = player.vy || 0;
+      const speed = Math.hypot(vx, vy);
+      playerSpeed.textContent = speed.toFixed(1);
+    }
+    if (currentArea && game.areaId) {
+      currentArea.textContent = game.areaId;
+    }
+
+    // Game state
+    const uiState = document.getElementById('debug-ui-state');
+    const connection = document.getElementById('debug-connection');
+    const playerCount = document.getElementById('debug-player-count');
+    const fps = document.getElementById('debug-fps');
+
+    if (uiState) {
+      uiState.textContent = window.isUIOpen ? 'true' : 'false';
+    }
+    if (connection) {
+      connection.textContent = window.multiplayerManager?.isConnected() ? 'true' : 'false';
+    }
+    if (playerCount) {
+      const remotePlayers = window.multiplayerManager?.getRemotePlayers?.() || [];
+      playerCount.textContent = remotePlayers.length + 1; // +1 for local player
+    }
+    if (fps && game.lastFrameTime) {
+      const currentFps = Math.round(1000 / game.lastFrameTime);
+      fps.textContent = currentFps;
+    }
+
+    // Resources
+    const resourceCount = document.getElementById('debug-resource-count');
+    const groundItems = document.getElementById('debug-ground-items');
+    const inventorySlots = document.getElementById('debug-inventory-slots');
+
+    if (resourceCount && game.resourceNodes) {
+      resourceCount.textContent = game.resourceNodes.length;
+    }
+    if (groundItems && game.groundItems) {
+      groundItems.textContent = game.groundItems.length;
+    }
+    if (inventorySlots && window.inventoryManager) {
+      const inventory = window.inventoryManager.getInventory();
+      const occupied = inventory.filter(slot => slot !== null).length;
+      inventorySlots.textContent = `${occupied}/24`;
+    }
+
+    // Camera
+    const zoom = document.getElementById('debug-zoom');
+    const targetZoom = document.getElementById('debug-target-zoom');
+    const cameraPos = document.getElementById('debug-camera-pos');
+
+    if (zoom && camera) {
+      zoom.textContent = camera.zoom.toFixed(2);
+    }
+    if (targetZoom && camera) {
+      targetZoom.textContent = camera.targetZoom.toFixed(2);
+    }
+    if (cameraPos && camera) {
+      cameraPos.textContent = `${Math.round(camera.x)}, ${Math.round(camera.y)}`;
+    }
+
+    // Physics
+    const throttle = document.getElementById('debug-throttle');
+    const orientation = document.getElementById('debug-orientation');
+    const physicsStatus = document.getElementById('debug-physics-status');
+
+    if (player && player.physics) {
+      if (throttle) {
+        const throttlePercent = Math.round((player.physics.throttle || 0) * 100);
+        throttle.textContent = `${throttlePercent}%`;
+      }
+      if (orientation) {
+        const angle = Math.round((player.physics.orientation || 0) * 180 / Math.PI);
+        orientation.textContent = `${angle}°`;
+      }
+      if (physicsStatus) {
+        physicsStatus.textContent = 'Active';
+      }
+    } else if (physicsStatus) {
+      physicsStatus.textContent = 'Inactive';
+    }
+    // Also update ping value if available
+    const pingEl = document.getElementById('debug-ping');
+    try {
+      const ping = window.multiplayerManager?.getPing?.() ?? 0;
+      if (pingEl) pingEl.textContent = `${ping}ms`;
+    } catch (_) {}
+  }
+}
+
+// AI: Make debug panel update function global
+window.updateDebugPanel = updateUpdatePanel;
+
     // AI: Add mousedown listener for right-click to move.
     canvas.addEventListener('mousedown', (e) => {
       if (window.isUIOpen) return; // Prevent game input when UI is open
@@ -1071,11 +1236,10 @@ export async function initAreaGame(initialPosition) {
 
         // AI: Manually update mouse coords on mousedown to ensure the drone moves
         // toward the correct location even if the mouse doesn't move.
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const screenX = (e.clientX - rect.left) * scaleX;
-        const screenY = (e.clientY - rect.top) * scaleY;
+        const cRect = canvas.getBoundingClientRect();
+        // Use CSS pixel coordinates (clientX relative to canvas) — our camera/world math uses logical pixels.
+        const screenX = (e.clientX - cRect.left);
+        const screenY = (e.clientY - cRect.top);
         const worldCoords = screenToWorldCoords(screenX, screenY, camera);
 
         game.mouse.x = worldCoords.x;
@@ -1125,11 +1289,9 @@ export async function initAreaGame(initialPosition) {
     // AI: Basic mousemove handler for cursor tracking
     canvas.addEventListener('mousemove', (e) => {
       if (window.isUIOpen) return; // Prevent game input when UI is open
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const mouseY = (e.clientY - rect.top) * scaleY;
+      const cRect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - cRect.left);
+      const mouseY = (e.clientY - cRect.top);
       const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
 
       // Always update mouse position for drone rotation
@@ -1185,15 +1347,6 @@ export async function initAreaGame(initialPosition) {
       let nearestDist = Infinity;
       let interactionType = null;
 
-      // Debug: Log resource nodes and ground items
-      console.log('[DEBUG] Resource nodes count:', game.resourceNodes.length);
-      console.log('[DEBUG] Ground items count:', game.groundItems.length);
-      console.log('[DEBUG] Player position:', game.player.x, game.player.y);
-      if (worldCoords) {
-        console.log('[DEBUG] Click world coords:', worldCoords.x, worldCoords.y);
-      } else {
-        console.log('[DEBUG] No world coords available');
-      }
 
       // AI: First, check if there's a currently highlighted item that should be the primary interaction target.
       // This allows users to click anywhere within the highlight outline for better UX.
@@ -1219,46 +1372,36 @@ export async function initAreaGame(initialPosition) {
         // AI: Iterate through all available resource nodes to find if the mouse is over one.
         // Resources are prioritized over ground items for interaction.
         for (const node of game.resourceNodes) {
-          console.log('[DEBUG] Checking node:', node.id, 'at:', node.x, node.y);
-
           // AI: Skip nodes that are currently on cooldown, as they cannot be harvested.
           const isOnCooldown = node.cooldownUntil && Date.now() < node.cooldownUntil;
           if (isOnCooldown) {
-            console.log('[DEBUG] Node on cooldown:', node.id);
             continue;
           }
 
           // AI: Calculate the world coordinates of the mouse click
           const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
           if (!worldCoords) {
-            console.log('[DEBUG] No world coords for click');
             continue;
           }
 
           // AI: Calculate distance from mouse click to node center
           const mouseDist = Math.hypot(worldCoords.x - node.x, worldCoords.y - node.y);
-          console.log('[DEBUG] Mouse distance to node:', mouseDist);
 
           // AI: Use a balanced click radius that's generous but not too large to avoid accidental clicks
           // Resource nodes have a highlight outline, so we use a moderate click area
           const clickRadius = 20; // Balanced click radius for precise interaction
-          console.log('[DEBUG] Click radius:', clickRadius, 'Mouse dist <= radius:', mouseDist <= clickRadius);
 
           if (mouseDist <= clickRadius) {
-                    // AI: Calculate the distance from the player's current position to the center of the resource node.
-        const dist = Math.hypot(game.player.x - node.x, game.player.y - node.y);
-        console.log('[DEBUG] Player distance to node:', dist, 'Max interaction radius:', maxInteractionRadius);
+            // AI: Calculate the distance from the player's current position to the center of the resource node.
+            const dist = Math.hypot(game.player.x - node.x, game.player.y - node.y);
 
-        // AI: If the node is within the player's interaction radius AND it's closer than any previously found interactable,
-        // mark it as the current nearest interactable. This ensures the player interacts with the closest valid object.
-        if (dist < maxInteractionRadius && dist < nearestDist) {
-          console.log('[DEBUG] Node selected as nearest interactable:', node.id);
-          nearestDist = dist;
-          nearestInteractable = node;
-          interactionType = 'resourceNode';
-        } else {
-          console.log('[DEBUG] Node out of range or farther than current nearest');
-        }
+            // AI: If the node is within the player's interaction radius AND it's closer than any previously found interactable,
+            // mark it as the current nearest interactable. This ensures the player interacts with the closest valid object.
+            if (dist < maxInteractionRadius && dist < nearestDist) {
+              nearestDist = dist;
+              nearestInteractable = node;
+              interactionType = 'resourceNode';
+            }
           }
         }
 
@@ -1273,13 +1416,10 @@ export async function initAreaGame(initialPosition) {
 
             // AI: Use a very precise click radius for ground items - must click directly on sprite
             const clickRadius = 8; // Very small radius - must click precisely on the item sprite
-            
-            console.log('[DEBUG] Mouse distance to ground item:', mouseDist, 'Click radius:', clickRadius);
 
             if (mouseDist <= clickRadius) {
               // AI: If clicked on item sprite, always select it regardless of player distance
               // Player will automatically move to it if too far away
-              console.log('[DEBUG] Ground item clicked precisely, selecting for interaction:', item.type);
               
               // Use click distance for priority, not player distance
               if (mouseDist < nearestDist) {
@@ -1287,8 +1427,6 @@ export async function initAreaGame(initialPosition) {
                 nearestInteractable = item;
                 interactionType = 'groundItem';
               }
-            } else {
-              console.log('[DEBUG] Click not precise enough for ground item - clicked outside sprite');
             }
           }
         }
@@ -1363,20 +1501,22 @@ export async function initAreaGame(initialPosition) {
           }
         }
       } else {
-        // AI: Normal right-click movement - clamp to sand area bounds
-        const PAD = 50;
-        const clampedX = Math.max(PAD, Math.min(game.mouse.x, WORLD_WIDTH - PAD));
-        const clampedY = Math.max(PAD, Math.min(game.mouse.y, WORLD_HEIGHT - PAD));
-        
-        game.player.target = { x: clampedX, y: clampedY };
-        game.player.continuousMovement = true;
-        
-        // Set visual target marker
+        // AI: Right-click movement disabled - no movement on right-click
+        // Just update mouse position for aiming without moving the player
+        const PAD = WORLD_PADDING;
+        const clampedX = Math.max(PAD, Math.min(game.mouse.x, game.WORLD_WIDTH - PAD));
+        const clampedY = Math.max(PAD, Math.min(game.mouse.y, game.WORLD_HEIGHT - PAD));
+
+        // DISABLED: Right-click movement - player should not move on right-click
+        // game.player.target = { x: clampedX, y: clampedY };
+        // game.player.continuousMovement = true;
+
+        // Set visual target marker to show where right-click occurred (for aiming)
         game.targetMarker = {
           x: clampedX,
           y: clampedY,
-          life: 2.0,
-          maxLife: 2.0
+          life: 1.0,
+          maxLife: 1.0
         };
       }
     });

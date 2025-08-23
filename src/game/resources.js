@@ -19,6 +19,10 @@ export function getResourceConfig(type) {
 
 export function drawResourceNodes() {
   const { ctx } = game;
+  if (!game.resourceNodes || game.resourceNodes.length === 0) {
+    return;
+  }
+  
   const iconScale = 2.0; // Larger scale for resource nodes
   const iconSize = 12 * iconScale; // 24px
   // Tiny progress bar config (cute bar above the node)

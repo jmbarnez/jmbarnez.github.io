@@ -30,8 +30,9 @@
 
   <script type="module" src="/src/app/game-loader.js"></script>
   <!-- Area Frame (bottom-right corner behind UI) -->
-  <div class="area-frame">
-    <canvas id="area-canvas" class="area-canvas"></canvas>
+  <!-- Make the canvas fill the entire viewport -->
+  <div class="area-frame fixed inset-0 z-0">
+    <canvas id="area-canvas" class="area-canvas" tabindex="0" aria-label="Game Canvas"></canvas>
   </div>
 
   <!-- AI: Removed the logout button from the top-left corner. -->
@@ -415,7 +416,87 @@
     <button id="settings-button" type="button" class="fixed top-4 left-4 h-8 w-8 flex items-center justify-center top-btn z-50" title="Settings">
       <div data-icon="gear" class="w-4 h-4 text-slate-300 relative z-10"></div>
     </button>
-  </div>
+
+    <!-- Debug Panel - Real-time game information panel -->
+    <div id="debug-panel-container" class="hidden glow-red fixed w-[600px] h-[600px] bg-slate-900/95 text-slate-200 border border-red-400/30 rounded-2xl shadow-2xl backdrop-blur-2xl z-70" style="top: 50%; right: 20px; transform: translateY(-50%);">
+      <div class="flex items-center justify-between p-3 border-b border-red-400/30">
+        <h2 class="text-sm font-bold text-red-400">🔧 Debug Panel</h2>
+        <button id="debug-panel-close" type="button" class="text-red-400 hover:text-red-300 text-sm transition-colors" title="Close (F3)">×</button>
+      </div>
+
+      <div class="p-3 h-[540px] overflow-y-auto text-xs space-y-3">
+        <!-- Player Info -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-red-400 font-bold mb-1">Player Info</h3>
+          <div id="debug-player-info" class="space-y-1">
+            <div>Position: <span id="debug-player-pos">0, 0</span></div>
+            <div>Velocity: <span id="debug-player-vel">0, 0</span></div>
+            <div>Speed: <span id="debug-player-speed">0</span></div>
+            <div>Area: <span id="debug-current-area">unknown</span></div>
+          </div>
+        </div>
+
+        <!-- Game State -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-green-400 font-bold mb-1">Game State</h3>
+          <div id="debug-game-state" class="space-y-1">
+            <div>UI Open: <span id="debug-ui-state">false</span></div>
+            <div>Connected: <span id="debug-connection">false</span></div>
+            <div>Players: <span id="debug-player-count">0</span></div>
+            <div>Ping: <span id="debug-ping">0ms</span></div>
+            <div>FPS: <span id="debug-fps">0</span></div>
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-yellow-400 font-bold mb-1">Resources</h3>
+          <div id="debug-resources" class="space-y-1">
+            <div>Resource Nodes: <span id="debug-resource-count">0</span></div>
+            <div>Ground Items: <span id="debug-ground-items">0</span></div>
+            <div>Inventory Slots: <span id="debug-inventory-slots">0/24</span></div>
+          </div>
+        </div>
+
+        <!-- Camera -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-blue-400 font-bold mb-1">Camera</h3>
+          <div id="debug-camera" class="space-y-1">
+            <div>Zoom: <span id="debug-zoom">1.00</span>x</div>
+            <div>Target Zoom: <span id="debug-target-zoom">1.00</span>x</div>
+            <div>Position: <span id="debug-camera-pos">0, 0</span></div>
+          </div>
+        </div>
+
+        <!-- Physics -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-purple-400 font-bold mb-1">Physics</h3>
+          <div id="debug-physics" class="space-y-1">
+            <div>Throttle: <span id="debug-throttle">0%</span></div>
+            <div>Orientation: <span id="debug-orientation">0°</span></div>
+            <div>Status: <span id="debug-physics-status">Inactive</span></div>
+          </div>
+        </div>
+
+        <!-- Console Output -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-orange-400 font-bold mb-1">Console Log</h3>
+          <div id="debug-console" class="space-y-1 max-h-32 overflow-y-auto text-[10px]">
+            <div class="text-slate-500">No messages yet...</div>
+          </div>
+        </div>
+
+        <!-- Debug Actions -->
+        <div class="bg-slate-800/50 rounded p-2">
+          <h3 class="text-pink-400 font-bold mb-1">Actions</h3>
+          <div class="space-y-1">
+            <button id="debug-clear-console" class="bg-red-600/20 hover:bg-red-600/30 px-2 py-1 rounded text-xs transition-colors">Clear Console</button>
+            <button id="debug-gc" class="bg-orange-600/20 hover:bg-orange-600/30 px-2 py-1 rounded text-xs transition-colors">Force GC</button>
+            <button id="debug-reload" class="bg-blue-600/20 hover:bg-blue-600/30 px-2 py-1 rounded text-xs transition-colors">Reload Page</button>
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>
 

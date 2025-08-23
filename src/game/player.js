@@ -21,13 +21,15 @@ const DRONE_DIM = {
  */
 export function drawPlayer(player) {
   const { ctx } = game; // Destructure ctx from game object
-  const px = player.x; // Get exact player X coordinate
-  const py = player.y; // Get exact player Y coordinate
+  // Round coordinates to prevent sub-pixel rendering blur
+  const px = Math.round(player.x); // Get rounded player X coordinate
+  const py = Math.round(player.y); // Get rounded player Y coordinate
   const angle = player.angle; // Get player angle
   const color = player.color || '#3b82f6'; // Get player color with fallback
 
   const time = Date.now() * 0.001;
-  const bob = Math.sin(time * 2 + (player.x + player.y) * 0.01) * 1.5;
+  // Round bob value to prevent sub-pixel blur
+  const bob = Math.round(Math.sin(time * 2 + (player.x + player.y) * 0.01) * 1.5);
   // AI: Draw enhanced shadow beneath the drone adjusted for hover bob
   drawDroneShadow(ctx, px, py + bob);
 
@@ -38,6 +40,7 @@ export function drawPlayer(player) {
 
   // Apply body rotation first
   ctx.save();
+  // Use rounded coordinates for crisp rendering
   ctx.translate(px, py + bob);
   ctx.rotate(angle + Math.PI / 2);
 
@@ -51,8 +54,9 @@ export function drawPlayer(player) {
   // Convert small-angle tilts into a lightweight 2D transform: apply a slight
   // horizontal shear for roll and vertical shear for pitch. Values are clamped
   // to keep transforms subtle and performant.
-  const rollShear = Math.tan(tiltRoll) * 0.35;   // reduce magnitude for 2D
-  const pitchShear = Math.tan(tiltPitch) * 0.45; // reduce magnitude for 2D
+  // Reduce tilt intensity for crisper rendering
+  const rollShear = Math.tan(tiltRoll) * 0.15;   // reduced from 0.35 for less blur
+  const pitchShear = Math.tan(tiltPitch) * 0.20; // reduced from 0.45 for less blur
 
   // Compose transforms: scale (global), shear (roll/pitch), then draw model
   ctx.scale(0.94, 0.94);
@@ -63,7 +67,7 @@ export function drawPlayer(player) {
   // underneath the turret. This keeps turret independent while the body slowly
   // rotates proportional to movement speed.
   const bodyRotation = (player.bodyRotation || 0);
-  ctx.rotate(bodyRotation * 0.7); // scale down for visual subtlety
+  ctx.rotate(bodyRotation * 0.3); // reduced from 0.7 for less blur during movement
 
   const body = color || '#2ea6ff';
   const shell = darkenColor(body, 0.05);
@@ -109,15 +113,15 @@ export function drawPlayer(player) {
     const spin = (time * 12 + i * Math.PI / 2) % (Math.PI * 2);
     ctx.save();
     ctx.rotate(spin);
-    // blurred blades for high spin
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    const blurCount = 3;
+    // sharper blades with reduced blur for cleaner look
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const blurCount = 2; // reduced from 3 for less blur
     for (let blur = 0; blur < blurCount; blur++) {
-      ctx.globalAlpha = 0.18 * (1 - blur / blurCount);
+      ctx.globalAlpha = 0.25 * (1 - blur / blurCount); // increased alpha for more solid appearance
       for (let b = 0; b < 3; b++) {
         ctx.rotate((b === 0) ? 0 : (Math.PI * 2 / 3));
         ctx.beginPath();
-        ctx.ellipse(0, -rotorR * (0.45 + blur * 0.02), rotorR * (0.9 - blur * 0.15), rotorR * (0.22 + blur * 0.03), 0, 0, Math.PI * 2);
+        ctx.ellipse(0, -rotorR * (0.45 + blur * 0.01), rotorR * (0.9 - blur * 0.1), rotorR * (0.22 + blur * 0.02), 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -181,6 +185,7 @@ export function drawPlayer(player) {
   // controls the turret orientation. Actual firing uses getMuzzlePosition() which now
   // references the canopy's visual front and turret orientation if needed.
   ctx.save();
+  // Use rounded coordinates for turret as well
   ctx.translate(px, py + bob);
   ctx.rotate(turretAngle);
   // Make turret visually black for a stark contrast with the canopy

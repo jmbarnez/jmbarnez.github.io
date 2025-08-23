@@ -56,6 +56,9 @@ export function initSettingsPanel() {
 
   // Initialize terrain seed controls
   initTerrainSeedControls();
+
+  // Add canvas scaling toggle control
+  initCanvasScalingControl(settingsPanel);
 }
 
 function initTerrainSeedControls() {
@@ -103,6 +106,36 @@ function initTerrainSeedControls() {
       }
     });
   }
+}
+
+function initCanvasScalingControl(settingsPanel) {
+  const section = document.createElement('div');
+  section.className = 'p-4 border-t border-sky-400/20';
+  section.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <label class="text-sm font-semibold">Rendering Scale</label>
+      <div class="flex items-center gap-2">
+        <label class="text-xs">Integer DPR</label>
+        <input id="toggle-integer-dpr" type="checkbox" />
+      </div>
+    </div>
+    <p class="text-xs text-slate-400">When enabled, the canvas will use an integer devicePixelRatio (best for pixel-perfect scaling on Retina).</p>
+  `;
+
+  settingsPanel.appendChild(section);
+
+  const checkbox = document.getElementById('toggle-integer-dpr');
+  if (!checkbox) return;
+
+  // Initialize from localStorage
+  checkbox.checked = localStorage.getItem('useIntegerDPR') === 'true';
+
+  checkbox.addEventListener('change', () => {
+    localStorage.setItem('useIntegerDPR', checkbox.checked ? 'true' : 'false');
+    // Apply immediately
+    if (window.applyDPRSetting) window.applyDPRSetting();
+    alert('Rendering scale updated. If you notice visual glitches, resize the window or refresh.');
+  });
 }
 
 function updateTerrainSeedDisplay() {
