@@ -16,7 +16,7 @@ import { multiplayerManager } from './multiplayerManager.js';
 import { experienceManager } from './experienceManager.js';
 import { experienceBar } from '../ui/experienceBar.js';
 import { drawPlayer, drawSelfMarker, drawMiningLaser, getMuzzlePosition } from './player.js';
-import { worldToScreenCoords, screenToWorldCoords, calculateEntityDepth } from '../utils/math.js';
+import { worldToScreenCoords, screenToWorldCoords, eventToWorldCoords, calculateEntityDepth } from '../utils/math.js';
 import { joinArea, subscribeAreaPlayers } from '../services/realtimePosition.js';
 import { subscribeGroundItems } from '../services/groundItemService.js';
 import { ACCELERATION, DECELERATION, GRAVITY, DAMPING_FACTOR, MAX_SPEED, DEAD_ZONE, DECEL_ZONE, ATTACK_RANGE, MUZZLE_OFFSET, DRONE_HEIGHT_OFFSET, FIRE_COOLDOWN, INTERACTION_RADIUS, AUTO_ATTACK_DURATION, DAMAGE_PER_HIT } from '../utils/constants.js';
@@ -891,9 +891,11 @@ export async function initAreaGame(initialPosition) {
         const isInputLike = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
         const isChatInput = (el) => el && el.id === 'chat-input';
         const isGameUI = (el) => el && (el.closest('#chat-panel-container') || el.closest('#main-panel-container'));
+        // AI: Check if a drag operation is in progress to avoid focus conflicts
+        const isDragInProgress = () => document.querySelector('.dragging-item') !== null;
 
-        // Don't refocus if user is actively typing in chat or other inputs
-        if (!isInputLike(activeElement) && !isChatInput(activeElement) && !isGameUI(activeElement)) {
+        // Don't refocus if user is actively typing in chat, other inputs, or dragging items
+        if (!isInputLike(activeElement) && !isChatInput(activeElement) && !isGameUI(activeElement) && !isDragInProgress()) {
           focusCanvas();
         }
       }, 200); // Short delay to allow for natural UI interactions
@@ -1323,15 +1325,17 @@ window.updateDebugPanel = updateUpdatePanel;
       }
       */
 
-      // AI: Get precise mouse coordinates relative to the canvas, accounting for canvas scaling.
+      // AI: Get precise mouse coordinates relative to the canvas (CSS pixels).
+      // We intentionally use CSS/client coordinates here and let
+      // `screenToWorldCoords` handle camera.zoom conversion. Using the
+      // backing-store pixel coords (canvas.width) caused mismatch and
+      // imprecise hit detection on HiDPI displays. Keep conversion consistent.
       const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const mouseY = (e.clientY - rect.top) * scaleY;
+      const mouseX = (e.clientX - rect.left);
+      const mouseY = (e.clientY - rect.top);
 
-      // AI: Calculate world coordinates for the click
-      const worldCoords = screenToWorldCoords(mouseX, mouseY, camera);
+      // Convert the original MouseEvent to world coords using helper
+      const worldCoords = eventToWorldCoords(e, canvas, camera);
 
       // AI: Check for interaction with world objects (e.g., market stalls, special NPCs).
       // If an interaction occurs, it takes precedence and no further checks are needed.

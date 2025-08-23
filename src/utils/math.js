@@ -136,6 +136,26 @@ export function screenToWorldCoords(screenX, screenY, camera) {
 }
 
 /**
+ * Convert a MouseEvent (client coordinates) to world coordinates for the
+ * provided canvas and camera. This centralizes conversion logic and avoids
+ * inconsistencies between handlers (backing-store vs CSS pixels) that cause
+ * imprecise hit detection on HiDPI displays.
+ *
+ * @param {MouseEvent} event
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} camera
+ * @returns {{x:number,y:number}} world coordinates
+ */
+export function eventToWorldCoords(event, canvas, camera) {
+  if (!canvas || !event) return null;
+  const rect = canvas.getBoundingClientRect();
+  // Use CSS/client pixels relative to canvas; screenToWorldCoords handles zoom
+  const cssX = (event.clientX - rect.left);
+  const cssY = (event.clientY - rect.top);
+  return screenToWorldCoords(cssX, cssY, camera);
+}
+
+/**
  * Checks if a given point (x, y) is within a specified radius of the center of an element.
  * @param {HTMLElement} element - The DOM element to check against.
  * @param {number} x - The x-coordinate of the point.

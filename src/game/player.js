@@ -20,185 +20,44 @@ const DRONE_DIM = {
  * The player's position is taken from `game.player.x` and `game.player.y`.
  */
 export function drawPlayer(player) {
-  const { ctx } = game; // Destructure ctx from game object
-  // Round coordinates to prevent sub-pixel rendering blur
-  const px = Math.round(player.x); // Get rounded player X coordinate
-  const py = Math.round(player.y); // Get rounded player Y coordinate
-  const angle = player.angle; // Get player angle
-  const color = player.color || '#3b82f6'; // Get player color with fallback
+  const { ctx } = game;
+  const px = Math.round(player.x);
+  const py = Math.round(player.y);
 
+  // Simple hover bob to convey height (still uses player's position seed for stability)
   const time = Date.now() * 0.001;
-  // Round bob value to prevent sub-pixel blur
-  const bob = Math.round(Math.sin(time * 2 + (player.x + player.y) * 0.01) * 1.5);
-  // AI: Draw enhanced shadow beneath the drone adjusted for hover bob
+  const bob = Math.sin(time * 2 + (player.x + player.y) * 0.01) * 1.6;
+
+  // Draw pixel-art shadow first (shadow size/alpha respond to `player.height`)
   drawDroneShadow(ctx, px, py + bob);
 
-  // Quadcopter design (ducted propellers, canopy, skids) to match reference
-  const CANOPY_W = DRONE_DIM.CANOPY_W;
-  const CANOPY_H = DRONE_DIM.CANOPY_H;
-  const rotorR = DRONE_DIM.ROTOR_R; // rotor radius
+  // Draw a 32x32 pixel-art drone sprite centered on the player
+  const SPRITE_W = 32;
+  const SPRITE_H = 32;
+  const sprite = getOrCreateDroneSprite(player.color || '#3b82f6');
 
-  // Apply body rotation first
   ctx.save();
-  // Use rounded coordinates for crisp rendering
   ctx.translate(px, py + bob);
-  ctx.rotate(angle + Math.PI / 2);
-
-  // Apply body tilt for quadcopter banking/pitching. These are small rotation/skew
-  // adjustments derived from `player.tiltRoll` and `player.tiltPitch` which are
-  // updated in `core.js` based on velocity. We convert tilt into a subtle shear
-  // and vertical offset to mimic real drone attitude changes.
-  const tiltRoll = (player.tiltRoll || 0);   // roll: rotate around forward axis
-  const tiltPitch = (player.tiltPitch || 0); // pitch: rotate around lateral axis
-
-  // Convert small-angle tilts into a lightweight 2D transform: apply a slight
-  // horizontal shear for roll and vertical shear for pitch. Values are clamped
-  // to keep transforms subtle and performant.
-  // Reduce tilt intensity for crisper rendering
-  const rollShear = Math.tan(tiltRoll) * 0.15;   // reduced from 0.35 for less blur
-  const pitchShear = Math.tan(tiltPitch) * 0.20; // reduced from 0.45 for less blur
-
-  // Compose transforms: scale (global), shear (roll/pitch), then draw model
-  ctx.scale(0.94, 0.94);
-  // matrix: [a c e; b d f] -> ctx.transform(a, b, c, d, e, f)
-  ctx.transform(1, pitchShear, rollShear, 0.76, 0, 0);
-
-  // Apply bodyRotation computed in core.js (speed-driven spin) as a small rotation
-  // underneath the turret. This keeps turret independent while the body slowly
-  // rotates proportional to movement speed.
-  const bodyRotation = (player.bodyRotation || 0);
-  ctx.rotate(bodyRotation * 0.3); // reduced from 0.7 for less blur during movement
-
-  const body = color || '#2ea6ff';
-  const shell = darkenColor(body, 0.05);
-  const rim = darkenColor(body, 0.35);
-  const glass = 'rgba(230,245,255,0.98)';
-
-  // Draw four ducted rotors positions relative to center
-  const offsets = [
-    { x: -CANOPY_W * 0.45, y: -CANOPY_H * 0.45 }, // top-left
-    { x: CANOPY_W * 0.45, y: -CANOPY_H * 0.45 },  // top-right
-    { x: -CANOPY_W * 0.45, y: CANOPY_H * 0.45 },  // bottom-left
-    { x: CANOPY_W * 0.45, y: CANOPY_H * 0.45 }    // bottom-right
-  ];
-
-  // Draw ducts first (behind canopy)
-  offsets.forEach((off, i) => {
-    ctx.save();
-    ctx.translate(off.x, off.y);
-    // duct ring with highlight and shadow for depth
-    const ductOuter = rotorR + Math.max(2, Math.round(3 * DRONE_SCALE));
-    const ductInner = Math.max(2, rotorR - Math.round(2 * DRONE_SCALE));
-    // shadow underside
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.beginPath();
-    ctx.ellipse(2, 3, ductOuter, ductOuter * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // duct outer shell
-    const ductGrad = ctx.createLinearGradient(-ductOuter, -ductOuter, ductOuter, ductOuter);
-    ductGrad.addColorStop(0, darkenColor(rim, 0.05));
-    ductGrad.addColorStop(1, darkenColor(rim, 0.35));
-    ctx.fillStyle = ductGrad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, ductOuter, ductOuter * 0.78, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // inner rotor hub cutout (darker center)
-    ctx.fillStyle = '#0b0b0b';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, ductInner, ductInner * 0.7, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // propeller blades (3-blade representation with rotation and motion blur)
-    const spin = (time * 12 + i * Math.PI / 2) % (Math.PI * 2);
-    ctx.save();
-    ctx.rotate(spin);
-    // sharper blades with reduced blur for cleaner look
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    const blurCount = 2; // reduced from 3 for less blur
-    for (let blur = 0; blur < blurCount; blur++) {
-      ctx.globalAlpha = 0.25 * (1 - blur / blurCount); // increased alpha for more solid appearance
-      for (let b = 0; b < 3; b++) {
-        ctx.rotate((b === 0) ? 0 : (Math.PI * 2 / 3));
-        ctx.beginPath();
-        ctx.ellipse(0, -rotorR * (0.45 + blur * 0.01), rotorR * (0.9 - blur * 0.1), rotorR * (0.22 + blur * 0.02), 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-
-    ctx.restore();
-  });
-
-  // Draw central canopy (smooth molded shell)
-  const canopyGrad = ctx.createLinearGradient(0, -CANOPY_H * 0.6, 0, CANOPY_H * 0.6);
-  canopyGrad.addColorStop(0, lightenColor(body, 0.28));
-  canopyGrad.addColorStop(0.5, body);
-  canopyGrad.addColorStop(1, darkenColor(body, 0.08));
-
-  ctx.fillStyle = canopyGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, CANOPY_W / 2, CANOPY_H / 2, -0.08, 0, Math.PI * 2);
-  ctx.fill();
-
-  // glossy cockpit patch
-  ctx.save();
-  ctx.translate(-CANOPY_W * 0.08, -CANOPY_H * 0.08);
-  ctx.fillStyle = glass;
-  ctx.globalAlpha = 0.95;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, CANOPY_W * 0.32, CANOPY_H * 0.3, -0.08, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  // Rotate the sprite so its front faces the player's angle (preserve legacy behavior)
+  ctx.rotate((player.angle || 0) + Math.PI / 2);
+  // Nearest-neighbour sampling for crisp pixel art
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sprite, -SPRITE_W / 2, -SPRITE_H / 2, SPRITE_W, SPRITE_H);
   ctx.restore();
 
-  // skids (scaled)
-  ctx.strokeStyle = rim;
-  ctx.lineWidth = Math.max(1, Math.round(2 * DRONE_SCALE));
-  // left skid
-  ctx.beginPath();
-  ctx.moveTo(-CANOPY_W * 0.6, CANOPY_H * 0.6);
-  ctx.lineTo(-CANOPY_W * 0.25, CANOPY_H * 0.6);
-  ctx.stroke();
-  // right skid
-  ctx.beginPath();
-  ctx.moveTo(CANOPY_W * 0.25, CANOPY_H * 0.6);
-  ctx.lineTo(CANOPY_W * 0.6, CANOPY_H * 0.6);
-  ctx.stroke();
-
-  // small feet (scaled)
-  ctx.fillStyle = darkenColor(rim, 0.2);
-  const footR = Math.max(1, Math.round(2 * DRONE_SCALE));
-  ctx.beginPath(); ctx.ellipse(-CANOPY_W * 0.45, CANOPY_H * 0.68, footR, footR, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(CANOPY_W * 0.45, CANOPY_H * 0.68, footR, footR, 0, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
-
-  // --- Turret drawing: turret is independent from body rotation and follows mouse direction ---
-  // Compute turret direction from the global mouse/world position if available.
-  // The turret is drawn on top of the canopy and should rotate to face the cursor.
+  // Draw a small turret barrel on top so the player still appears to aim at cursor
   const turretAngle = (game && game.mouse && typeof game.mouse.x === 'number')
     ? Math.atan2(game.mouse.y - player.y, game.mouse.x - player.x)
-    : player.angle;
-
-  // Draw turret — small rotating gun on top of canopy. This is purely visual: turretAngle
-  // controls the turret orientation. Actual firing uses getMuzzlePosition() which now
-  // references the canopy's visual front and turret orientation if needed.
+    : (player.angle || 0);
   ctx.save();
-  // Use rounded coordinates for turret as well
   ctx.translate(px, py + bob);
   ctx.rotate(turretAngle);
-  // Make turret visually black for a stark contrast with the canopy
   ctx.fillStyle = '#0b0b0b';
-  // turret base (rounded)
-  roundRect(ctx, -4, -CANOPY_H * 0.4 - 4, 8, 4, 1);
-  ctx.fill();
-  // turret barrel (black metal)
-  ctx.fillStyle = '#0b0b0b';
-  ctx.fillRect(3, -2, 6, 2);
+  // Barrel: short rectangle protruding from sprite front
+  ctx.fillRect(8, -2, 10, 4);
   ctx.restore();
 
-  // --- Nametag for players that include a username (remote players) ---
+  // Draw simple nametag above player (kept small and unobtrusive)
   try {
     if (player && player.username) {
       const name = player.username;
@@ -206,17 +65,93 @@ export function drawPlayer(player) {
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      const tx = px;
-      const ty = py - 10; // above the player
-
-      // text only - no background for subtle appearance
-      ctx.fillStyle = '#000000'; // Black text for subtlety
-      ctx.fillText(name, tx, ty - 2);
+      ctx.fillStyle = '#000000';
+      ctx.fillText(name, px, py - 10 + bob);
       ctx.restore();
     }
   } catch (e) {
     // ignore nametag errors
   }
+}
+
+// --- Pixel sprite generator & cache ---
+// Creates a simple 32x32 pixel-art sprite for the drone. This keeps the
+// rendering code compact and lets us easily change the sprite design.
+const _spriteCache = new Map();
+function getOrCreateDroneSprite(color) {
+  if (_spriteCache.has(color)) return _spriteCache.get(color);
+  const canvas = document.createElement('canvas');
+  canvas.width = 32; canvas.height = 32;
+  const cx = canvas.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+
+  // Clear
+  cx.clearRect(0, 0, 32, 32);
+
+  // --- Angled, detailed 32x32 pixel-art drone ---
+  // We'll draw an isometric-ish drone facing top-left to give an angled perspective.
+  // Palette
+  const body = color;
+  const rim = darkenColor(body, 0.25);
+  const shade = darkenColor(body, 0.45);
+  const glass = '#cfefff';
+  const metal = '#22272b';
+
+  // Background subtle outline
+  cx.fillStyle = 'rgba(0,0,0,0.08)';
+  // Slight offset for drop shadow
+  cx.fillRect(8, 18, 16, 6);
+
+  // Main fuselage (angled) - draw layered rectangles to simulate depth
+  // Back plate (farther from camera)
+  cx.fillStyle = shade;
+  cx.fillRect(9, 11, 14, 4);
+
+  // Mid fuselage
+  cx.fillStyle = body;
+  cx.fillRect(10, 9, 12, 6);
+
+  // Top canopy highlight (angled toward top-left)
+  cx.fillStyle = glass;
+  cx.fillRect(11, 10, 6, 3);
+
+  // Side panels (darker) to imply tilt
+  cx.fillStyle = rim;
+  cx.fillRect(8, 13, 2, 6); // left side flange
+  cx.fillRect(22, 13, 2, 6); // right side flange
+
+  // Front nose piece (slightly darker)
+  cx.fillStyle = shade;
+  cx.fillRect(12, 7, 6, 3);
+
+  // Rotors: small rounded squares with lighter center to suggest discs
+  cx.fillStyle = metal;
+  cx.fillRect(6, 6, 6, 4);
+  cx.fillRect(20, 6, 6, 4);
+  cx.fillRect(6, 22, 6, 4);
+  cx.fillRect(20, 22, 6, 4);
+  cx.fillStyle = 'rgba(255,255,255,0.4)';
+  cx.fillRect(7, 7, 4, 2);
+  cx.fillRect(21, 7, 4, 2);
+  cx.fillRect(7, 23, 4, 2);
+  cx.fillRect(21, 23, 4, 2);
+
+  // Skids / legs - thin supports
+  cx.fillStyle = '#0b0b0b';
+  cx.fillRect(11, 18, 2, 6);
+  cx.fillRect(19, 18, 2, 6);
+
+  // Small energetic core / light at center
+  cx.fillStyle = '#aee6ff';
+  cx.fillRect(15, 12, 2, 2);
+
+  // Edge highlights for more readable silhouette
+  cx.fillStyle = 'rgba(255,255,255,0.08)';
+  cx.fillRect(10, 9, 1, 6);
+  cx.fillRect(11, 9, 10, 1);
+
+  _spriteCache.set(color, canvas);
+  return canvas;
 }
 
 /**

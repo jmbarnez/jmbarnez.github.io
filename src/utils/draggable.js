@@ -189,12 +189,35 @@ document.addEventListener('drop', (e) => {
  * @param {number} [slotIndex=-1] - The index of the slot the item is in.
  */
 export function makeItemDraggable(element, itemData, currentContainerId, onDropCallback, slotIndex = -1) {
+  // AI: Prevent duplicate drag setup on the same element
+  if (element.hasAttribute('data-drag-setup')) {
+    return; // Already set up
+  }
+  
+  // AI: Mark element as having drag setup to prevent duplicates
+  element.setAttribute('data-drag-setup', 'true');
   element.setAttribute('draggable', true);
+  
+  // AI: Debug logging to verify function is called
+  console.log(`[DRAG] Setting up draggable for:`, { 
+    element: element.tagName, 
+    itemId: itemData.itemId || itemData.id, 
+    container: currentContainerId, 
+    slotIndex 
+  });
 
   // AI: Use a variable to store the drag state for this specific item.
   let dragState = null;
 
   element.addEventListener('dragstart', (e) => {
+    // AI: OLD CODE: Drag events were set up but may have had issues with event propagation
+    // NEW APPROACH: Comprehensive event handling with proper debugging
+    console.log(`[DRAG] Dragstart event triggered for:`, { 
+      itemId: itemData.itemId || itemData.id, 
+      slotIndex,
+      element: element.tagName 
+    });
+    
     try {
       // AI: Inventory slots use 'itemId' property, item definitions use 'id' 
       const dragItemId = itemData.itemId || itemData.id;

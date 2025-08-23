@@ -444,6 +444,13 @@ export function removeItemFromInventory(itemId, quantity = 1, slotIndex = -1) {
 export function renderInventory() {
   if (!inventoryGrid) return;
 
+  // AI: Check if the main panel is visible before setting up drag interactions
+  const mainPanel = document.getElementById('main-panel-container');
+  const isPanelVisible = mainPanel && !mainPanel.classList.contains('hidden');
+  
+  // AI: Debug panel visibility
+  console.log(`[INVENTORY] Rendering inventory - Panel visible: ${isPanelVisible}`);
+
   // AI: Get current inventory from manager
   const currentInventory = inventoryManager.getInventory();
 
@@ -484,10 +491,19 @@ export function renderInventory() {
           slot.appendChild(quantitySpan);
         }
         
-        // AI: Make the icon draggable, not the entire slot.
-        // Pass slotContent (contains itemId) instead of item (contains id)
-        // This ensures the drag system gets the correct item identifier
-        makeItemDraggable(icon, slotContent, 'inventory', handleItemDrop, i);
+        // AI: Only set up drag interactions when the main panel is visible
+        if (isPanelVisible) {
+          // AI: Make the entire slot draggable for better UX
+          // Much easier to grab than trying to click the small icon
+          makeItemDraggable(slot, slotContent, 'inventory', handleItemDrop, i);
+          
+          console.log(`[INVENTORY] Made slot draggable: slot ${i}, item ${slotContent.itemId}, quantity ${slotContent.quantity}`);
+        } else {
+          // AI: When panel is hidden, ensure drag attributes are removed
+          slot.removeAttribute('draggable');
+          slot.removeAttribute('data-drag-setup');
+        }
+
 
         // AI: Tooltip events should still be attached to the slot for a larger hover area.
         // Function now imported from domUtils.js
@@ -612,5 +628,29 @@ window.testAllItems = function() {
     console.log(`\n--- Testing ${itemType} ---`);
     const result = addItemToInventory(itemType, 1);
     console.log('Result:', result);
+  });
+};
+
+// AI: Add test items on initialization for drag testing (OLD CODE: No test items were added automatically)
+// NEW APPROACH: Automatically add some test items to verify drag functionality
+window.addTestItemsForDragTesting = function() {
+  console.log('[INVENTORY] Adding test items for drag testing...');
+  addItemToInventory('seashell', 3);
+  addItemToInventory('driftwood', 2);
+  addItemToInventory('stone', 5);
+  console.log('[INVENTORY] Test items added. Try dragging them around!');
+};
+
+// AI: Test z-index and pointer events
+window.testInventoryInteraction = function() {
+  console.log('[INVENTORY] Testing inventory interaction...');
+  const slots = document.querySelectorAll('.inventory-slot');
+  slots.forEach((slot, index) => {
+    const computedStyle = window.getComputedStyle(slot);
+    console.log(`Slot ${index}:`, {
+      zIndex: computedStyle.zIndex,
+      pointerEvents: computedStyle.pointerEvents,
+      position: computedStyle.position
+    });
   });
 };

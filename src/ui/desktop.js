@@ -273,6 +273,20 @@ export function initDesktopScreen() {
     mainPanelToggle.onclick = toggleMainPanel;
   }
 
+  // AI: Make main panel draggable
+  if (mainPanelContainer) {
+    const mainPanelHeader = mainPanelContainer.querySelector('.desktop-panel-header');
+    if (mainPanelHeader) {
+      makeDraggable(mainPanelContainer, mainPanelHeader, {
+        onDragStart: (element) => {
+          // Clean up any positioning conflicts during drag
+          element.style.transform = 'none';
+          element.style.margin = '0';
+        }
+      });
+    }
+  }
+
   // AI: Event listener for the close button with focus management
   if (mainPanelClose) {
     mainPanelClose.onclick = () => {
@@ -417,29 +431,28 @@ export function initDesktopScreen() {
   function toggleChat() {
     if (!chatPanelContainer) return;
 
-    const isCurrentlyHidden = chatPanelContainer.classList.contains('hidden');
-
-    if (isCurrentlyHidden) {
-      chatPanelContainer.classList.remove('hidden');
-      if (chatInput) chatInput.disabled = false;
-      // Trigger initial online players check if chat panel is opened
-      if (window.currentOnlinePlayers && window.currentOnlinePlayers.length > 0) {
-        if (window.globalRenderOnlinePlayers) window.globalRenderOnlinePlayers(window.currentOnlinePlayers);
-      }
-
-      // AI: Always position the panel in bottom left, ignore saved position
+    // Simple toggle - just show/hide
+    chatPanelContainer.classList.toggle('hidden');
+    
+    // Enable/disable chat input based on visibility
+    if (chatInput) {
+      chatInput.disabled = chatPanelContainer.classList.contains('hidden');
+    }
+    
+    // Position panel when opening
+    if (!chatPanelContainer.classList.contains('hidden')) {
       chatPanelContainer.style.position = 'fixed';
       chatPanelContainer.style.transform = 'none';
       positionChatBottomLeft();
-
-      // AI: Disabled position saving - panel always starts in bottom left
-    } else {
-      chatPanelContainer.classList.add('hidden');
-      if (chatInput) chatInput.disabled = true;
-
-      // AI: No position saving needed - panel always starts in bottom left
     }
-    updateUIOpenState(); // Update global UI state
+    
+    // Always restore canvas focus after any chat interaction
+    setTimeout(() => {
+      const canvas = document.getElementById('area-canvas');
+      if (canvas) {
+        canvas.focus();
+      }
+    }, 50);
   }
 
   // AI: Position chat panel in bottom left with margin from edges
@@ -467,10 +480,27 @@ export function initDesktopScreen() {
   
   // Close chat button
   chatClose?.addEventListener('click', () => {
+    // OLD CODE: Close button didn't restore proper focus
+    // NEW APPROACH: Comprehensive focus restoration when closing chat
     isChatOpen = false;
     chatPanelContainer?.classList.add('hidden');
+    
     // Disable chat input when panel is closed
-    if (chatInput) chatInput.disabled = true;
+    if (chatInput) {
+      chatInput.blur(); // Remove focus from chat input
+      chatInput.disabled = true;
+    }
+    
+    // Restore focus to game canvas after closing chat
+    setTimeout(() => {
+      const canvas = document.getElementById('area-canvas');
+      if (canvas && document.activeElement !== canvas) {
+        canvas.focus();
+        console.log('[CHAT] Canvas focus restored after closing chat via close button');
+      }
+    }, 100);
+    
+    updateUIOpenState(); // Update global UI state
   });
   
   // Initialize chat as closed - disable input if panel is hidden
@@ -503,6 +533,26 @@ export function initDesktopScreen() {
   if (chatPanelContainer && chatInput && chatPanelContainer.classList.contains('hidden')) {
     chatInput.disabled = true;
   }
+
+  // OLD CODE: No debugging utilities for focus issues
+  // NEW APPROACH: Add debugging utilities to help diagnose focus problems
+  window.debugChatFocus = function() {
+    console.log('[CHAT DEBUG] Chat focus state:', {
+      isChatOpen,
+      chatPanelHidden: chatPanelContainer?.classList.contains('hidden'),
+      chatInputDisabled: chatInput?.disabled,
+      activeElement: document.activeElement?.tagName + '#' + document.activeElement?.id,
+      canvasFocused: document.activeElement?.id === 'area-canvas'
+    });
+  };
+  
+  window.forceFocusCanvas = function() {
+    const canvas = document.getElementById('area-canvas');
+    if (canvas) {
+      canvas.focus();
+      console.log('[CHAT DEBUG] Forced canvas focus');
+    }
+  };
 
 }
 
@@ -922,17 +972,24 @@ function updateOnlinePlayersUI(players, isConnected) {
 }
 
 // Helper to check if any top-level UI panel is open
+// AI: Modified to exclude main panel - user wants to move even when main panel is open
 function updateUIOpenState() {
-  const mainPanelContainer = document.getElementById('main-panel-container');
   const chatPanelContainer = document.getElementById('chat-panel-container');
   const settingsPanel = document.getElementById('settings-panel');
+  const debugPanelContainer = document.getElementById('debug-panel-container');
 
+  // AI: Only count panels that should block character movement
+  // Main panel is excluded so users can move while managing inventory/equipment
   window.isUIOpen = (
-    !mainPanelContainer?.classList.contains('hidden') ||
     !chatPanelContainer?.classList.contains('hidden') ||
-    !settingsPanel?.classList.contains('hidden')
+    !settingsPanel?.classList.contains('hidden') ||
+    !debugPanelContainer?.classList.contains('hidden')
   );
 }
+
+// OLD CODE: updateUIOpenState was not globally accessible, causing errors in settings.js
+// NEW APPROACH: Make updateUIOpenState globally available
+window.updateUIOpenState = updateUIOpenState;
 
 // --- Global Panel Control ---
 // Global UI elements

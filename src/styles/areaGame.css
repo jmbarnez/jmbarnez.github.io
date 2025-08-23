@@ -4,7 +4,8 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 60; /* Ensure canvas is above other UI elements to receive events and be visible */
+  z-index: 5; /* OLD CODE: Canvas was z-index 60, blocking UI panels at z-index 10
+                 NEW APPROACH: Canvas should be below UI panels to allow interaction */
   image-rendering: pixelated;
   cursor: crosshair;
   display: block;

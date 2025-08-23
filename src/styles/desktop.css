@@ -19,7 +19,8 @@ html, body {
   bottom: 0;
   width: 100%;
   height: 100%;
-  z-index: 5; /* Behind desktop UI */
+  z-index: 1; /* OLD CODE: Area frame was z-index 5
+                  NEW APPROACH: Lower z-index to be at bottom of layer stack */
   background-color: #000000; /* AI: Match the canvas black color */
 }
 
@@ -31,7 +32,8 @@ html, body {
   width: 100%;
   height: 100%;
   background: transparent; /* Let area-frame show through */
-  z-index: 10; /* Ensure desktop UI above area frame */
+  z-index: 15; /* OLD CODE: Desktop UI was z-index 10, sometimes conflicted with canvas
+                  NEW APPROACH: Increased to z-index 15 to ensure UI is always above canvas */
   pointer-events: none; /* Allow mouse events to pass through to the canvas by default */
 }
 
@@ -91,6 +93,10 @@ html, body {
     0 25px 50px -12px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(14, 165, 233, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* OLD CODE: No explicit z-index for main panel container
+     NEW APPROACH: Ensure main panel is above canvas but below dragged items */
+  z-index: 25;
+  position: relative;
 }
 
 #settings-panel,
@@ -349,6 +355,11 @@ html, body {
 
 .inventory-slot {
   transition: background 0.1s ease;
+  /* OLD CODE: No explicit pointer-events or z-index
+     NEW APPROACH: Ensure slots receive all events and are properly layered */
+  pointer-events: auto;
+  position: relative;
+  z-index: 30; /* Above other UI elements */
 }
 /* Bottom Bar Styles - Sci-Fi Theme */
 .action-btn {
@@ -521,6 +532,10 @@ html, body {
   /* AI: Adjusted width to fit the new 6x40px grid (240px) plus 16px padding on each side (p-4). */
   width: 272px; /* 240px (grid) + 16px (left padding) + 16px (right padding) */
   padding-bottom: 1rem; /* Add some padding at the bottom */
+  /* OLD CODE: No explicit z-index, could be covered by other elements
+     NEW APPROACH: Ensure inventory panel is always above canvas and other background elements */
+  z-index: 20;
+  position: relative; /* Needed for z-index to take effect */
 }
 
 /* AI: Skills Panel Styles - removed width restriction to use full available space */
@@ -744,6 +759,24 @@ html, body {
 .inventory-slot img,
 .inventory-slot canvas {
   border-radius: 6px;
+  /* OLD CODE: No explicit pointer-events, which could cause drag issues
+     NEW APPROACH: Ensure inventory icons receive all pointer events for dragging */
+  pointer-events: auto;
+  cursor: grab; /* Visual indicator that items are draggable */
+}
+
+.inventory-slot img:active,
+.inventory-slot canvas:active {
+  cursor: grabbing; /* Visual feedback during drag */
+}
+
+/* AI: Slot-based drag styling - when the entire slot is draggable */
+.inventory-slot[draggable="true"] {
+  cursor: grab; /* Visual indicator that slot is draggable */
+}
+
+.inventory-slot[draggable="true"]:active {
+  cursor: grabbing; /* Visual feedback during drag */
 }
 
 /* .hidden now provided by theme.css */

@@ -14,35 +14,49 @@
 
 import { screenToWorldCoords } from '../utils/math.js';
 
-function drawIconInternal(ctx, id, x, y, scale, outline, colorOverride, withShadow = true) {
-  const size = 12;
-  const mask = Array.from({ length: size }, () => Array(size).fill(false));
+// Global icon grid configuration
+const VIRTUAL_SIZE = 12; // legacy drawing coordinate grid
+const ICON_GRID_SIZE = 32; // target icon resolution for all icons
+const SCALE_MULTIPLIER = ICON_GRID_SIZE / VIRTUAL_SIZE;
 
-  // Helper: plot a rect in pixel-space and mark mask
+function drawIconInternal(ctx, id, x, y, scale, outline, colorOverride, withShadow = true) {
+  // Legacy drawing commands are authored against a 12x virtual grid.
+  // We upgrade rendering to a true 32x32 icon grid by mapping the legacy
+  // coordinates into the larger ICON_GRID_SIZE while preserving shapes.
+  const VIRTUAL_SIZE = 12; // legacy coordinate system used by plot() calls
+  const ICON_GRID_SIZE = 32; // target icon resolution
+  const scaleMultiplier = ICON_GRID_SIZE / VIRTUAL_SIZE;
+
+  // Keep mask at virtual resolution (12x12) so existing bounds logic remains simple.
+  const mask = Array.from({ length: VIRTUAL_SIZE }, () => Array(VIRTUAL_SIZE).fill(false));
+
+  // Helper: plot a rect in icon-grid pixels and mark mask (marks at ICON_GRID resolution)
   const plot = (px, py, w = 1, h = 1, color = '#6b7280') => {
-    if (!ctx) return; // AI: Do not draw if context is null
+    if (!ctx) return; // Do not draw if context is null
     ctx.fillStyle = color;
-    const rx = Math.round(x + px * scale);
-    const ry = Math.round(y + py * scale);
-    const rw = Math.max(1, Math.round(w * scale));
-    const rh = Math.max(1, Math.round(h * scale));
+    // Map legacy virtual coords into ICON_GRID pixels, then apply caller scale
+    const rx = Math.round(x + px * scale * scaleMultiplier);
+    const ry = Math.round(y + py * scale * scaleMultiplier);
+    const rw = Math.max(1, Math.round(w * scale * scaleMultiplier));
+    const rh = Math.max(1, Math.round(h * scale * scaleMultiplier));
     ctx.fillRect(rx, ry, rw, rh);
+    // Mark mask at virtual resolution so bounding logic stays stable
     for (let iy = py; iy < py + h; iy++) {
       for (let ix = px; ix < px + w; ix++) {
-        if (ix >= 0 && ix < size && iy >= 0 && iy < size) mask[iy][ix] = true;
+        if (ix >= 0 && ix < VIRTUAL_SIZE && iy >= 0 && iy < VIRTUAL_SIZE) mask[iy][ix] = true;
       }
     }
   };
 
-  // Slight rounded shadow to ground the sprite
+  // Slight rounded shadow to ground the sprite (mapped to ICON_GRID)
   if (withShadow && ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    const rx = Math.round(x + 3 * scale);
-    const ry = Math.round(y + 10 * scale);
-    ctx.fillRect(rx, ry, Math.max(1, Math.round(6 * scale)), Math.max(1, Math.round(1 * scale)));
+    const rx = Math.round(x + 3 * scale * scaleMultiplier);
+    const ry = Math.round(y + 10 * scale * scaleMultiplier);
+    ctx.fillRect(rx, ry, Math.max(1, Math.round(6 * scale * scaleMultiplier)), Math.max(1, Math.round(1 * scale * scaleMultiplier)));
     // subtle penumbra
     ctx.fillStyle = 'rgba(0,0,0,0.10)';
-    ctx.fillRect(Math.round(x + 2 * scale), Math.round(y + 11 * scale), Math.max(1, Math.round(8 * scale)), Math.max(1, Math.round(1 * scale)));
+    ctx.fillRect(Math.round(x + 2 * scale * scaleMultiplier), Math.round(y + 11 * scale * scaleMultiplier), Math.max(1, Math.round(8 * scale * scaleMultiplier)), Math.max(1, Math.round(1 * scale * scaleMultiplier)));
   }
 
   // Materials/palettes
@@ -464,29 +478,30 @@ function drawIconInternal(ctx, id, x, y, scale, outline, colorOverride, withShad
 }
 
 export function drawOutline(ctx, x, y, scale, mask, color = 'rgba(56, 189, 248, 0.95)') {
-  const size = 12;
+  // mask is at ICON_GRID resolution. Compute outline by checking neighbors
+  const size = ICON_GRID_SIZE;
   const outlineMask = Array.from({ length: size }, () => Array(size).fill(false));
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
-      if (mask[r][c]) {
-        if (r > 0 && !mask[r - 1][c]) outlineMask[r - 1][c] = true;
-        if (r < size - 1 && !mask[r + 1][c]) outlineMask[r + 1][c] = true;
-        if (c > 0 && !mask[r][c - 1]) outlineMask[r][c - 1] = true;
-        if (c < size - 1 && !mask[r][c + 1]) outlineMask[r][c + 1] = true;
-        if (r > 0 && c > 0 && !mask[r - 1][c - 1]) outlineMask[r - 1][c - 1] = true;
-        if (r > 0 && c < size - 1 && !mask[r - 1][c + 1]) outlineMask[r - 1][c + 1] = true;
-        if (r < size - 1 && c > 0 && !mask[r + 1][c - 1]) outlineMask[r + 1][c - 1] = true;
-        if (r < size - 1 && c < size - 1 && !mask[r + 1][c + 1]) outlineMask[r + 1][c + 1] = true;
+      if (mask[r] && mask[r][c]) {
+        if (r > 0 && !(mask[r - 1] && mask[r - 1][c])) outlineMask[r - 1][c] = true;
+        if (r < size - 1 && !(mask[r + 1] && mask[r + 1][c])) outlineMask[r + 1][c] = true;
+        if (c > 0 && !(mask[r] && mask[r][c - 1])) outlineMask[r][c - 1] = true;
+        if (c < size - 1 && !(mask[r] && mask[r][c + 1])) outlineMask[r][c + 1] = true;
+        if (r > 0 && c > 0 && !(mask[r - 1] && mask[r - 1][c - 1])) outlineMask[r - 1][c - 1] = true;
+        if (r > 0 && c < size - 1 && !(mask[r - 1] && mask[r - 1][c + 1])) outlineMask[r - 1][c + 1] = true;
+        if (r < size - 1 && c > 0 && !(mask[r + 1] && mask[r + 1][c - 1])) outlineMask[r + 1][c - 1] = true;
+        if (r < size - 1 && c < size - 1 && !(mask[r + 1] && mask[r + 1][c + 1])) outlineMask[r + 1][c + 1] = true;
       }
     }
   }
   ctx.fillStyle = color;
-  const pixelSize = Math.max(1, Math.round(scale));
+  const pixelSize = Math.max(1, Math.round(scale * SCALE_MULTIPLIER));
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
-      if (outlineMask[r][c] && !mask[r][c]) {
-        const rx = Math.round(x + c * scale);
-        const ry = Math.round(y + r * scale);
+      if (outlineMask[r][c] && !(mask[r] && mask[r][c])) {
+        const rx = Math.round(x + c * scale * SCALE_MULTIPLIER);
+        const ry = Math.round(y + r * scale * SCALE_MULTIPLIER);
         ctx.fillRect(rx, ry, pixelSize, pixelSize);
       }
     }

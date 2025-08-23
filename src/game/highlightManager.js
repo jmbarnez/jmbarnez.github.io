@@ -120,15 +120,14 @@ class HighlightManager {
     // Get canvas bounding rectangle for coordinate conversion
     const rect = this.canvas.getBoundingClientRect();
 
-    // Calculate scaling factors for high-DPI displays
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
+    // Use CSS/client coordinates (relative to canvas) and convert to world
+    // using `screenToWorldCoords`. Converting to backing-store pixels here
+    // caused inconsistent results on HiDPI displays; keep a single consistent
+    // path: client coords -> world coords via camera.zoom.
+    const screenX = (event.clientX - rect.left);
+    const screenY = (event.clientY - rect.top);
 
-    // Convert screen coordinates to canvas coordinates
-    const screenX = (event.clientX - rect.left) * scaleX;
-    const screenY = (event.clientY - rect.top) * scaleY;
-
-    // Convert screen coordinates to world coordinates using camera transform
+    // Convert screen (CSS) coordinates to world coordinates using camera transform
     const worldCoords = screenToWorldCoords(screenX, screenY, camera);
 
     if (!worldCoords) {
